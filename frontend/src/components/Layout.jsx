@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Package, ShoppingCart, Store,
   LogOut, Menu, Building2, Undo2
 } from 'lucide-react';
-import logo from '../logo1.png';
+import logo from '../logo.png';
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
