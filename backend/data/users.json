@@ -1,0 +1,28 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "username": "admin",
+      "password": "admin@123",
+      "name": "Admin",
+      "role": "admin",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "2",
+      "username": "karan",
+      "password": "karantee@123",
+      "name": "Karan",
+      "role": "employee",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "3",
+      "username": "vikash",
+      "password": "vikashtee@123",
+      "name": "Vikash",
+      "role": "employee",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}

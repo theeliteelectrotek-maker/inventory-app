@@ -1,0 +1,62 @@
+{
+  "sales": [
+    {
+      "id": "f5b90abb-418e-4b7d-9a59-72c8eacdcf53",
+      "buyerName": "Sharma Electronics",
+      "items": [
+        {
+          "productId": "f41dacaf-26ae-45a1-a327-acb45657f00b",
+          "productName": "MCB SINGLE POLE 63AMP",
+          "qty": 2,
+          "amount": 460,
+          "date": "2026-03-10"
+        },
+        {
+          "productId": "f41dacaf-26ae-45a1-a327-acb45657f00b",
+          "productName": "MCB SINGLE POLE 63AMP",
+          "qty": 4,
+          "amount": 920,
+          "date": "2026-03-10"
+        },
+        {
+          "productId": "482c8e92-100f-4a4f-b3f3-89bdb5e8e226",
+          "productName": "MCB SINGLE POLE 32AMP",
+          "qty": 4,
+          "amount": 720,
+          "date": "2026-03-11"
+        },
+        {
+          "productId": "f41dacaf-26ae-45a1-a327-acb45657f00b",
+          "productName": "MCB SINGLE POLE 63AMP",
+          "qty": 3,
+          "amount": 690,
+          "date": "2026-03-11"
+        }
+      ],
+      "totalAmount": 2790,
+      "amountReceived": 1020,
+      "amountLeft": 1770,
+      "date": "2026-03-08",
+      "notes": "",
+      "createdAt": "2026-03-08T20:08:18.098Z",
+      "updatedAt": "2026-03-08T20:19:36.175Z",
+      "transactions": [
+        {
+          "amount": "20",
+          "method": "cash",
+          "date": "2026-03-27"
+        },
+        {
+          "amount": "400",
+          "method": "upi",
+          "date": "2026-03-28"
+        },
+        {
+          "amount": "600",
+          "method": "cash",
+          "date": "2026-03-29"
+        }
+      ]
+    }
+  ]
+}

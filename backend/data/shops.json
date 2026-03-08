@@ -1,0 +1,19 @@
+{
+  "shops": [
+    {
+      "id": "34906e22-4724-41e2-aaf2-2b5ca9373b37",
+      "name": "Sharma Electronics",
+      "address": "Noida",
+      "mobile": "1234567890",
+      "createdAt": "2026-03-08T20:01:16.473Z"
+    },
+    {
+      "id": "6bc035ed-97e5-4d2d-a72f-6985e4d01d83",
+      "name": "Test Company",
+      "address": "noida",
+      "mobile": "12455805045",
+      "createdAt": "2026-03-08T20:07:52.377Z",
+      "updatedAt": "2026-03-08T20:21:47.376Z"
+    }
+  ]
+}

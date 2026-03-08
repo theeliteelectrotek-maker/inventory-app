@@ -1,0 +1,16 @@
+{
+  "sales": [
+    {
+      "id": "36f0932b-6e50-457d-9a27-355ea65780b5",
+      "productId": "9e1894f8-f67e-4a97-957d-4e0c91d0343a",
+      "productName": "CORD PUSH BUTTON",
+      "platform": "amazon",
+      "qty": 3,
+      "amount": 285,
+      "orderId": "",
+      "date": "2026-03-07",
+      "notes": "",
+      "createdAt": "2026-03-07T18:42:01.035Z"
+    }
+  ]
+}
