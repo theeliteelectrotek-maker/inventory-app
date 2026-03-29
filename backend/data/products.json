@@ -47,42 +47,42 @@
       "name": "POWER STRIP 4+1 6AMP (CUBA)",
       "sku": "",
       "description": "",
-      "totalQty": 120,
-      "availableQty": 95,
+      "totalQty": 118,
+      "availableQty": 93,
       "unitPrice": 260,
       "offlinePrice": 260,
       "onlinePrice": 290,
       "category": "Power Strip",
       "createdAt": "2026-03-07T18:06:58.896Z",
-      "updatedAt": "2026-03-08T20:02:28.827Z"
+      "updatedAt": "2026-03-29T11:08:46.771Z"
     },
     {
       "id": "977314ff-035b-49d0-bba8-2107acc3c961",
       "name": "POWER STRIP 4+1 6AMP (ROCKER)",
       "sku": "",
       "description": "",
-      "totalQty": 160,
-      "availableQty": 130,
+      "totalQty": 161,
+      "availableQty": 131,
       "unitPrice": 270,
       "offlinePrice": 270,
       "onlinePrice": 300,
       "category": "Power Strip",
       "createdAt": "2026-03-07T18:06:58.896Z",
-      "updatedAt": "2026-03-08T20:02:28.827Z"
+      "updatedAt": "2026-03-29T12:04:11.127Z"
     },
     {
       "id": "9e1894f8-f67e-4a97-957d-4e0c91d0343a",
       "name": "CORD PUSH BUTTON",
       "sku": "",
       "description": "",
-      "totalQty": 299,
-      "availableQty": 259,
+      "totalQty": 297,
+      "availableQty": 257,
       "unitPrice": 80,
       "offlinePrice": 80,
       "onlinePrice": 95,
       "category": "Accessories",
       "createdAt": "2026-03-07T18:06:58.896Z",
-      "updatedAt": "2026-03-08T20:31:27.956Z"
+      "updatedAt": "2026-03-29T11:09:06.780Z"
     },
     {
       "id": "391791e7-fbba-43e4-9bc7-51c56027b7af",

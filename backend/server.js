@@ -291,14 +291,14 @@ app.get('/api/returns', (_req, res) => {
 });
 
 app.post('/api/returns', (req, res) => {
-  const { productId, platform, date, condition, qty, notes } = req.body;
+  const { productId, platform, date, condition, qty, notes, shopId, shopName, action } = req.body;
   if (!productId || !platform || !condition)
     return res.status(400).json({ message: 'Product, platform and condition required' });
   const productsData = readJSON('products.json');
   const pIdx = productsData.products.findIndex((p) => p.id === productId);
   if (pIdx === -1) return res.status(404).json({ message: 'Product not found' });
   const returnQty = Number(qty) || 1;
-  if (condition === 'good') {
+  if (condition === 'good' && action !== 'replace') {
     productsData.products[pIdx].availableQty += returnQty;
     productsData.products[pIdx].totalQty += returnQty;
     productsData.products[pIdx].updatedAt = new Date().toISOString();
@@ -307,7 +307,7 @@ app.post('/api/returns', (req, res) => {
   const data = readJSON('returns.json');
   const ret = {
     id: uuidv4(), productId, productName: productsData.products[pIdx].name,
-    platform, qty: returnQty, date: date || new Date().toISOString().split('T')[0],
+    platform, shopId, shopName, action: action || 'return', qty: returnQty, date: date || new Date().toISOString().split('T')[0],
     condition, notes: notes || '', createdAt: new Date().toISOString(),
   };
   data.returns.push(ret);
@@ -319,7 +319,7 @@ app.delete('/api/returns/:id', (req, res) => {
   const data = readJSON('returns.json');
   const ret = data.returns.find((r) => r.id === req.params.id);
   if (!ret) return res.status(404).json({ message: 'Return not found' });
-  if (ret.condition === 'good') {
+  if (ret.condition === 'good' && ret.action !== 'replace') {
     const productsData = readJSON('products.json');
     const pIdx = productsData.products.findIndex((p) => p.id === ret.productId);
     if (pIdx !== -1) {

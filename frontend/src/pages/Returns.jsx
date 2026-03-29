@@ -16,7 +16,7 @@ const CONDITION_COLORS = {
 };
 
 const today = () => new Date().toISOString().split('T')[0];
-const emptyForm = { productId: '', platform: 'amazon', date: today(), condition: 'good', qty: '1', notes: '' };
+const emptyForm = () => ({ productId: '', platform: 'amazon', shopId: '', shopName: '', action: 'return', date: today(), condition: 'good', qty: '1', notes: '' });
 
 function Modal({ onClose, children }) {
   return (
@@ -36,16 +36,17 @@ export default function Returns() {
   const { user } = useAuth();
   const [returns, setReturns] = useState([]);
   const [products, setProducts] = useState([]);
+  const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    Promise.all([api.getReturns(), api.getProducts()])
-      .then(([r, p]) => { setReturns(r.reverse()); setProducts(p); })
+    Promise.all([api.getReturns(), api.getProducts(), api.getShops()])
+      .then(([r, p, s]) => { setReturns(r.reverse()); setProducts(p); setShops(s); })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -56,14 +57,14 @@ export default function Returns() {
     try {
       const ret = await api.addReturn(form);
       setReturns((rs) => [ret, ...rs]);
-      if (form.condition === 'good') {
+      if (form.condition === 'good' && form.action !== 'replace') {
         const q = Number(form.qty) || 1;
         setProducts((ps) => ps.map((p) =>
           p.id === form.productId ? { ...p, availableQty: p.availableQty + q, totalQty: p.totalQty + q } : p
         ));
       }
       setShowModal(false);
-      setForm(emptyForm);
+      setForm(emptyForm());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -76,7 +77,7 @@ export default function Returns() {
     const ret = returns.find((r) => r.id === id);
     await api.deleteReturn(id);
     setReturns((rs) => rs.filter((r) => r.id !== id));
-    if (ret?.condition === 'good') {
+    if (ret?.condition === 'good' && ret?.action !== 'replace') {
       const q = Number(ret.qty) || 1;
       setProducts((ps) => ps.map((p) =>
         p.id === ret.productId ? { ...p, availableQty: p.availableQty - q, totalQty: p.totalQty - q } : p
@@ -106,7 +107,7 @@ export default function Returns() {
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by product or platform…"
               className="w-[400px] pl-8 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500" />
           </div>
-          <button onClick={() => { setForm(emptyForm); setError(''); setShowModal(true); }}
+          <button onClick={() => { setForm(emptyForm()); setError(''); setShowModal(true); }}
             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors whitespace-nowrap">
             <Plus size={16} /> Log Return
           </button>
@@ -154,7 +155,7 @@ export default function Returns() {
                     <td className="px-4 py-3 font-medium text-slate-800">{r.productName}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${PLATFORM_COLORS[r.platform] || 'bg-slate-100 text-slate-600'}`}>
-                        {r.platform}
+                        {r.platform}{r.shopName ? ` - ${r.shopName}` : ''} {r.action === 'replace' ? '(Replace)' : ''}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-600 font-medium">{r.qty || 1}</td>
@@ -197,6 +198,42 @@ export default function Returns() {
                 ))}
               </div>
             </div>
+
+            {form.platform === 'shop' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Select Shop *</label>
+                  <select required value={form.shopId || ''} onChange={(e) => {
+                    const sName = shops.find(s => s.id === e.target.value)?.name || '';
+                    setForm((f) => ({ ...f, shopId: e.target.value, shopName: sName }));
+                  }}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                    <option value="">Select shop…</option>
+                    {shops.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name} {s.address ? `(${s.address})` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Action *</label>
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                      <input type="radio" name="action" value="return" checked={form.action === 'return' || !form.action} 
+                        onChange={() => setForm(f => ({ ...f, action: 'return' }))} 
+                        className="text-red-600 focus:ring-red-500" />
+                      Return (Restocks if good)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                      <input type="radio" name="action" value="replace" checked={form.action === 'replace'} 
+                        onChange={() => setForm(f => ({ ...f, action: 'replace' }))} 
+                        className="text-red-600 focus:ring-red-500" />
+                      Replace (Do not restock)
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Product *</label>

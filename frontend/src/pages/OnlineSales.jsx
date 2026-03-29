@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api';
-import { Plus, Trash2, ShoppingCart, X, Loader2, Search } from 'lucide-react';
+import { Plus, Trash2, ShoppingCart, X, Loader2, Search, PlusCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const PLATFORMS = [
@@ -9,17 +9,19 @@ const PLATFORMS = [
   { id: 'meesho', label: 'Meesho', color: 'bg-pink-500', light: 'bg-pink-100 text-pink-700' },
 ];
 
-const emptyForm = { productId: '', platform: '', qty: '', amount: '', orderId: '', date: '', notes: '' };
+const today = () => new Date().toISOString().split('T')[0];
+const emptyItem = { productId: '', qty: 1, amount: '' };
+const emptyForm = () => ({ items: [{ ...emptyItem }], platform: '', orderId: '', date: today(), notes: '' });
 
 function Modal({ onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 !m-0">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h3 className="font-semibold text-slate-800">Log Online Sale</h3>
           <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"><X size={18} /></button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div className="px-6 py-5 overflow-auto max-h-[80vh]">{children}</div>
       </div>
     </div>
   );
@@ -31,7 +33,7 @@ export default function OnlineSales() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
@@ -45,29 +47,77 @@ export default function OnlineSales() {
   }
   useEffect(load, []);
 
-  const selectedProduct = products.find((p) => p.id === form.productId);
-
-  function handleProductChange(productId) {
+  function handleItemProductChange(index, productId) {
     const p = products.find((x) => x.id === productId);
     const unitPrice = p ? (p.onlinePrice ?? p.unitPrice ?? 0) : 0;
-    const qty = Number(form.qty) || 1;
-    setForm((f) => ({ ...f, productId, amount: unitPrice ? String(unitPrice * qty) : '' }));
+    setForm((f) => {
+      const items = [...f.items];
+      const qty = Number(items[index].qty) || 1;
+      items[index] = { ...items[index], productId, amount: unitPrice ? String(unitPrice * qty) : '' };
+      return { ...f, items };
+    });
   }
 
-  function handleQtyChange(qty) {
-    const unitPrice = selectedProduct ? (selectedProduct.onlinePrice ?? selectedProduct.unitPrice ?? 0) : 0;
-    setForm((f) => ({ ...f, qty, amount: unitPrice ? String(unitPrice * Number(qty)) : f.amount }));
+  function handleItemQtyChange(index, qtyVal) {
+    const qty = Math.max(1, Number(qtyVal) || 1);
+    setForm((f) => {
+      const items = [...f.items];
+      const p = products.find((x) => x.id === items[index].productId);
+      const unitPrice = p ? (p.onlinePrice ?? p.unitPrice ?? 0) : 0;
+      items[index] = { ...items[index], qty, amount: unitPrice ? String(unitPrice * qty) : items[index].amount };
+      return { ...f, items };
+    });
+  }
+
+  function handleItemAmountChange(index, amount) {
+    setForm((f) => {
+      const items = [...f.items];
+      items[index] = { ...items[index], amount };
+      return { ...f, items };
+    });
+  }
+
+  function addItem() {
+    setForm((f) => ({ ...f, items: [...f.items, { ...emptyItem }] }));
+  }
+
+  function removeItem(index) {
+    setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== index) }));
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    const validItems = form.items.filter(i => i.productId && i.qty);
+    if (!form.platform) { setError('Select a platform.'); return; }
+    if (validItems.length === 0) { setError('Add at least one product.'); return; }
+
     setSaving(true); setError('');
     try {
-      const sale = await api.addOnlineSale(form);
-      setSales((ss) => [sale, ...ss]);
-      setProducts((ps) => ps.map((p) => p.id === sale.productId ? { ...p, availableQty: p.availableQty - sale.qty } : p));
+      const newSales = [];
+      let updatedProducts = [...products];
+
+      for (const item of validItems) {
+        const payload = {
+          productId: item.productId,
+          qty: item.qty,
+          amount: item.amount,
+          platform: form.platform,
+          orderId: form.orderId,
+          date: form.date,
+          notes: form.notes
+        };
+        const sale = await api.addOnlineSale(payload);
+        newSales.push(sale);
+
+        updatedProducts = updatedProducts.map((p) =>
+          p.id === sale.productId ? { ...p, availableQty: p.availableQty - sale.qty } : p
+        );
+      }
+
+      setSales((ss) => [...newSales.reverse(), ...ss]);
+      setProducts(updatedProducts);
       setShowModal(false);
-      setForm(emptyForm);
+      setForm(emptyForm());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -113,7 +163,7 @@ export default function OnlineSales() {
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…"
               className="w-[400px] pl-8 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500" />
           </div>
-          <button onClick={() => { setForm(emptyForm); setError(''); setShowModal(true); }}
+          <button onClick={() => { setForm(emptyForm()); setError(''); setShowModal(true); }}
             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors whitespace-nowrap">
             <Plus size={16} /> Log Sale
           </button>
@@ -195,36 +245,56 @@ export default function OnlineSales() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Product *</label>
-              <select required value={form.productId} onChange={(e) => handleProductChange(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-                <option value="">Select product…</option>
-                {products.filter((p) => p.availableQty > 0).map((p) => (
-                  <option key={p.id} value={p.id}>{p.name} (Stock: {p.availableQty})</option>
-                ))}
-              </select>
-              {selectedProduct && (
-                <p className="text-xs text-slate-400 mt-1">
-                  Stock: <span className="font-semibold text-slate-600">{selectedProduct.availableQty}</span>
-                  &nbsp;· Online Price: <span className="font-semibold text-red-600">₹{selectedProduct.onlinePrice ?? selectedProduct.unitPrice ?? 0}</span>
-                </p>
-              )}
+            {/* Line Items */}
+            <div className="space-y-3">
+              <label className="block text-xs font-medium text-slate-600">Products *</label>
+              {form.items.map((item, idx) => {
+                const selProd = products.find((p) => p.id === item.productId);
+                return (
+                  <div key={idx} className="p-3 border border-slate-200 rounded-xl space-y-2 bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                      <select required value={item.productId} onChange={(e) => handleItemProductChange(idx, e.target.value)}
+                        className="w-full px-2 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                        <option value="">Select product…</option>
+                        {products.filter((p) => p.availableQty > 0 || p.id === item.productId).map((p) => (
+                          <option key={p.id} value={p.id}>{p.name} (Stock: {p.availableQty})</option>
+                        ))}
+                      </select>
+
+                      <input required type="number" min="1" max={selProd?.availableQty || 9999} value={item.qty}
+                        onChange={(e) => handleItemQtyChange(idx, e.target.value)}
+                        className="w-16 h-[36.5px] px-2 py-1 border border-slate-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="1" />
+
+                      <div className="flex items-center gap-2 flex-1">
+                        <input required type="number" min="0" value={item.amount}
+                          onChange={(e) => handleItemAmountChange(idx, e.target.value)}
+                          className="w-20 h-[36.5px]  px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white" placeholder="Amount (₹)" />
+                      </div>
+
+                      {form.items.length > 1 && (
+                        <button type="button" onClick={() => removeItem(idx)}
+                          className="rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors flex-shrink-0">
+                          <X size={15} />
+                        </button>
+                      )}
+                    </div>
+
+                    {selProd && (
+                      <div className="flex items-center justify-between text-xs text-slate-400">
+                        <span>Stock: <span className="font-semibold text-slate-600">{selProd.availableQty}</span></span>
+                        <span>Unedited Price: <span className="font-semibold text-red-600">₹{selProd.onlinePrice ?? selProd.unitPrice ?? 0}</span></span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <button type="button" onClick={addItem}
+                className="flex items-center gap-1.5 text-red-600 hover:text-red-700 text-sm font-medium transition-colors">
+                <PlusCircle size={16} /> Add another product
+              </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Quantity *</label>
-                <input required type="number" min="1" max={selectedProduct?.availableQty || 9999} value={form.qty}
-                  onChange={(e) => handleQtyChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="1" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Amount (₹) *</label>
-                <input required type="number" min="0" value={form.amount}
-                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="0" />
-              </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Order ID</label>
                 <input value={form.orderId} onChange={(e) => setForm((f) => ({ ...f, orderId: e.target.value }))}

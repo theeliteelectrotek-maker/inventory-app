@@ -10,6 +10,19 @@
       "condition": "good",
       "notes": "",
       "createdAt": "2026-03-08T20:31:27.957Z"
+    },
+    {
+      "id": "97d9ef0b-8797-4523-b0b6-6c510b57731b",
+      "productId": "977314ff-035b-49d0-bba8-2107acc3c961",
+      "productName": "POWER STRIP 4+1 6AMP (ROCKER)",
+      "platform": "shop",
+      "shopId": "34906e22-4724-41e2-aaf2-2b5ca9373b37",
+      "shopName": "Sharma Electronics",
+      "qty": 1,
+      "date": "2026-03-29",
+      "condition": "good",
+      "notes": "",
+      "createdAt": "2026-03-29T12:04:11.129Z"
     }
   ]
 }

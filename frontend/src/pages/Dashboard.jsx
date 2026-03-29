@@ -70,16 +70,27 @@ export default function Dashboard() {
   );
 
   const filteredOnline = onlineSales.filter((s) => matchesFilter(s.date, year, month));
-  const filteredOffline = offlineSales.filter((s) => matchesFilter(s.date, year, month));
-  const filteredReturns = returns.filter((r) => matchesFilter(r.date, year, month));
+  const filteredReturns = returns.filter((r) => matchesFilter(r.date || r.createdAt, year, month));
 
-  const onlineRevenue = filteredOnline.reduce((s, x) => s + (x.amount || 0), 0);
-  const offlineRevenue = filteredOffline.reduce((s, x) => s + (x.totalAmount || 0), 0);
-  const pendingPayments = filteredOffline.reduce((s, x) => s + (x.amountLeft || 0), 0);
+  // For offline sales, items and transactions can be added at different dates than the invoice date.
+  // We extract items and transactions that match the selected month to accurately reflect revenue and sales.
+  const offlineItems = offlineSales.flatMap((s) => 
+    (s.items && s.items.length > 0) ? s.items.map(i => ({ ...i, saleDate: s.date })) : [{ qty: s.qty, amount: s.totalAmount, date: s.date, saleDate: s.date }]
+  );
+  
+  const filteredOfflineItems = offlineItems.filter((i) => matchesFilter(i.date || i.saleDate, year, month));
+  const offlineSalesQty = filteredOfflineItems.reduce((s, i) => s + (Number(i.qty) || 1), 0);
+  const offlineRevenue = filteredOfflineItems.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+
+  // Pending payments (total left across all invoices that had activity this month, or just based on invoice date)
+  const filteredOfflineInvoices = offlineSales.filter((s) => matchesFilter(s.date, year, month));
+  const pendingPayments = filteredOfflineInvoices.reduce((s, x) => s + (Number(x.amountLeft) || 0), 0);
+
+  const onlineRevenue = filteredOnline.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const totalReturnsQty = filteredReturns.reduce((s, r) => s + (Number(r.qty) || 1), 0);
 
   const recentOnline = [...filteredOnline].reverse().slice(0, 5);
-  const recentOffline = [...filteredOffline].reverse().slice(0, 5);
+  const recentOffline = [...filteredOfflineInvoices].reverse().slice(0, 5);
 
   const label = filterLabel(year, month);
 
@@ -127,7 +138,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Pending Payments" value={`₹${pendingPayments.toFixed(0)}`} icon={Clock} color="bg-orange-100 text-orange-600" sub={label} />
         <StatCard label="Online Sales" value={filteredOnline.length} icon={ShoppingCart} color="bg-purple-100 text-purple-600" sub={label} />
-        <StatCard label="Offline Sales" value={filteredOffline.length} icon={Store} color="bg-red-100 text-red-600" sub={label} />
+        <StatCard label="Offline Sales" value={offlineSalesQty} icon={Store} color="bg-red-100 text-red-600" sub={label} />
         <StatCard label="Online Revenue" value={`₹${onlineRevenue.toFixed(0)}`} icon={TrendingUp} color="bg-green-100 text-green-600" sub={label} />
       </div>
 
@@ -179,7 +190,11 @@ export default function Dashboard() {
               {recentOffline.map((s) => (
                 <li key={s.id} className="flex items-center justify-between px-5 py-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-700">{s.productName}</p>
+                    <p className="text-sm font-medium text-slate-700">
+                      {s.items && s.items.length > 0
+                        ? s.items[0].productName + (s.items.length > 1 ? ` (+ ${s.items.length - 1} more)` : '')
+                        : s.productName || 'Unknown Product'}
+                    </p>
                     <p className="text-xs text-slate-400">{s.date} · {s.buyerName}</p>
                   </div>
                   <div className="text-right">
