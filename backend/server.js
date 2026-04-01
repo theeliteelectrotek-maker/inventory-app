@@ -1,346 +1,355 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
+const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
+
+const { User, Product, OnlineSale, OfflineSale, Shop, Return } = require('./models');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const DATA_DIR = path.join(__dirname, 'data');
-
-function readJSON(filename) {
-  const filePath = path.join(DATA_DIR, filename);
-  if (!fs.existsSync(filePath)) return {};
-  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-}
-
-function writeJSON(filename, data) {
-  const filePath = path.join(DATA_DIR, filename);
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+// Connect to MongoDB
+if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('<db_password>')) {
+  mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log('Connected to MongoDB'))
+    .catch((err) => console.error('MongoDB connection error:', err));
+} else {
+  console.error('\n⚠️  WARNING: MONGODB NOT CONNECTED');
+  console.error('Please configure a valid MONGO_URI in your .env file and replace <db_password> with your actual password.\n');
 }
 
 // AUTH
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password)
     return res.status(400).json({ message: 'Username and password required' });
-  const data = readJSON('users.json');
-  const user = data.users.find((u) => u.username === username && u.password === password);
+  const user = await User.findOne({ username, password });
   if (!user) return res.status(401).json({ message: 'Invalid credentials' });
-  const { password: _, ...safe } = user;
+  
+  const userObj = user.toObject();
+  const { password: _, _id, __v, ...safe } = userObj;
   res.json({ user: safe, token: `token_${user.id}_${Date.now()}` });
 });
 
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   const { username, password, name } = req.body;
   if (!username || !password || !name)
     return res.status(400).json({ message: 'All fields required' });
-  const data = readJSON('users.json');
-  if (data.users.find((u) => u.username === username))
+  
+  const existingUser = await User.findOne({ username });
+  if (existingUser)
     return res.status(409).json({ message: 'Username already exists' });
-  const user = { id: uuidv4(), username, password, name, role: 'user', createdAt: new Date().toISOString() };
-  data.users.push(user);
-  writeJSON('users.json', data);
-  const { password: _, ...safe } = user;
+  
+  const user = new User({ id: uuidv4(), username, password, name });
+  await user.save();
+  
+  const userObj = user.toObject();
+  const { password: _, _id, __v, ...safe } = userObj;
   res.json({ user: safe });
 });
 
 // PRODUCTS
-app.get('/api/products', (_req, res) => {
-  const data = readJSON('products.json');
-  res.json(data.products || []);
+app.get('/api/products', async (_req, res) => {
+  const products = await Product.find({}, '-_id -__v');
+  res.json(products);
 });
 
-app.post('/api/products', (req, res) => {
+app.post('/api/products', async (req, res) => {
   const { name, sku, description, totalQty, unitPrice, category } = req.body;
   if (!name || totalQty === undefined)
     return res.status(400).json({ message: 'Name and quantity required' });
-  const data = readJSON('products.json');
-  const product = {
+  
+  const product = new Product({
     id: uuidv4(), name, sku: sku || '', description: description || '',
     totalQty: Number(totalQty), availableQty: Number(totalQty),
     unitPrice: Number(unitPrice) || 0,
     offlinePrice: Number(req.body.offlinePrice) || Number(unitPrice) || 0,
     onlinePrice: Number(req.body.onlinePrice) || Number(unitPrice) || 0,
-    category: category || 'General',
-    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-  };
-  data.products.push(product);
-  writeJSON('products.json', data);
+    category: category || 'General'
+  });
+  await product.save();
   res.json(product);
 });
 
-app.put('/api/products/:id', (req, res) => {
-  const data = readJSON('products.json');
-  const idx = data.products.findIndex((p) => p.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ message: 'Product not found' });
-  data.products[idx] = { ...data.products[idx], ...req.body, updatedAt: new Date().toISOString() };
-  writeJSON('products.json', data);
-  res.json(data.products[idx]);
+app.put('/api/products/:id', async (req, res) => {
+  const product = await Product.findOneAndUpdate(
+    { id: req.params.id },
+    { ...req.body, updatedAt: new Date().toISOString() },
+    { new: true }
+  ).select('-_id -__v');
+  if (!product) return res.status(404).json({ message: 'Product not found' });
+  res.json(product);
 });
 
-app.delete('/api/products/:id', (req, res) => {
-  const data = readJSON('products.json');
-  data.products = data.products.filter((p) => p.id !== req.params.id);
-  writeJSON('products.json', data);
+app.delete('/api/products/:id', async (req, res) => {
+  await Product.findOneAndDelete({ id: req.params.id });
   res.json({ message: 'Deleted' });
 });
 
 // ONLINE SALES
-app.get('/api/sales/online', (_req, res) => {
-  const data = readJSON('online-sales.json');
-  res.json(data.sales || []);
+app.get('/api/sales/online', async (_req, res) => {
+  const sales = await OnlineSale.find({}, '-_id -__v');
+  res.json(sales);
 });
 
-app.post('/api/sales/online', (req, res) => {
+app.post('/api/sales/online', async (req, res) => {
   const { productId, qty, platform, amount, orderId, date, notes } = req.body;
   if (!productId || !qty || !platform)
     return res.status(400).json({ message: 'Product, quantity and platform required' });
-  const productsData = readJSON('products.json');
-  const pIdx = productsData.products.findIndex((p) => p.id === productId);
-  if (pIdx === -1) return res.status(404).json({ message: 'Product not found' });
-  if (productsData.products[pIdx].availableQty < Number(qty))
+  
+  const product = await Product.findOne({ id: productId });
+  if (!product) return res.status(404).json({ message: 'Product not found' });
+  if (product.availableQty < Number(qty))
     return res.status(400).json({ message: 'Insufficient stock' });
-  productsData.products[pIdx].availableQty -= Number(qty);
-  productsData.products[pIdx].totalQty -= Number(qty);
-  productsData.products[pIdx].updatedAt = new Date().toISOString();
-  writeJSON('products.json', productsData);
-  const salesData = readJSON('online-sales.json');
-  const sale = {
-    id: uuidv4(), productId, productName: productsData.products[pIdx].name,
+  
+  product.availableQty -= Number(qty);
+  product.totalQty -= Number(qty);
+  product.updatedAt = new Date().toISOString();
+  await product.save();
+  
+  const sale = new OnlineSale({
+    id: uuidv4(), productId, productName: product.name,
     platform, qty: Number(qty), amount: Number(amount) || 0,
     orderId: orderId || '', date: date || new Date().toISOString().split('T')[0],
-    notes: notes || '', createdAt: new Date().toISOString(),
-  };
-  salesData.sales.push(sale);
-  writeJSON('online-sales.json', salesData);
-  res.json(sale);
+    notes: notes || ''
+  });
+  await sale.save();
+  
+  const saleObj = sale.toObject();
+  delete saleObj._id;
+  delete saleObj.__v;
+  res.json(saleObj);
 });
 
-app.delete('/api/sales/online/:id', (req, res) => {
-  const salesData = readJSON('online-sales.json');
-  const sale = salesData.sales.find((s) => s.id === req.params.id);
+app.delete('/api/sales/online/:id', async (req, res) => {
+  const sale = await OnlineSale.findOneAndDelete({ id: req.params.id });
   if (!sale) return res.status(404).json({ message: 'Sale not found' });
-  const productsData = readJSON('products.json');
-  const pIdx = productsData.products.findIndex((p) => p.id === sale.productId);
-  if (pIdx !== -1) {
-    productsData.products[pIdx].availableQty += sale.qty;
-    productsData.products[pIdx].totalQty += sale.qty;
-    productsData.products[pIdx].updatedAt = new Date().toISOString();
-    writeJSON('products.json', productsData);
+  
+  const product = await Product.findOne({ id: sale.productId });
+  if (product) {
+    product.availableQty += sale.qty;
+    product.totalQty += sale.qty;
+    product.updatedAt = new Date().toISOString();
+    await product.save();
   }
-  salesData.sales = salesData.sales.filter((s) => s.id !== req.params.id);
-  writeJSON('online-sales.json', salesData);
   res.json({ message: 'Deleted and stock restored' });
 });
 
 // OFFLINE SALES
-app.get('/api/sales/offline', (_req, res) => {
-  const data = readJSON('offline-sales.json');
-  res.json(data.sales || []);
+app.get('/api/sales/offline', async (_req, res) => {
+  const sales = await OfflineSale.find({}, '-_id -__v');
+  res.json(sales);
 });
 
-app.post('/api/sales/offline', (req, res) => {
+app.post('/api/sales/offline', async (req, res) => {
   const { buyerName, items, totalAmount, transactions, date, notes } = req.body;
   if (!buyerName || !items || !items.length)
     return res.status(400).json({ message: 'Buyer name and at least one product required' });
-  const productsData = readJSON('products.json');
-  // Validate stock for all items first
-  for (const item of items) {
-    const pIdx = productsData.products.findIndex((p) => p.id === item.productId);
-    if (pIdx === -1) return res.status(404).json({ message: 'Product not found' });
-    if (productsData.products[pIdx].availableQty < Number(item.qty))
-      return res.status(400).json({ message: `Insufficient stock for ${productsData.products[pIdx].name}` });
-  }
-  // Decrement stock and build enriched items
+  
   const enrichedItems = [];
+  
   for (const item of items) {
-    const pIdx = productsData.products.findIndex((p) => p.id === item.productId);
-    productsData.products[pIdx].availableQty -= Number(item.qty);
-    productsData.products[pIdx].totalQty -= Number(item.qty);
-    productsData.products[pIdx].updatedAt = new Date().toISOString();
+    const product = await Product.findOne({ id: item.productId });
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+    if (product.availableQty < Number(item.qty))
+      return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
+    
+    product.availableQty -= Number(item.qty);
+    product.totalQty -= Number(item.qty);
+    product.updatedAt = new Date().toISOString();
+    await product.save();
+    
     enrichedItems.push({
       productId: item.productId,
-      productName: productsData.products[pIdx].name,
+      productName: product.name,
       qty: Number(item.qty),
       amount: Number(item.amount) || 0,
-      date: item.date || date || new Date().toISOString().split('T')[0],
+      date: item.date || date || new Date().toISOString().split('T')[0]
     });
   }
-  writeJSON('products.json', productsData);
-  const salesData = readJSON('offline-sales.json');
+  
   const total = Number(totalAmount) || enrichedItems.reduce((s, i) => s + i.amount, 0);
   const txns = Array.isArray(transactions) ? transactions : [];
   const received = txns.reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  const sale = {
+  
+  const sale = new OfflineSale({
     id: uuidv4(), buyerName, items: enrichedItems,
     totalAmount: total, transactions: txns, amountReceived: received, amountLeft: total - received,
     date: date || new Date().toISOString().split('T')[0],
-    notes: notes || '', createdAt: new Date().toISOString(),
-  };
-  salesData.sales.push(sale);
-  writeJSON('offline-sales.json', salesData);
-  res.json(sale);
+    notes: notes || ''
+  });
+  await sale.save();
+  
+  const saleObj = sale.toObject();
+  delete saleObj._id;
+  delete saleObj.__v;
+  res.json(saleObj);
 });
 
-app.put('/api/sales/offline/:id', (req, res) => {
-  const salesData = readJSON('offline-sales.json');
-  const idx = salesData.sales.findIndex((s) => s.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ message: 'Sale not found' });
+app.put('/api/sales/offline/:id', async (req, res) => {
+  const sale = await OfflineSale.findOne({ id: req.params.id });
+  if (!sale) return res.status(404).json({ message: 'Sale not found' });
+  
   const { newItems, newItemsDate, newTransactions } = req.body;
-  let sale = salesData.sales[idx];
   let additionalAmount = 0;
-
+  
   if (newItems && newItems.length > 0) {
-    const productsData = readJSON('products.json');
-    // Validate stock for all new items first
-    for (const item of newItems) {
-      const pIdx = productsData.products.findIndex((p) => p.id === item.productId);
-      if (pIdx === -1) return res.status(404).json({ message: 'Product not found' });
-      if (productsData.products[pIdx].availableQty < Number(item.qty))
-        return res.status(400).json({ message: `Insufficient stock for ${productsData.products[pIdx].name}` });
-    }
-    // Decrement stock and build enriched items
     const enrichedNew = [];
     for (const item of newItems) {
-      const pIdx = productsData.products.findIndex((p) => p.id === item.productId);
-      productsData.products[pIdx].availableQty -= Number(item.qty);
-      productsData.products[pIdx].totalQty -= Number(item.qty);
-      productsData.products[pIdx].updatedAt = new Date().toISOString();
+      const product = await Product.findOne({ id: item.productId });
+      if (!product) return res.status(404).json({ message: 'Product not found' });
+      if (product.availableQty < Number(item.qty))
+        return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
+      
+      product.availableQty -= Number(item.qty);
+      product.totalQty -= Number(item.qty);
+      product.updatedAt = new Date().toISOString();
+      await product.save();
+      
       enrichedNew.push({
         productId: item.productId,
-        productName: productsData.products[pIdx].name,
+        productName: product.name,
         qty: Number(item.qty),
         amount: Number(item.amount) || 0,
         date: newItemsDate || new Date().toISOString().split('T')[0],
       });
       additionalAmount += Number(item.amount) || 0;
     }
-    writeJSON('products.json', productsData);
-    sale = { ...sale, items: [...(sale.items || []), ...enrichedNew] };
+    sale.items.push(...enrichedNew);
   }
-
+  
   const appendedTxns = Array.isArray(newTransactions) ? newTransactions : [];
-  const allTxns = [...(sale.transactions || []), ...appendedTxns];
+  for (const t of appendedTxns) sale.transactions.push(t);
+  
   const newTotal = sale.totalAmount + additionalAmount;
-  const received = allTxns.reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  salesData.sales[idx] = { ...sale, totalAmount: newTotal, transactions: allTxns, amountReceived: received, amountLeft: newTotal - received, updatedAt: new Date().toISOString() };
-  writeJSON('offline-sales.json', salesData);
-  res.json(salesData.sales[idx]);
+  const received = sale.transactions.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  
+  sale.totalAmount = newTotal;
+  sale.amountReceived = received;
+  sale.amountLeft = newTotal - received;
+  sale.updatedAt = new Date().toISOString();
+  await sale.save();
+  
+  const saleObj = sale.toObject();
+  delete saleObj._id;
+  delete saleObj.__v;
+  res.json(saleObj);
 });
 
-app.delete('/api/sales/offline/:id', (req, res) => {
-  const salesData = readJSON('offline-sales.json');
-  const sale = salesData.sales.find((s) => s.id === req.params.id);
+app.delete('/api/sales/offline/:id', async (req, res) => {
+  const sale = await OfflineSale.findOneAndDelete({ id: req.params.id });
   if (!sale) return res.status(404).json({ message: 'Sale not found' });
-  const productsData = readJSON('products.json');
-  // Support both new items[] format and legacy single-product format
+  
   const items = sale.items || [{ productId: sale.productId, qty: sale.qty }];
   for (const item of items) {
-    const pIdx = productsData.products.findIndex((p) => p.id === item.productId);
-    if (pIdx !== -1) {
-      productsData.products[pIdx].availableQty += Number(item.qty);
-      productsData.products[pIdx].totalQty += Number(item.qty);
-      productsData.products[pIdx].updatedAt = new Date().toISOString();
+    if(!item.productId) continue;
+    const product = await Product.findOne({ id: item.productId });
+    if (product) {
+      product.availableQty += Number(item.qty);
+      product.totalQty += Number(item.qty);
+      product.updatedAt = new Date().toISOString();
+      await product.save();
     }
   }
-  writeJSON('products.json', productsData);
-  salesData.sales = salesData.sales.filter((s) => s.id !== req.params.id);
-  writeJSON('offline-sales.json', salesData);
   res.json({ message: 'Deleted and stock restored' });
 });
 
 // SHOPS
-app.get('/api/shops', (_req, res) => {
-  const data = readJSON('shops.json');
-  res.json(data.shops || []);
+app.get('/api/shops', async (_req, res) => {
+  const shops = await Shop.find({}, '-_id -__v');
+  res.json(shops);
 });
 
-app.post('/api/shops', (req, res) => {
+app.post('/api/shops', async (req, res) => {
   const { name, address, mobile } = req.body;
   if (!name) return res.status(400).json({ message: 'Shop name required' });
-  const data = readJSON('shops.json');
-  const shop = { id: uuidv4(), name, address: address || '', mobile: mobile || '', createdAt: new Date().toISOString() };
-  data.shops.push(shop);
-  writeJSON('shops.json', data);
+  
+  const shop = new Shop({ id: uuidv4(), name, address: address || '', mobile: mobile || '' });
+  await shop.save();
+  
+  const shopObj = shop.toObject();
+  delete shopObj._id;
+  delete shopObj.__v;
+  res.json(shopObj);
+});
+
+app.put('/api/shops/:id', async (req, res) => {
+  const shop = await Shop.findOneAndUpdate(
+    { id: req.params.id },
+    { ...req.body, updatedAt: new Date().toISOString() },
+    { new: true }
+  ).select('-_id -__v');
+  if (!shop) return res.status(404).json({ message: 'Shop not found' });
   res.json(shop);
 });
 
-app.put('/api/shops/:id', (req, res) => {
-  const data = readJSON('shops.json');
-  const idx = data.shops.findIndex((s) => s.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ message: 'Shop not found' });
-  data.shops[idx] = { ...data.shops[idx], ...req.body, updatedAt: new Date().toISOString() };
-  writeJSON('shops.json', data);
-  res.json(data.shops[idx]);
-});
-
-app.delete('/api/shops/:id', (req, res) => {
-  const data = readJSON('shops.json');
-  data.shops = data.shops.filter((s) => s.id !== req.params.id);
-  writeJSON('shops.json', data);
+app.delete('/api/shops/:id', async (req, res) => {
+  await Shop.findOneAndDelete({ id: req.params.id });
   res.json({ message: 'Deleted' });
 });
 
 // RETURNS
-app.get('/api/returns', (_req, res) => {
-  const data = readJSON('returns.json');
-  res.json(data.returns || []);
+app.get('/api/returns', async (_req, res) => {
+  const returnsList = await Return.find({}, '-_id -__v');
+  res.json(returnsList);
 });
 
-app.post('/api/returns', (req, res) => {
+app.post('/api/returns', async (req, res) => {
   const { productId, platform, date, condition, qty, notes, shopId, shopName, action } = req.body;
   if (!productId || !platform || !condition)
     return res.status(400).json({ message: 'Product, platform and condition required' });
-  const productsData = readJSON('products.json');
-  const pIdx = productsData.products.findIndex((p) => p.id === productId);
-  if (pIdx === -1) return res.status(404).json({ message: 'Product not found' });
+  
+  const product = await Product.findOne({ id: productId });
+  if (!product) return res.status(404).json({ message: 'Product not found' });
+  
   const returnQty = Number(qty) || 1;
   if (condition === 'good' && action !== 'replace') {
-    productsData.products[pIdx].availableQty += returnQty;
-    productsData.products[pIdx].totalQty += returnQty;
-    productsData.products[pIdx].updatedAt = new Date().toISOString();
-    writeJSON('products.json', productsData);
+    product.availableQty += returnQty;
+    product.totalQty += returnQty;
+    product.updatedAt = new Date().toISOString();
+    await product.save();
   }
-  const data = readJSON('returns.json');
-  const ret = {
-    id: uuidv4(), productId, productName: productsData.products[pIdx].name,
+  
+  const ret = new Return({
+    id: uuidv4(), productId, productName: product.name,
     platform, shopId, shopName, action: action || 'return', qty: returnQty, date: date || new Date().toISOString().split('T')[0],
-    condition, notes: notes || '', createdAt: new Date().toISOString(),
-  };
-  data.returns.push(ret);
-  writeJSON('returns.json', data);
-  res.json(ret);
+    condition, notes: notes || ''
+  });
+  await ret.save();
+  
+  const retObj = ret.toObject();
+  delete retObj._id;
+  delete retObj.__v;
+  res.json(retObj);
 });
 
-app.delete('/api/returns/:id', (req, res) => {
-  const data = readJSON('returns.json');
-  const ret = data.returns.find((r) => r.id === req.params.id);
+app.delete('/api/returns/:id', async (req, res) => {
+  const ret = await Return.findOneAndDelete({ id: req.params.id });
   if (!ret) return res.status(404).json({ message: 'Return not found' });
+  
   if (ret.condition === 'good' && ret.action !== 'replace') {
-    const productsData = readJSON('products.json');
-    const pIdx = productsData.products.findIndex((p) => p.id === ret.productId);
-    if (pIdx !== -1) {
+    const product = await Product.findOne({ id: ret.productId });
+    if (product) {
       const returnQty = Number(ret.qty) || 1;
-      productsData.products[pIdx].availableQty -= returnQty;
-      productsData.products[pIdx].totalQty -= returnQty;
-      productsData.products[pIdx].updatedAt = new Date().toISOString();
-      writeJSON('products.json', productsData);
+      product.availableQty -= returnQty;
+      product.totalQty -= returnQty;
+      product.updatedAt = new Date().toISOString();
+      await product.save();
     }
   }
-  data.returns = data.returns.filter((r) => r.id !== req.params.id);
-  writeJSON('returns.json', data);
   res.json({ message: 'Deleted' });
 });
 
 // DASHBOARD STATS
-app.get('/api/stats', (_req, res) => {
-  const products = readJSON('products.json').products || [];
-  const onlineSales = readJSON('online-sales.json').sales || [];
-  const offlineSales = readJSON('offline-sales.json').sales || [];
+app.get('/api/stats', async (_req, res) => {
   const today = new Date().toISOString().split('T')[0];
+  
+  const products = await Product.find({});
+  const onlineSales = await OnlineSale.find({});
+  const offlineSales = await OfflineSale.find({});
+  
   res.json({
     totalProducts: products.length,
     lowStock: products.filter((p) => p.availableQty > 0 && p.availableQty < 20).length,
@@ -350,8 +359,8 @@ app.get('/api/stats', (_req, res) => {
     onlineRevenueTotal: onlineSales.reduce((s, x) => s + (x.amount || 0), 0),
     offlineRevenueTotal: offlineSales.reduce((s, x) => s + (x.totalAmount || 0), 0),
     pendingPayments: offlineSales.reduce((s, x) => s + (x.amountLeft || 0), 0),
-    recentOnline: [...onlineSales].reverse().slice(0, 5),
-    recentOffline: [...offlineSales].reverse().slice(0, 5),
+    recentOnline: onlineSales.sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5),
+    recentOffline: offlineSales.sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5),
   });
 });
 
