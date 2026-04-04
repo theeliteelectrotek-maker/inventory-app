@@ -12,9 +12,17 @@ app.use(express.json());
 
 // Connect to MongoDB
 if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('<db_password>')) {
-  mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('Connected to MongoDB'))
-    .catch((err) => console.error('MongoDB connection error:', err));
+  mongoose.connect(process.env.MONGO_URI, {
+    serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds instead of 30s
+    socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+  })
+    .then(() => console.log('✅ Connected to MongoDB Atlas'))
+    .catch((err) => {
+      console.error('❌ MongoDB Connection Error:', err.message);
+      if (err.message.includes('timeout')) {
+        console.error('TIP: This is usually because the Render IP address is not whitelisted in MongoDB Atlas Network Access.');
+      }
+    });
 } else {
   console.error('\n⚠️  WARNING: MONGODB NOT CONNECTED');
   console.error('Please configure a valid MONGO_URI in your .env file and replace <db_password> with your actual password.\n');
