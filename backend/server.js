@@ -172,6 +172,7 @@ app.post('/api/sales/offline', catchAsync(async (req, res) => {
 
   for (const item of items) {
     const product = products.find(p => p.id === item.productId);
+    item.productName = product.name; // Add product name for the OfflineSale schema validation
     product.availableQty -= Number(item.qty);
     product.totalQty -= Number(item.qty);
     product.updatedAt = new Date().toISOString();
@@ -203,6 +204,49 @@ app.delete('/api/sales/offline/:id', catchAsync(async (req, res) => {
     }
   }
   res.json({ message: 'Deleted and stock restored' });
+}));
+
+app.put('/api/sales/offline/:id', catchAsync(async (req, res) => {
+  const { newTransactions, newItems, newItemsDate } = req.body;
+  const sale = await OfflineSale.findOne({ id: req.params.id });
+  if (!sale) return res.status(404).json({ message: 'Sale not found' });
+
+  if (newItems && newItems.length > 0) {
+    const products = await Product.find({ id: { $in: newItems.map(i => i.productId) } });
+    for (const item of newItems) {
+      const product = products.find(p => p.id === item.productId);
+      if (!product) return res.status(404).json({ message: `Product ${item.productId} not found` });
+      if (product.availableQty < Number(item.qty))
+        return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
+    }
+    for (const item of newItems) {
+      const product = products.find(p => p.id === item.productId);
+      item.productName = product.name;
+      item.date = item.date || newItemsDate || new Date().toISOString().split('T')[0];
+      product.availableQty -= Number(item.qty);
+      product.totalQty -= Number(item.qty);
+      product.updatedAt = new Date().toISOString();
+      await product.save();
+      sale.items.push(item);
+      sale.totalAmount += Number(item.amount) || 0;
+    }
+  }
+
+  if (newTransactions && newTransactions.length > 0) {
+    for (const txn of newTransactions) {
+      sale.transactions.push(txn);
+      sale.amountReceived += (Number(txn.amount) || 0);
+    }
+  }
+
+  sale.amountLeft = sale.totalAmount - sale.amountReceived;
+  sale.updatedAt = new Date().toISOString();
+  await sale.save();
+
+  const saleObj = sale.toObject();
+  delete saleObj._id;
+  delete saleObj.__v;
+  res.json(saleObj);
 }));
 
 // SHOPS
