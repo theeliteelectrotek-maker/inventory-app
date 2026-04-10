@@ -47,6 +47,7 @@ export default function Dashboard() {
   const [totalShops, setTotalShops] = useState(0);
   const [returns, setReturns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [year, setYear] = useState(currentYear());
   const [month, setMonth] = useState(new Date().getMonth()); // 0-indexed; null = whole year
 
@@ -58,14 +59,26 @@ export default function Dashboard() {
         setOfflineSales(offline);
         setTotalShops(shops.length);
         setReturns(rets);
+        setError(null);
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err);
+        setError("Failed to load dashboard data. Please make sure the server is fully running.");
+      })
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return (
     <div className="flex items-center justify-center h-64 text-slate-400">
       <Loader2 size={28} className="animate-spin" />
+    </div>
+  );
+
+  if (error || !productStats) return (
+    <div className="flex flex-col items-center justify-center h-64 text-slate-500 space-y-3">
+      <AlertTriangle size={36} className="text-red-400" />
+      <p className="font-medium text-slate-700">{error || "Data unavailable"}</p>
+      <button onClick={() => window.location.reload()} className="px-4 py-2 mt-2 bg-red-600 text-white rounded-lg text-sm font-medium">Retry</button>
     </div>
   );
 
