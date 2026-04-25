@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../api';
 import { Plus, Trash2, ShoppingCart, X, Loader2, Search, PlusCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import SearchableSelect from '../components/SearchableSelect';
 
 const PLATFORMS = [
   { id: 'amazon', label: 'Amazon', color: 'bg-orange-500', light: 'bg-orange-100 text-orange-700' },
@@ -253,13 +254,14 @@ export default function OnlineSales() {
                 return (
                   <div key={idx} className="p-3 border border-slate-200 rounded-xl space-y-2 bg-slate-50/50">
                     <div className="flex items-center gap-2">
-                      <select required value={item.productId} onChange={(e) => handleItemProductChange(idx, e.target.value)}
-                        className="w-full px-2 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
-                        <option value="">Select product…</option>
-                        {products.filter((p) => p.availableQty > 0 || p.id === item.productId).map((p) => (
-                          <option key={p.id} value={p.id}>{p.name} (Stock: {p.availableQty})</option>
-                        ))}
-                      </select>
+                      <SearchableSelect
+                        required
+                        value={item.productId}
+                        onChange={(val) => handleItemProductChange(idx, val)}
+                        placeholder="Select product…"
+                        options={products.filter((p) => p.availableQty > 0 || p.id === item.productId).map((p) => ({ value: p.id, label: `${p.name} (Stock: ${p.availableQty})` }))}
+                        className="flex-1"
+                      />
 
                       <input required type="number" min="1" max={selProd?.availableQty || 9999} value={item.qty}
                         onChange={(e) => handleItemQtyChange(idx, e.target.value)}

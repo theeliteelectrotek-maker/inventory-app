@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../api';
 import { Plus, Trash2, Store, X, Loader2, Search, Edit2, PlusCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import SearchableSelect from '../components/SearchableSelect';
 
 const emptyItem = { productId: '', qty: '', amount: '' };
 const today = () => new Date().toISOString().split('T')[0];
@@ -36,13 +37,13 @@ function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange,
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
-        <select value={item.productId} onChange={(e) => onProductChange(e.target.value)}
-          className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-          <option value="">Select product…</option>
-          {products.filter((p) => p.availableQty > 0).map((p) => (
-            <option key={p.id} value={p.id}>{p.name} (Stock: {p.availableQty})</option>
-          ))}
-        </select>
+        <SearchableSelect
+          value={item.productId}
+          onChange={onProductChange}
+          placeholder="Select product…"
+          options={products.filter((p) => p.availableQty > 0).map((p) => ({ value: p.id, label: `${p.name} (Stock: ${p.availableQty})` }))}
+          className="flex-1"
+        />
         <input type="number" min="1" max={selProd?.availableQty || 9999} value={item.qty}
           onChange={(e) => onQtyChange(e.target.value)}
           className="w-20 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Qty" />
@@ -475,7 +476,7 @@ export default function OfflineSales() {
             <div className="space-y-3">
               <label className="block text-xs font-medium text-slate-600">Orders *</label>
               {form.orders.map((order, oi) => (
-                <div key={oi} className="border border-slate-200 rounded-xl overflow-hidden">
+                <div key={oi} className="border border-slate-200 rounded-xl">
                   <div className="flex items-center justify-between gap-2 bg-slate-50 px-3 py-2 border-b border-slate-200">
                     <span className="text-xs font-semibold text-slate-500 flex-shrink-0">Order {oi + 1}</span>
                     <div className="flex items-center gap-2">
@@ -578,7 +579,7 @@ export default function OfflineSales() {
               {/* Existing orders (read-only) */}
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-2">Current Orders</label>
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="border border-slate-200 rounded-xl">
                   {(() => {
                     const src = editModal.items || [{ productName: editModal.productName, qty: editModal.qty, amount: editModal.totalAmount, date: editModal.date }];
                     const groups = {};
@@ -620,13 +621,13 @@ export default function OfflineSales() {
                       return (
                         <div key={idx} className="border border-red-200 rounded-xl p-3 space-y-2 bg-red-50/30">
                           <div className="flex items-center gap-2">
-                            <select value={item.productId} onChange={(e) => handleEditItemProductChange(idx, e.target.value)}
-                              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
-                              <option value="">Select product…</option>
-                              {products.filter((p) => p.availableQty > 0).map((p) => (
-                                <option key={p.id} value={p.id}>{p.name} (Stock: {p.availableQty})</option>
-                              ))}
-                            </select>
+                            <SearchableSelect
+                              value={item.productId}
+                              onChange={(val) => handleEditItemProductChange(idx, val)}
+                              placeholder="Select product…"
+                              options={products.filter((p) => p.availableQty > 0).map((p) => ({ value: p.id, label: `${p.name} (Stock: ${p.availableQty})` }))}
+                              className="flex-1"
+                            />
                             <input type="number" min="1" max={selProd?.availableQty || 9999} value={item.qty}
                               onChange={(e) => handleEditItemQtyChange(idx, e.target.value)}
                               className="w-20 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white" placeholder="Qty" />

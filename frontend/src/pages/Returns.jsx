@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../api';
 import { Plus, Trash2, X, Loader2, Search, Undo2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import SearchableSelect from '../components/SearchableSelect';
 
 const PLATFORMS = ['amazon', 'flipkart', 'meesho', 'shop'];
 const PLATFORM_COLORS = {
@@ -237,13 +238,14 @@ export default function Returns() {
 
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Product *</label>
-              <select required value={form.productId} onChange={(e) => setForm((f) => ({ ...f, productId: e.target.value }))}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-                <option value="">Select product…</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+              <SearchableSelect
+                required
+                value={form.productId}
+                onChange={(val) => setForm((f) => ({ ...f, productId: val }))}
+                placeholder="Select product…"
+                options={products.map((p) => ({ value: p.id, label: p.name }))}
+                className="w-full"
+              />
             </div>
 
             <div className="flex gap-3">
