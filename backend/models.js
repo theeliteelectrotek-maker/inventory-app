@@ -64,6 +64,7 @@ const offlineSaleSchema = new mongoose.Schema({
   buyerName: { type: String, required: true },
   items: { type: [offlineItemSchema], default: [] },
   totalAmount: { type: Number, default: 0 },
+  gst: { type: Boolean, default: false },
   transactions: { type: [transactionSchema], default: [] },
   amountReceived: { type: Number, default: 0 },
   amountLeft: { type: Number, default: 0 },

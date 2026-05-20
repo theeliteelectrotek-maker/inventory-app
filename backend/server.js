@@ -1,3 +1,4 @@
+// Trigger nodemon restart
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -157,7 +158,7 @@ app.get('/api/sales/offline', catchAsync(async (_req, res) => {
 }));
 
 app.post('/api/sales/offline', catchAsync(async (req, res) => {
-  const { buyerName, items, totalAmount, transactions, date, notes } = req.body;
+  const { buyerName, items, totalAmount, transactions, date, notes, gst } = req.body;
   if (!buyerName || !items || !items.length)
     return res.status(400).json({ message: 'Buyer name and at least one product required' });
   
@@ -180,7 +181,7 @@ app.post('/api/sales/offline', catchAsync(async (req, res) => {
   }
 
   const sale = new OfflineSale({
-    id: uuidv4(), buyerName, items, totalAmount, transactions, date, notes
+    id: uuidv4(), buyerName, items, totalAmount, transactions, date, notes, gst: gst || false
   });
   await sale.save();
   
@@ -207,9 +208,21 @@ app.delete('/api/sales/offline/:id', catchAsync(async (req, res) => {
 }));
 
 app.put('/api/sales/offline/:id', catchAsync(async (req, res) => {
-  const { newTransactions, newItems, newItemsDate } = req.body;
+  const { newTransactions, newItems, newItemsDate, items, totalAmount, gst } = req.body;
   const sale = await OfflineSale.findOne({ id: req.params.id });
   if (!sale) return res.status(404).json({ message: 'Sale not found' });
+
+  // Update existing items/total if passed (e.g. when toggling GST on/off)
+  if (items) {
+    sale.items = items;
+    sale.markModified('items');
+  }
+  if (totalAmount !== undefined) {
+    sale.totalAmount = totalAmount;
+  }
+  if (gst !== undefined) {
+    sale.gst = gst;
+  }
 
   if (newItems && newItems.length > 0) {
     const products = await Product.find({ id: { $in: newItems.map(i => i.productId) } });

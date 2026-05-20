@@ -6,7 +6,7 @@ import SearchableSelect from '../components/SearchableSelect';
 
 const emptyItem = { productId: '', qty: '', amount: '' };
 const today = () => new Date().toISOString().split('T')[0];
-const emptyOrder = () => ({ date: today(), items: [{ ...emptyItem }] });
+const emptyOrder = () => ({ date: today(), items: [{ ...emptyItem }], gst: false });
 const emptyTxn = () => ({ amount: '', method: 'cash', date: today() });
 const emptyForm = { buyerName: '', orders: [emptyOrder()], transactions: [], notes: '' };
 
@@ -32,7 +32,7 @@ function TxnRow({ txn, onChange, onRemove }) {
   );
 }
 
-function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange, onRemove, showRemove }) {
+function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange, onRemove, showRemove, isGst }) {
   const selProd = products.find((p) => p.id === item.productId);
   return (
     <div className="space-y-1">
@@ -58,9 +58,16 @@ function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange,
         )}
       </div>
       {selProd && (
-        <p className="text-xs text-slate-400 pl-1">
-          Stock: <span className="font-semibold text-slate-600">{selProd.availableQty}</span>
-          &nbsp;· Offline Price: <span className="font-semibold text-orange-600">₹{selProd.offlinePrice ?? selProd.unitPrice ?? 0}</span>
+        <p className="text-xs text-slate-400 pl-1 flex items-center justify-between">
+          <span>
+            Stock: <span className="font-semibold text-slate-600">{selProd.availableQty}</span>
+            &nbsp;· Offline Price: <span className="font-semibold text-orange-600">₹{selProd.offlinePrice ?? selProd.unitPrice ?? 0}</span>
+          </span>
+          {item.amount && (
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isGst ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}>
+              {isGst ? 'GST (18%) Included' : 'Excl. GST'}
+            </span>
+          )}
         </p>
       )}
     </div>
@@ -91,6 +98,7 @@ export default function OfflineSales() {
   const [editModal, setEditModal] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [editNewItems, setEditNewItems] = useState([]);
+  const [editGst, setEditGst] = useState(false);
   const [editNewDate, setEditNewDate] = useState('');
   const [editNewTxns, setEditNewTxns] = useState([]);
   const [editError, setEditError] = useState('');
@@ -118,7 +126,9 @@ export default function OfflineSales() {
       const orders = [...f.orders];
       const items = [...orders[oi].items];
       const qty = Number(items[ii].qty) || 1;
-      items[ii] = { ...items[ii], productId, amount: unitPrice ? String(unitPrice * qty) : '' };
+      const baseAmount = unitPrice * qty;
+      const finalAmount = orders[oi].gst ? Math.round(baseAmount * 1.18) : baseAmount;
+      items[ii] = { ...items[ii], productId, amount: finalAmount ? String(finalAmount) : '' };
       orders[oi] = { ...orders[oi], items };
       return { ...f, orders };
     });
@@ -130,8 +140,27 @@ export default function OfflineSales() {
       const items = [...orders[oi].items];
       const p = products.find((x) => x.id === items[ii].productId);
       const unitPrice = p ? (p.offlinePrice ?? p.unitPrice ?? 0) : 0;
-      items[ii] = { ...items[ii], qty, amount: unitPrice ? String(unitPrice * Number(qty)) : items[ii].amount };
+      const baseAmount = unitPrice * Number(qty);
+      const finalAmount = orders[oi].gst ? Math.round(baseAmount * 1.18) : baseAmount;
+      items[ii] = { ...items[ii], qty, amount: finalAmount ? String(finalAmount) : items[ii].amount };
       orders[oi] = { ...orders[oi], items };
+      return { ...f, orders };
+    });
+  }
+
+  function toggleOrderGst(oi) {
+    setForm((f) => {
+      const orders = [...f.orders];
+      const order = { ...orders[oi] };
+      const nextGst = !order.gst;
+      order.gst = nextGst;
+      order.items = order.items.map((item) => {
+        if (!item.amount) return item;
+        const currentAmount = Number(item.amount) || 0;
+        const newAmount = nextGst ? Math.round(currentAmount * 1.18) : Math.round(currentAmount / 1.18);
+        return { ...item, amount: String(newAmount) };
+      });
+      orders[oi] = order;
       return { ...f, orders };
     });
   }
@@ -183,7 +212,9 @@ export default function OfflineSales() {
     setEditNewItems((items) => {
       const updated = [...items];
       const qty = Number(updated[idx].qty) || 1;
-      updated[idx] = { ...updated[idx], productId, amount: unitPrice ? String(unitPrice * qty) : '' };
+      const baseAmount = unitPrice * qty;
+      const finalAmount = editGst ? Math.round(baseAmount * 1.18) : baseAmount;
+      updated[idx] = { ...updated[idx], productId, amount: finalAmount ? String(finalAmount) : '' };
       return updated;
     });
   }
@@ -193,8 +224,40 @@ export default function OfflineSales() {
       const updated = [...items];
       const p = products.find((x) => x.id === updated[idx].productId);
       const unitPrice = p ? (p.offlinePrice ?? p.unitPrice ?? 0) : 0;
-      updated[idx] = { ...updated[idx], qty, amount: unitPrice ? String(unitPrice * Number(qty)) : updated[idx].amount };
+      const baseAmount = unitPrice * Number(qty);
+      const finalAmount = editGst ? Math.round(baseAmount * 1.18) : baseAmount;
+      updated[idx] = { ...updated[idx], qty, amount: finalAmount ? String(finalAmount) : updated[idx].amount };
       return updated;
+    });
+  }
+
+  function toggleEditGst() {
+    setEditGst((prev) => {
+      const nextGst = !prev;
+      setEditNewItems((items) =>
+        items.map((item) => {
+          if (!item.amount) return item;
+          const currentAmount = Number(item.amount) || 0;
+          const newAmount = nextGst ? Math.round(currentAmount * 1.18) : Math.round(currentAmount / 1.18);
+          return { ...item, amount: String(newAmount) };
+        })
+      );
+      setEditModal((prevModal) => {
+        if (!prevModal) return prevModal;
+        const updatedItems = (prevModal.items || []).map((item) => {
+          if (!item.amount) return item;
+          const currentAmount = Number(item.amount) || 0;
+          const newAmount = nextGst ? Math.round(currentAmount * 1.18) : Math.round(currentAmount / 1.18);
+          return { ...item, amount: newAmount };
+        });
+        const updatedTotal = updatedItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        return {
+          ...prevModal,
+          items: updatedItems,
+          totalAmount: updatedTotal,
+        };
+      });
+      return nextGst;
     });
   }
 
@@ -230,6 +293,7 @@ export default function OfflineSales() {
       const payload = {
         buyerName: form.buyerName, items: allItems, totalAmount: computedTotal,
         transactions: validTxns, amountReceived: totalReceived, notes: form.notes,
+        gst: form.orders.some((o) => o.gst),
       };
       const sale = await api.addOfflineSale(payload);
       setSales((ss) => [sale, ...ss]);
@@ -256,6 +320,9 @@ export default function OfflineSales() {
     const validNewTxns = editNewTxns.filter((t) => t.amount);
     try {
       const updated = await api.updateOfflineSale(editModal.id, {
+        items: editModal.items,
+        totalAmount: editModal.totalAmount,
+        gst: editGst,
         newTransactions: validNewTxns.length > 0 ? validNewTxns : undefined,
         newItems: validNewItems.length > 0 ? validNewItems : undefined,
         newItemsDate: editNewDate || new Date().toISOString().split('T')[0],
@@ -352,7 +419,7 @@ export default function OfflineSales() {
           <div key={i} className="flex items-center gap-1.5">
             <span className={`text-xs px-1.5 py-0.5 rounded font-medium uppercase ${METHOD_COLORS[t.method] || 'bg-slate-100 text-slate-600'}`}>{t.method}</span>
             <span className="text-sm text-green-600 font-medium">₹{t.amount}</span>
-            {t.date && <span className="text-xs text-slate-400">{t.date}</span>}
+            {t.date && <span className="text-xs text-slate-400 whitespace-nowrap">{t.date}</span>}
           </div>
         ))}
       </div>
@@ -433,7 +500,14 @@ export default function OfflineSales() {
                     <td className="px-4 py-3">{productCell(s)}</td>
                     <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{s.buyerName}</td>
                     <td className="px-4 py-3 text-slate-600">{totalQty(s)}</td>
-                    <td className="px-4 py-3 font-semibold text-slate-800 whitespace-nowrap">₹{s.totalAmount}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="font-semibold text-slate-800">₹{s.totalAmount}</div>
+                      {s.gst && (
+                        <span className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-50 text-green-600 border border-green-200 mt-0.5">
+                          GST (18%)
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">{receivedCell(s)}</td>
                     <td className="px-4 py-3 font-medium text-red-500 whitespace-nowrap">₹{s.amountLeft}</td>
                     <td className="px-4 py-3">
@@ -443,7 +517,7 @@ export default function OfflineSales() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => { setEditModal(s); setEditNewItems([]); setEditNewDate(new Date().toISOString().split('T')[0]); setEditNewTxns([]); setEditError(''); }}
+                        <button onClick={() => { setEditModal(s); setEditNewItems([]); setEditNewDate(new Date().toISOString().split('T')[0]); setEditNewTxns([]); setEditError(''); setEditGst(s.gst || false); }}
                           className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"><Edit2 size={14} /></button>
                         <button onClick={() => handleDelete(s.id)} disabled={user?.role === 'employee'} className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"><Trash2 size={14} /></button>
                       </div>
@@ -499,12 +573,27 @@ export default function OfflineSales() {
                         onAmountChange={(v) => handleItemAmountChange(oi, ii, v)}
                         onRemove={() => removeItemFromOrder(oi, ii)}
                         showRemove={order.items.length > 1}
+                        isGst={order.gst}
                       />
                     ))}
-                    <button type="button" onClick={() => addItemToOrder(oi)}
-                      className="flex items-center gap-1.5 text-red-600 hover:text-red-700 text-xs font-medium transition-colors">
-                      <PlusCircle size={13} /> Add product to this order
-                    </button>
+                    <div className="flex items-center justify-between mt-2">
+                      <button type="button" onClick={() => addItemToOrder(oi)}
+                        className="flex items-center gap-1.5 text-red-600 hover:text-red-700 text-xs font-medium transition-colors">
+                        <PlusCircle size={13} /> Add product to this order
+                      </button>
+                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={order.gst || false}
+                          onChange={() => toggleOrderGst(oi)}
+                          className="sr-only"
+                        />
+                        <div className={`relative w-8 h-4 rounded-full transition-colors duration-200 ${order.gst ? 'bg-red-600' : 'bg-slate-200'}`}>
+                          <div className={`absolute top-[2px] left-[2px] bg-white border border-slate-300 rounded-full h-3 w-3 transition-transform duration-200 ${order.gst ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-500">Add GST (18%)</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -573,7 +662,7 @@ export default function OfflineSales() {
         const updatedReceived = existingReceived + newTxnsTotal;
         const updatedPending = updatedTotal - updatedReceived;
         return (
-          <Modal title={`Edit Sale — ${editModal.buyerName}`} onClose={() => { setEditModal(null); setEditNewItems([]); setEditNewDate(''); setEditNewTxns([]); }}>
+          <Modal title={`Edit Sale — ${editModal.buyerName}`} onClose={() => { setEditModal(null); setEditNewItems([]); setEditNewDate(''); setEditNewTxns([]); setEditGst(false); }}>
             <form onSubmit={handleUpdatePayment} className="space-y-4">
 
               {/* Existing orders (read-only) */}
@@ -596,7 +685,10 @@ export default function OfflineSales() {
                             <span className="text-slate-700 font-medium">{item.productName}</span>
                             <div className="flex items-center gap-3 text-slate-500">
                               <span>×{item.qty}</span>
-                              <span className="font-semibold text-slate-700">₹{item.amount}</span>
+                              <span className="font-semibold text-slate-700 flex items-center gap-1">
+                                ₹{item.amount}
+                                {editGst && <span className="text-[9px] font-semibold px-1 py-0.2 rounded bg-green-50 text-green-600 border border-green-200">GST</span>}
+                              </span>
                             </div>
                           </div>
                         ))}
@@ -610,10 +702,24 @@ export default function OfflineSales() {
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-2">Add New Order</label>
                 {editNewItems.length === 0 ? (
-                  <button type="button" onClick={addEditItem}
-                    className="flex items-center gap-1.5 text-red-600 hover:text-red-700 text-sm font-medium transition-colors">
-                    <PlusCircle size={16} /> Add product
-                  </button>
+                  <div className="flex items-center justify-between mt-2">
+                    <button type="button" onClick={addEditItem}
+                      className="flex items-center gap-1.5 text-red-600 hover:text-red-700 text-sm font-medium transition-colors">
+                      <PlusCircle size={16} /> Add product
+                    </button>
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={editGst}
+                        onChange={toggleEditGst}
+                        className="sr-only"
+                      />
+                      <div className={`relative w-8 h-4 rounded-full transition-colors duration-200 ${editGst ? 'bg-red-600' : 'bg-slate-200'}`}>
+                        <div className={`absolute top-[2px] left-[2px] bg-white border border-slate-300 rounded-full h-3 w-3 transition-transform duration-200 ${editGst ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </div>
+                      <span className="text-xs font-semibold text-slate-500">Add GST (18%)</span>
+                    </label>
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     {editNewItems.map((item, idx) => {
@@ -640,9 +746,16 @@ export default function OfflineSales() {
                             </button>
                           </div>
                           {selProd && (
-                            <p className="text-xs text-slate-400">
-                              Stock: <span className="font-semibold text-slate-600">{selProd.availableQty}</span>
-                              &nbsp;· Offline Price: <span className="font-semibold text-orange-600">₹{selProd.offlinePrice ?? selProd.unitPrice ?? 0}</span>
+                            <p className="text-xs text-slate-400 flex items-center justify-between">
+                              <span>
+                                Stock: <span className="font-semibold text-slate-600">{selProd.availableQty}</span>
+                                &nbsp;· Offline Price: <span className="font-semibold text-orange-600">₹{selProd.offlinePrice ?? selProd.unitPrice ?? 0}</span>
+                              </span>
+                              {item.amount && (
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${editGst ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}>
+                                  {editGst ? 'GST (18%) Included' : 'Excl. GST'}
+                                </span>
+                              )}
                             </p>
                           )}
                         </div>
@@ -653,10 +766,24 @@ export default function OfflineSales() {
                       <input type="date" value={editNewDate} onChange={(e) => setEditNewDate(e.target.value)}
                         className="flex-1 px-3 py-2 border border-red-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500" />
                     </div>
-                    <button type="button" onClick={addEditItem}
-                      className="flex items-center gap-1.5 text-red-600 hover:text-red-700 text-sm font-medium transition-colors">
-                      <PlusCircle size={16} /> Add another product
-                    </button>
+                    <div className="flex items-center justify-between mt-2">
+                      <button type="button" onClick={addEditItem}
+                        className="flex items-center gap-1.5 text-red-600 hover:text-red-700 text-sm font-medium transition-colors">
+                        <PlusCircle size={16} /> Add another product
+                      </button>
+                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={editGst}
+                          onChange={toggleEditGst}
+                          className="sr-only"
+                        />
+                        <div className={`relative w-8 h-4 rounded-full transition-colors duration-200 ${editGst ? 'bg-red-600' : 'bg-slate-200'}`}>
+                          <div className={`absolute top-[2px] left-[2px] bg-white border border-slate-300 rounded-full h-3 w-3 transition-transform duration-200 ${editGst ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-500">Add GST (18%)</span>
+                      </label>
+                    </div>
                   </div>
                 )}
               </div>
@@ -710,7 +837,7 @@ export default function OfflineSales() {
               {editError && <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-xl">{editError}</p>}
 
               <div className="flex gap-3">
-                <button type="button" onClick={() => { setEditModal(null); setEditNewItems([]); setEditNewDate(''); setEditNewTxns([]); }}
+                <button type="button" onClick={() => { setEditModal(null); setEditNewItems([]); setEditNewDate(''); setEditNewTxns([]); setEditGst(false); }}
                   className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
                 <button type="submit" disabled={saving}
                   className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-medium rounded-xl flex items-center justify-center gap-2">
