@@ -87,10 +87,10 @@ export default function Dashboard() {
 
   // For offline sales, items and transactions can be added at different dates than the invoice date.
   // We extract items and transactions that match the selected month to accurately reflect revenue and sales.
-  const offlineItems = offlineSales.flatMap((s) => 
+  const offlineItems = offlineSales.flatMap((s) =>
     (s.items && s.items.length > 0) ? s.items.map(i => ({ ...i, saleDate: s.date })) : [{ qty: s.qty, amount: s.totalAmount, date: s.date, saleDate: s.date }]
   );
-  
+
   const filteredOfflineItems = offlineItems.filter((i) => matchesFilter(i.date || i.saleDate, year, month));
   const offlineSalesQty = filteredOfflineItems.reduce((s, i) => s + (Number(i.qty) || 1), 0);
   const offlineRevenue = filteredOfflineItems.reduce((s, i) => s + (Number(i.amount) || 0), 0);
@@ -104,6 +104,28 @@ export default function Dashboard() {
 
   const recentOnline = [...filteredOnline].reverse().slice(0, 5);
   const recentOffline = [...filteredOfflineInvoices].reverse().slice(0, 5);
+
+  // Calculate companies with pending offline payments older than 10 days
+  const overdueCompanies = {};
+  const todayMs = new Date().setHours(0, 0, 0, 0);
+  offlineSales.forEach((s) => {
+    if (s.amountLeft > 0 && s.date) {
+      const saleMs = new Date(s.date).setHours(0, 0, 0, 0);
+      const ageDays = Math.floor((todayMs - saleMs) / (1000 * 60 * 60 * 24));
+      if (ageDays > 10) {
+        if (!overdueCompanies[s.buyerName]) {
+          overdueCompanies[s.buyerName] = { amount: 0, maxAge: 0 };
+        }
+        overdueCompanies[s.buyerName].amount += s.amountLeft;
+        overdueCompanies[s.buyerName].maxAge = Math.max(overdueCompanies[s.buyerName].maxAge, ageDays);
+      }
+    }
+  });
+  const overdueList = Object.entries(overdueCompanies).map(([name, data]) => ({
+    name,
+    amount: data.amount,
+    age: data.maxAge
+  })).sort((a, b) => b.amount - a.amount);
 
   const label = filterLabel(year, month);
 
@@ -156,8 +178,33 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Offline Revenue" value={`₹${offlineRevenue.toFixed(0)}`} icon={IndianRupee} color="bg-blue-100 text-blue-600" sub={label} />
-        <StatCard label="Total Returns" value={totalReturnsQty} icon={TrendingUp} color="bg-emerald-100 text-emerald-600" sub={label} />
+        <div className='space-y-4'>
+          <StatCard label="Offline Revenue" value={`₹${offlineRevenue.toFixed(0)}`} icon={IndianRupee} color="bg-blue-100 text-blue-600" sub={label} />
+          <StatCard label="Total Returns" value={totalReturnsQty} icon={TrendingUp} color="bg-emerald-100 text-emerald-600" sub={label} />
+        </div>
+        <div className="col-span-3 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Overdue Payments (&gt; 10 Days)</span>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${overdueList.length > 0 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}`}>
+              <Clock size={16} />
+            </div>
+          </div>
+          <div className="mt-2 overflow-y-auto space-y-1.5 pr-1 text-xs">
+            {overdueList.length === 0 ? (
+              <span className="text-green-600 font-medium flex items-center gap-1.5 py-1">
+                ✓ All payments are up to date
+              </span>
+            ) : (
+              overdueList.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between border-b border-slate-100/50 pb-1 last:border-0 last:pb-0">
+                  <span className="font-semibold text-slate-700 truncate max-w-[140px]" title={item.name}>{item.name}</span>
+                  <span className="text-slate-400">({item.age} days old)</span>
+                  <span className="font-bold text-red-600">₹{item.amount.toFixed(0)}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Recent activity */}

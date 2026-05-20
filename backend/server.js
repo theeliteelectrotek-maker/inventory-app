@@ -180,8 +180,20 @@ app.post('/api/sales/offline', catchAsync(async (req, res) => {
     await product.save();
   }
 
+  const calculatedReceived = (transactions || []).reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const calculatedLeft = totalAmount - calculatedReceived;
+
   const sale = new OfflineSale({
-    id: uuidv4(), buyerName, items, totalAmount, transactions, date, notes, gst: gst || false
+    id: uuidv4(),
+    buyerName,
+    items,
+    totalAmount,
+    transactions,
+    amountReceived: calculatedReceived,
+    amountLeft: calculatedLeft,
+    date,
+    notes,
+    gst: gst || false
   });
   await sale.save();
   
