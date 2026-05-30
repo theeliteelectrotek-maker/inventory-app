@@ -33,9 +33,9 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 pr-16 relative" style={{ backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundRepeat: 'no-repeat'}}>
+    <div className="min-h-screen flex items-center justify-center p-4 sm:pr-16 relative" style={{ backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundRepeat: 'no-repeat'}}>
       <div className="w-full max-w-md relative z-10">
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden mt-[-150px]">
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden mt-0 sm:mt-[-150px]">
           {/* Header */}
           <div className="bg-gradient-to-r from-red-600 to-red-700 px-8 py-8 text-center">
             <div className="flex items-center justify-center mb-1">

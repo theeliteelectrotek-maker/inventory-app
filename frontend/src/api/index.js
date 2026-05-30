@@ -33,15 +33,15 @@ export const api = {
   deleteProduct: (id) => request('DELETE', `/products/${id}`),
 
   // Online Sales
-  getOnlineSales: () => request('GET', '/sales/online'),
-  addOnlineSale: (s) => request('POST', '/sales/online', s),
-  deleteOnlineSale: (id) => request('DELETE', `/sales/online/${id}`),
+  getOnlineSales: () => request('GET', '/online-sales'),
+  addOnlineSale: (s) => request('POST', '/online-sales', s),
+  deleteOnlineSale: (id) => request('DELETE', `/online-sales/${id}`),
 
   // Offline Sales
-  getOfflineSales: () => request('GET', '/sales/offline'),
-  addOfflineSale: (s) => request('POST', '/sales/offline', s),
-  updateOfflineSale: (id, s) => request('PUT', `/sales/offline/${id}`, s),
-  deleteOfflineSale: (id) => request('DELETE', `/sales/offline/${id}`),
+  getOfflineSales: () => request('GET', '/offline-sales'),
+  addOfflineSale: (s) => request('POST', '/offline-sales', s),
+  updateOfflineSale: (id, s) => request('PUT', `/offline-sales/${id}`, s),
+  deleteOfflineSale: (id) => request('DELETE', `/offline-sales/${id}`),
 
   // Shops
   getShops: () => request('GET', '/shops'),
@@ -56,4 +56,16 @@ export const api = {
 
   // Stats
   getStats: () => request('GET', '/stats'),
+
+  // Analytics
+  getAnalytics: (startDate, endDate) => request('GET', `/analytics?startDate=${startDate}&endDate=${endDate}`),
+
+  // Backup & Restore
+  getBackupStatus: () => request('GET', '/backup/status'),
+  restoreDatabase: (zipBase64) => request('POST', '/backup/restore', { zipBase64 }),
+
+  // Import Center
+  importPreview: (fileBase64, type) => request('POST', '/import/preview', { fileBase64, type }),
+  importConfirm: (type, records) => request('POST', '/import/confirm', { type, records }),
 };
+

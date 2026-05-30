@@ -3,12 +3,13 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Package, ShoppingCart, Store,
-  LogOut, Menu, Building2, Undo2
+  LogOut, Menu, Building2, Undo2, BarChart3, Database
 } from 'lucide-react';
 import logo from '../logo.png';
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { to: '/analytics', label: 'Business Analytics', icon: BarChart3 },
   { to: '/products', label: 'Products', icon: Package },
   { to: '/online-sales', label: 'Online Sales', icon: ShoppingCart },
   { to: '/shops', label: 'Shops', icon: Building2 },
@@ -26,6 +27,11 @@ export default function Layout() {
     navigate('/login');
   }
 
+  const allowedNav = [...nav];
+  if (user?.role === 'admin') {
+    allowedNav.push({ to: '/admin', label: 'Admin Panel', icon: Database });
+  }
+
   const sidebar = (
     <aside className="flex flex-col h-full bg-zinc-950 text-white">
       {/* Logo */}
@@ -35,7 +41,7 @@ export default function Layout() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
-        {nav.map(({ to, label, icon: Icon, exact }) => (
+        {allowedNav.map(({ to, label, icon: Icon, exact }) => (
           <NavLink
             key={to}
             to={to}

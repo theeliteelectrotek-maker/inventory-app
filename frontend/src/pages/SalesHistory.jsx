@@ -50,7 +50,7 @@ export default function SalesHistory() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
           <div className="flex items-center gap-2 mb-1">
             <ShoppingCart size={16} className="text-purple-600" />
@@ -78,27 +78,29 @@ export default function SalesHistory() {
       </div>
 
       {/* Tabs + Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1">
-          {[{ id: 'all', label: 'All' }, { id: 'online', label: 'Online' }, { id: 'offline', label: 'Offline' }].map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === t.id ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>
-              {t.label}
-            </button>
-          ))}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
+          <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 justify-center sm:justify-start">
+            {[{ id: 'all', label: 'All' }, { id: 'online', label: 'Online' }, { id: 'offline', label: 'Offline' }].map((t) => (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === t.id ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative flex-1 sm:flex-none">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search product…"
+              className="w-full sm:w-[250px] pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
         </div>
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search product…"
-            className="pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Calendar size={15} className="text-slate-400" />
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <Calendar size={15} className="text-slate-400 hidden sm:block" />
           <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-            className="py-2 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            className="flex-1 sm:flex-none py-2 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           <span className="text-slate-400 text-sm">to</span>
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-            className="py-2 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            className="flex-1 sm:flex-none py-2 px-3 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         </div>
       </div>
 

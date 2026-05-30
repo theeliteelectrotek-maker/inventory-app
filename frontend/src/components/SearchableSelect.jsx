@@ -38,7 +38,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
       )}
 
       <div
-        className="flex items-center justify-between w-full h-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white cursor-pointer focus-within:ring-2 focus-within:ring-red-500"
+        className="flex items-center justify-between w-full h-[42px] px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white cursor-pointer focus-within:ring-2 focus-within:ring-red-500"
         onClick={() => {
           setIsOpen(!isOpen);
           if (!isOpen) setSearch('');

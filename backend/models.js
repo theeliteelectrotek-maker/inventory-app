@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
 
+function getSystemLocalDate(d = new Date()) {
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - (offset * 60 * 1000));
+  return local.toISOString().split('T')[0];
+}
+
 // User Model
 const userSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
@@ -22,6 +28,10 @@ const productSchema = new mongoose.Schema({
   unitPrice: { type: Number, default: 0 },
   offlinePrice: { type: Number, default: 0 },
   onlinePrice: { type: Number, default: 0 },
+  costPrice: { type: Number, default: 0 },
+  amazonPrice: { type: Number, default: 0 },
+  flipkartPrice: { type: Number, default: 0 },
+  meeshoPrice: { type: Number, default: 0 },
   category: { type: String, default: 'General' },
   createdAt: { type: String, default: () => new Date().toISOString() },
   updatedAt: { type: String, default: () => new Date().toISOString() }
@@ -37,7 +47,7 @@ const onlineSaleSchema = new mongoose.Schema({
   qty: { type: Number, required: true },
   amount: { type: Number, default: 0 },
   orderId: { type: String, default: '' },
-  date: { type: String, default: () => new Date().toISOString().split('T')[0] },
+  date: { type: String, default: () => getSystemLocalDate() },
   notes: { type: String, default: '' },
   createdAt: { type: String, default: () => new Date().toISOString() }
 });
@@ -45,9 +55,11 @@ const OnlineSale = mongoose.model('OnlineSale', onlineSaleSchema);
 
 // Offline Sale Model
 const transactionSchema = new mongoose.Schema({
+  id: { type: String },
   amount: { type: Number, required: true },
-  date: { type: String, default: () => new Date().toISOString().split('T')[0] },
+  date: { type: String, default: () => getSystemLocalDate() },
   method: { type: String, default: 'cash' },
+  referenceNumber: { type: String, default: '' },
   notes: { type: String, default: '' }
 }, { _id: false });
 
@@ -56,7 +68,7 @@ const offlineItemSchema = new mongoose.Schema({
   productName: { type: String, required: true },
   qty: { type: Number, required: true },
   amount: { type: Number, default: 0 },
-  date: { type: String, default: () => new Date().toISOString().split('T')[0] }
+  date: { type: String, default: () => getSystemLocalDate() }
 }, { _id: false });
 
 const offlineSaleSchema = new mongoose.Schema({
@@ -66,9 +78,10 @@ const offlineSaleSchema = new mongoose.Schema({
   totalAmount: { type: Number, default: 0 },
   gst: { type: Boolean, default: false },
   transactions: { type: [transactionSchema], default: [] },
+  corrections: { type: [mongoose.Schema.Types.Mixed], default: [] },
   amountReceived: { type: Number, default: 0 },
   amountLeft: { type: Number, default: 0 },
-  date: { type: String, default: () => new Date().toISOString().split('T')[0] },
+  date: { type: String, default: () => getSystemLocalDate() },
   notes: { type: String, default: '' },
   createdAt: { type: String, default: () => new Date().toISOString() },
   updatedAt: { type: String, default: () => new Date().toISOString() }
@@ -82,6 +95,8 @@ const shopSchema = new mongoose.Schema({
   name: { type: String, required: true },
   address: { type: String, default: '' },
   mobile: { type: String, default: '' },
+  notes: { type: String, default: '' },
+  type: { type: String, enum: ['shop', 'individual', 'walk-in'], default: 'shop' },
   createdAt: { type: String, default: () => new Date().toISOString() },
   updatedAt: { type: String, default: () => new Date().toISOString() }
 });
@@ -97,12 +112,19 @@ const returnSchema = new mongoose.Schema({
   shopName: { type: String },
   action: { type: String, default: 'return' },
   qty: { type: Number, default: 1 },
-  date: { type: String, default: () => new Date().toISOString().split('T')[0] },
+  date: { type: String, default: () => getSystemLocalDate() },
   condition: { type: String, required: true },
   notes: { type: String, default: '' },
   createdAt: { type: String, default: () => new Date().toISOString() }
 });
 const Return = mongoose.model('Return', returnSchema);
+
+// Setting Model
+const settingSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  value: { type: mongoose.Schema.Types.Mixed, required: true }
+}, { timestamps: true });
+const Setting = mongoose.model('Setting', settingSchema);
 
 module.exports = {
   User,
@@ -110,5 +132,7 @@ module.exports = {
   OnlineSale,
   OfflineSale,
   Shop,
-  Return
+  Return,
+  Setting
 };
+

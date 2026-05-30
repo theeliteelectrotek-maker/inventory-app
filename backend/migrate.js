@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
@@ -77,9 +77,31 @@ async function migrateData() {
     const shopsData = readJSON('shops.json');
     if (shopsData && shopsData.shops) {
       for (const s of shopsData.shops) {
-        await Shop.findOneAndUpdate({ id: s.id }, s, { upsert: true });
+        const update = { ...s, type: s.type || 'shop' };
+        await Shop.findOneAndUpdate({ id: s.id }, update, { upsert: true });
       }
       console.log(`Migrated ${shopsData.shops.length} shops.`);
+    }
+
+    // Seed default customer profiles
+    const requiredShops = [
+      { name: 'Individual Customer', address: 'Individual retail buyer', mobile: '', notes: 'Retail customer channel', type: 'individual' },
+      { name: 'Walk-in Customer', address: 'Walk-in store buyer', mobile: '', notes: 'Walk-in retail customer channel', type: 'walk-in' }
+    ];
+    for (const rs of requiredShops) {
+      const exists = await Shop.findOne({ name: rs.name });
+      if (!exists) {
+        console.log(`Seeding missing CRM customer profile: ${rs.name}`);
+        const shop = new Shop({
+          id: require('uuid').v4(),
+          name: rs.name,
+          address: rs.address,
+          mobile: rs.mobile,
+          notes: rs.notes,
+          type: rs.type
+        });
+        await shop.save();
+      }
     }
 
     console.log('Migrating Returns...');
