@@ -843,7 +843,7 @@ export default function OnlineSales() {
                       <td className="px-4 py-3 text-right">
                         <button 
                           onClick={() => handleDelete(s.id)} 
-                          disabled={user?.role === 'employee'} 
+                          disabled={user?.role === 'EMPLOYEE'} 
                           className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <Trash2 size={13} />

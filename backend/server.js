@@ -8,7 +8,7 @@ const xlsx = require('xlsx');
 const PDFDocument = require('pdfkit');
 const AdmZip = require('adm-zip');
 
-const { User, Product, OnlineSale, OfflineSale, Shop, Return, Setting } = require('./models');
+const { User, Product, OnlineSale, OfflineSale, Shop, Return, Setting, AuditLog } = require('./models');
 
 function getSystemLocalDate(d = new Date()) {
   const offset = d.getTimezoneOffset();
@@ -134,6 +134,35 @@ async function runShopMigration() {
   }
 }
 
+async function runUserMigration() {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const usersFile = path.join(__dirname, 'data', 'users.json');
+    if (fs.existsSync(usersFile)) {
+      const usersData = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
+      if (usersData && usersData.users) {
+        for (const u of usersData.users) {
+          await User.findOneAndUpdate({ id: u.id }, u, { upsert: true });
+        }
+        console.log(`✅ User migration completed. Seeded/updated ${usersData.users.length} users.`);
+      }
+    } else {
+      const defaultUsers = [
+        { id: "1", username: "admin", password: "admin@123", name: "Shiva Sharma", role: "ADMIN" },
+        { id: "2", username: "karan", password: "karantee@123", name: "Karan", role: "EMPLOYEE" },
+        { id: "3", username: "vikash", password: "vikashtee@123", name: "Vikas", role: "EMPLOYEE" }
+      ];
+      for (const u of defaultUsers) {
+        await User.findOneAndUpdate({ id: u.id }, u, { upsert: true });
+      }
+      console.log(`✅ Default user migration completed.`);
+    }
+  } catch (err) {
+    console.error('❌ Error during user migration:', err);
+  }
+}
+
 // Connect to MongoDB
 if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('<db_password>')) {
   mongoose.connect(process.env.MONGO_URI, {
@@ -144,6 +173,7 @@ if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('<db_password>')) {
       console.log('✅ Connected to MongoDB Atlas');
       await runProductMigration();
       await runShopMigration();
+      await runUserMigration();
     })
     .catch((err) => {
       console.error('❌ MongoDB Connection Error:', err.message);
@@ -160,6 +190,43 @@ if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('<db_password>')) {
 const catchAsync = fn => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
+
+// RBAC requireAdmin middleware
+const requireAdmin = catchAsync(async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(403).json({ message: 'Access Denied. Administrator privileges required.' });
+  }
+  const token = authHeader.substring(7);
+  const parts = token.split('_');
+  if (parts[0] !== 'token' || !parts[1]) {
+    return res.status(403).json({ message: 'Access Denied. Administrator privileges required.' });
+  }
+  const userId = parts[1];
+  const user = await User.findOne({ id: userId });
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'admin' && user.username !== 'admin')) {
+    return res.status(403).json({ message: 'Access Denied. Administrator privileges required.' });
+  }
+  
+  req.userObj = user;
+  next();
+});
+
+// Admin action audit logger endpoint
+app.post('/api/admin/log-action', requireAdmin, catchAsync(async (req, res) => {
+  const { action } = req.body;
+  const user = req.userObj;
+  
+  const log = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: action || 'Accessed Admin Panel'
+  });
+  await log.save();
+  console.log(`[AUDIT LOG] User: ${log.user} | Time: ${log.time} | Action: ${log.action}`);
+  res.json({ success: true });
+}));
 
 // AUTH
 app.post('/api/auth/login', catchAsync(async (req, res) => {
@@ -488,9 +555,18 @@ app.get('/api/shops', catchAsync(async (_req, res) => {
 }));
 
 app.post('/api/shops', catchAsync(async (req, res) => {
-  const { name, address, mobile, notes } = req.body;
+  const { name, address, mobile, notes, type, ownerName, gstNumber } = req.body;
   if (!name) return res.status(400).json({ message: 'Shop name required' });
-  const shop = new Shop({ id: uuidv4(), name, address: address || '', mobile: mobile || '', notes: notes || '' });
+  const shop = new Shop({ 
+    id: uuidv4(), 
+    name, 
+    address: address || '', 
+    mobile: mobile || '', 
+    notes: notes || '',
+    type: type || 'shop',
+    ownerName: ownerName || '',
+    gstNumber: gstNumber || ''
+  });
   await shop.save();
   res.json(shop);
 }));
@@ -564,10 +640,28 @@ app.delete('/api/returns/:id', catchAsync(async (req, res) => {
 
 // BUSINESS ANALYTICS & PROFIT
 app.get('/api/analytics', catchAsync(async (req, res) => {
-  const { startDate, endDate } = req.query;
+  const { startDate, endDate, customerType = 'all' } = req.query;
   if (!startDate || !endDate) {
     return res.status(400).json({ message: 'startDate and endDate are required' });
   }
+
+  // Fetch shops to map names to types
+  const dbShops = await Shop.find({});
+  const shopTypeMap = {};
+  dbShops.forEach(s => {
+    shopTypeMap[s.name] = s.type || 'shop';
+  });
+
+  const matchesFilter = (buyerName) => {
+    if (customerType === 'all') return true;
+    const type = shopTypeMap[buyerName] || 'walk-in';
+    const isShop = type === 'shop';
+    const isInd = type === 'individual' || type === 'walk-in';
+    
+    if (customerType === 'shop') return isShop;
+    if (customerType === 'individual') return isInd;
+    return true;
+  };
 
   // 1. Fetch Products for Cost and Platform Pricing mapping
   const products = await Product.find({}, 'id name costPrice amazonPrice flipkartPrice meeshoPrice offlinePrice onlinePrice unitPrice availableQty category');
@@ -597,7 +691,7 @@ app.get('/api/analytics', catchAsync(async (req, res) => {
 
   // 2. Fetch Sales and Returns in the range
   const onlineSalesRaw = await OnlineSale.find({ date: { $gte: startDate, $lte: endDate } });
-  const onlineSales = onlineSalesRaw.map(s => {
+  const onlineSales = (customerType === 'all') ? onlineSalesRaw.map(s => {
     const sObj = s.toObject();
     if (!sObj.amount || sObj.amount <= 0) {
       const pm = prodMap[sObj.productId];
@@ -614,9 +708,15 @@ app.get('/api/analytics', catchAsync(async (req, res) => {
       }
     }
     return sObj;
+  }) : [];
+  const allOfflineSales = await OfflineSale.find({ date: { $gte: startDate, $lte: endDate } });
+  const offlineSales = allOfflineSales.filter(s => matchesFilter(s.buyerName));
+  const allReturns = await Return.find({ date: { $gte: startDate, $lte: endDate } });
+  const returns = allReturns.filter(r => {
+    const isOnline = ['amazon', 'flipkart', 'meesho'].includes(r.platform?.toLowerCase());
+    if (isOnline) return customerType === 'all';
+    return matchesFilter(r.shopName || 'Walk-in Customer');
   });
-  const offlineSales = await OfflineSale.find({ date: { $gte: startDate, $lte: endDate } });
-  const returns = await Return.find({ date: { $gte: startDate, $lte: endDate } });
 
   // 3. Initialize Accumulators
   let totalRevenue = 0;
@@ -928,6 +1028,10 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown';
   const offset = new Date().getTimezoneOffset();
   
+  const dbShops = await Shop.find({});
+  const totalShops = dbShops.filter(s => s.type === 'shop').length;
+  const totalIndividuals = dbShops.filter(s => s.type === 'individual' || s.type === 'walk-in').length;
+  
   const products = await Product.find({});
   const onlineSalesRaw = await OnlineSale.find({});
   const offlineSales = await OfflineSale.find({});
@@ -1161,7 +1265,9 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
     returnsValue,
     netProfit,
     healthScore,
-    dailyTrend
+    dailyTrend,
+    totalShops,
+    totalIndividuals
   });
 }));
 
@@ -1288,7 +1394,15 @@ function setupPDFPageDecorations(doc, reportTitle, subtitle) {
 }
 
 // 1. DATA EXPORT API
-app.get('/api/export', catchAsync(async (req, res) => {
+app.get('/api/export', requireAdmin, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: `Exported dataset: ${req.query.type} as ${req.query.format} (${req.query.rangeType})`
+  });
+  await audit.save();
   const { type, format, rangeType, selectedMonth, startDate, endDate } = req.query;
   
   // Date filtering helper
@@ -1562,7 +1676,15 @@ app.get('/api/export', catchAsync(async (req, res) => {
 }));
 
 // 2. DATA IMPORT PREVIEW API
-app.post('/api/import/preview', catchAsync(async (req, res) => {
+app.post('/api/import/preview', requireAdmin, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: `Uploaded spreadsheet for preview: ${req.body.type}`
+  });
+  await audit.save();
   const { fileBase64, type } = req.body;
   if (!fileBase64 || !type) {
     return res.status(400).json({ message: 'Missing file data or import type' });
@@ -1735,7 +1857,15 @@ app.post('/api/import/preview', catchAsync(async (req, res) => {
 }));
 
 // 3. DATA IMPORT CONFIRM API
-app.post('/api/import/confirm', catchAsync(async (req, res) => {
+app.post('/api/import/confirm', requireAdmin, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: `Confirmed bulk import: ${req.body.type} (${(req.body.records || []).length} records)`
+  });
+  await audit.save();
   const { type, records } = req.body;
   if (!type || !records || !Array.isArray(records)) {
     return res.status(400).json({ message: 'Invalid confirm parameters' });
@@ -1847,7 +1977,15 @@ app.post('/api/import/confirm', catchAsync(async (req, res) => {
 }));
 
 // 4. DOWNLOAD FULL BACKUP ZIP API
-app.get('/api/backup/download', catchAsync(async (req, res) => {
+app.get('/api/backup/download', requireAdmin, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: `Downloaded database backup ZIP`
+  });
+  await audit.save();
   const products = await Product.find({});
   const onlineSales = await OnlineSale.find({});
   const offlineSales = await OfflineSale.find({});
@@ -1880,7 +2018,15 @@ app.get('/api/backup/download', catchAsync(async (req, res) => {
 }));
 
 // 5. GET LAST BACKUP STATUS API
-app.get('/api/backup/status', catchAsync(async (req, res) => {
+app.get('/api/backup/status', requireAdmin, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: `Accessed Admin Control Center`
+  });
+  await audit.save();
   const log = await Setting.findOne({ key: 'last_backup' });
   if (log) {
     return res.json({
@@ -1892,7 +2038,15 @@ app.get('/api/backup/status', catchAsync(async (req, res) => {
 }));
 
 // 6. RESTORE COMPLETE DATABASE FROM ZIP
-app.post('/api/backup/restore', catchAsync(async (req, res) => {
+app.post('/api/backup/restore', requireAdmin, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: `Restored database from ZIP backup`
+  });
+  await audit.save();
   const { zipBase64 } = req.body;
   if (!zipBase64) {
     return res.status(400).json({ message: 'No backup zip file data provided' });

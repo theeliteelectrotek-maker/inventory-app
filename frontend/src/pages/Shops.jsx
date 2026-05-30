@@ -7,8 +7,9 @@ import {
   BarChart3, Calendar, FileText
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLocation } from 'react-router-dom';
 
-const empty = { name: '', type: 'shop', address: '', mobile: '', notes: '' };
+const empty = { name: '', type: 'shop', ownerName: '', mobile: '', address: '', gstNumber: '', notes: '' };
 
 function Modal({ title, onClose, children }) {
   return (
@@ -84,7 +85,9 @@ const parseNotes = (notesStr) => {
 
 export default function Shops() {
   const { user } = useAuth();
+  const location = useLocation();
   const [shops, setShops] = useState([]);
+  
   const [offlineSales, setOfflineSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -93,6 +96,16 @@ export default function Shops() {
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const phoneValidation = form.mobile ? (() => {
+    const num = form.mobile;
+    const isDigits = /^\d+$/.test(num);
+    const hasError = num.length > 0 && (!isDigits || num.length !== 10);
+    return {
+      error: hasError ? "Phone number must contain exactly 10 digits" : "",
+      isValid: !hasError
+    };
+  })() : { error: "", isValid: true };
 
   // Selected shop for drawer
   const [selectedShop, setSelectedShop] = useState(null);
@@ -114,7 +127,12 @@ export default function Shops() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    if (location.state?.openAddModal) {
+      openAdd();
+    }
+  }, [location.state]);
 
   // Update selectedShop data in drawer when shops state updates
   useEffect(() => {
@@ -127,7 +145,20 @@ export default function Shops() {
   }, [shops]);
 
   function openAdd() { setForm(empty); setEditing(null); setError(''); setShowModal(true); }
-  function openEdit(s) { setForm({ name: s.name, type: s.type || 'shop', address: s.address || '', mobile: s.mobile || '', notes: s.notes || '' }); setEditing(s); setError(''); setShowModal(true); }
+  function openEdit(s) { 
+    setForm({ 
+      name: s.name, 
+      type: s.type || 'shop', 
+      ownerName: s.ownerName || '',
+      mobile: s.mobile || '', 
+      address: s.address || '', 
+      gstNumber: s.gstNumber || '',
+      notes: s.notes || '' 
+    }); 
+    setEditing(s); 
+    setError(''); 
+    setShowModal(true); 
+  }
 
   async function handleDelete(id, e) {
     if (e) e.stopPropagation();
@@ -144,8 +175,10 @@ export default function Shops() {
       const payload = {
         name: form.name,
         type: form.type || 'shop',
+        ownerName: form.type === 'shop' ? (form.ownerName || '') : '',
         mobile: form.mobile || '',
         address: form.address || '',
+        gstNumber: form.type === 'shop' ? (form.gstNumber || '') : '',
         notes: form.notes || ''
       };
       if (editing) {
@@ -251,7 +284,11 @@ export default function Shops() {
       (s.address && s.address.toLowerCase().includes(search.toLowerCase()));
 
     let matchFilter = true;
-    if (stockFilter === 'highRisk') {
+    if (stockFilter === 'shop') {
+      matchFilter = s.type === 'shop';
+    } else if (stockFilter === 'individual') {
+      matchFilter = s.type === 'individual' || s.type === 'walk-in';
+    } else if (stockFilter === 'highRisk') {
       matchFilter = s.health === 'High Risk';
     } else if (stockFilter === 'top10') {
       const top10Ids = [...shopsWithStats]
@@ -330,11 +367,11 @@ export default function Shops() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Shop Management</h1>
+          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Customer Management</h1>
           <p className="text-slate-500 text-sm mt-1">Audit customer accounts, lifetime revenues, invoice recoveries, and customer health status</p>
         </div>
         <button onClick={openAdd} className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg self-start">
-          <Plus size={16} /> Add New Shop
+          <Plus size={16} /> Add New Customer
         </button>
       </div>
 
@@ -527,7 +564,9 @@ export default function Shops() {
           {/* CRM Filter Pills */}
           <div className="flex gap-1 bg-slate-100 rounded-xl p-1 overflow-x-auto scrollbar-none max-w-full">
             {[
-              { id: 'all', label: 'Shop Accounts' },
+              { id: 'all', label: 'All Customers' },
+              { id: 'shop', label: '🏪 Shops' },
+              { id: 'individual', label: '👤 Individuals' },
               { id: 'highRisk', label: 'High Risk Dues' },
               { id: 'top10', label: 'Top 10 Billed' },
               { id: 'longPending', label: 'Long Overdue Dues (>10d)' }
@@ -582,10 +621,10 @@ export default function Shops() {
                           <div className="space-y-0.5 truncate max-w-[180px]">
                             <div className="flex items-center gap-1.5">
                               <p className="font-bold text-slate-700 truncate">{s.name}</p>
-                              {s.type === 'walk-in' ? (
-                                <span className="text-[9px] px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded">👤 Walk-in</span>
+                              {s.type === 'shop' ? (
+                                <span className="text-[9px] px-1.5 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-lg font-bold">🏪 Shop</span>
                               ) : (
-                                <span className="text-[9px] px-1.5 py-0.2 bg-emerald-50 text-emerald-600 rounded">🏪 Shop</span>
+                                <span className="text-[9px] px-1.5 py-0.5 bg-orange-50 border border-orange-100 text-orange-600 rounded-lg font-bold">👤 Individual</span>
                               )}
                             </div>
                             <span className="text-[9px] text-slate-400 font-semibold bg-slate-50 px-1.5 py-0.5 rounded-full inline-block truncate max-w-[160px]">
@@ -632,7 +671,7 @@ export default function Shops() {
                           <button onClick={() => openEdit(s)} title="Edit General Info" className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors">
                             <Pencil size={13} />
                           </button>
-                          <button onClick={(e) => handleDelete(s.id, e)} disabled={user?.role === 'employee'} title="Delete" className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                          <button onClick={(e) => handleDelete(s.id, e)} disabled={user?.role === 'EMPLOYEE'} title="Delete" className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -660,10 +699,10 @@ export default function Shops() {
                   <h3 className="text-lg font-black text-slate-800">{selectedShop.name}</h3>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[10px] text-slate-400 font-medium">Shop ID: {selectedShop.id.slice(0, 8)}</span>
-                    {selectedShop.type === 'walk-in' ? (
-                      <span className="px-2 py-0.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">👤 Walk-in Customer</span>
+                    {selectedShop.type === 'shop' ? (
+                      <span className="px-2 py-0.5 rounded-xl text-xs font-bold bg-indigo-50 border border-indigo-100 text-indigo-700">🏪 Shop</span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">🏪 Shop</span>
+                      <span className="px-2 py-0.5 rounded-xl text-xs font-bold bg-orange-50 border border-orange-100 text-orange-700">👤 Individual</span>
                     )}
                     {healthBadge(selectedShop.health)}
                   </div>
@@ -719,6 +758,22 @@ export default function Shops() {
                 <div className="space-y-6">
                   {/* General Info cards */}
                   <div className="grid grid-cols-2 gap-4 text-xs">
+                    {selectedShop.type === 'shop' && (
+                      <>
+                        <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
+                          <p className="font-bold text-slate-400 uppercase tracking-wide">Owner Name</p>
+                          <p className="font-extrabold text-slate-700 text-sm">
+                            {selectedShop.ownerName || '—'}
+                          </p>
+                        </div>
+                        <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
+                          <p className="font-bold text-slate-400 uppercase tracking-wide">GST Number</p>
+                          <p className="font-extrabold text-slate-700 text-sm uppercase">
+                            {selectedShop.gstNumber || '—'}
+                          </p>
+                        </div>
+                      </>
+                    )}
                     <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
                       <p className="font-bold text-slate-400 uppercase tracking-wide">Contact Phone</p>
                       <p className="font-extrabold text-slate-700 text-sm flex items-center gap-1.5">
@@ -726,7 +781,9 @@ export default function Shops() {
                       </p>
                     </div>
                     <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
-                      <p className="font-bold text-slate-400 uppercase tracking-wide">Shop Location</p>
+                      <p className="font-bold text-slate-400 uppercase tracking-wide">
+                        {selectedShop.type === 'shop' ? 'Shop Location' : 'Address'}
+                      </p>
                       <p className="font-extrabold text-slate-700 text-sm flex items-center gap-1.5 truncate" title={selectedShop.address}>
                         <MapPin size={13} className="text-slate-400 flex-shrink-0" /> {selectedShop.address || '—'}
                       </p>
@@ -916,15 +973,9 @@ export default function Shops() {
 
       {/* Add / Edit Shop Modal */}
       {showModal && (
-        <Modal title={editing ? 'Edit Shop Ledger Info' : 'Register New Shop Account'} onClose={() => setShowModal(false)}>
+        <Modal title={editing ? 'Edit Customer Info' : 'Register New Customer Account'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex flex-col gap-3.5 text-xs">
-              <div className="space-y-1.5">
-                <label className="block font-bold text-slate-500 uppercase tracking-wide">Shop Name *</label>
-                <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. Sharma Electronics" />
-              </div>
-
               <div className="space-y-1.5">
                 <label className="block font-bold text-slate-500 uppercase tracking-wide">Customer Type *</label>
                 <select 
@@ -934,25 +985,85 @@ export default function Shops() {
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white font-medium text-slate-700"
                 >
                   <option value="shop">🏪 Shop</option>
-                  <option value="walk-in">👤 Walk-in Customer</option>
+                  <option value="individual">👤 Individual Customer</option>
                 </select>
               </div>
-              
-              <div className="space-y-1.5">
-                <label className="block font-bold text-slate-500 uppercase tracking-wide">Mobile Number</label>
-                <input value={form.mobile} onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. 9876543210" />
-              </div>
 
-              <div className="space-y-1.5">
-                <label className="block font-bold text-slate-500 uppercase tracking-wide">Shop Address</label>
-                <textarea rows={2} value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" placeholder="e.g. 12, Market Road, Delhi" />
-              </div>
+              {form.type === 'shop' ? (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Shop Name *</label>
+                    <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. Sharma Electronics" />
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Owner Name</label>
+                    <input value={form.ownerName || ''} onChange={(e) => setForm((f) => ({ ...f, ownerName: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. Ramesh Sharma" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Mobile Number</label>
+                    <input value={form.mobile} onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
+                      className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 ${
+                        phoneValidation.error 
+                          ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50/10' 
+                          : 'border-slate-200 focus:ring-red-500'
+                      }`} 
+                      placeholder="e.g. 9876543210" 
+                    />
+                    {phoneValidation.error && (
+                      <p className="text-[11px] font-semibold text-red-500">{phoneValidation.error}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Shop Address</label>
+                    <textarea rows={2} value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" placeholder="e.g. 12, Market Road, Delhi" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-500 uppercase tracking-wide">GST Number (Optional)</label>
+                    <input value={form.gstNumber || ''} onChange={(e) => setForm((f) => ({ ...f, gstNumber: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. 07AAAAA1111A1Z1" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Customer Name *</label>
+                    <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. Ramesh Kumar" />
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Mobile Number</label>
+                    <input value={form.mobile} onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
+                      className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 ${
+                        phoneValidation.error 
+                          ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50/10' 
+                          : 'border-slate-200 focus:ring-red-500'
+                      }`} 
+                      placeholder="e.g. 9876543210" 
+                    />
+                    {phoneValidation.error && (
+                      <p className="text-[11px] font-semibold text-red-500">{phoneValidation.error}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Address (Optional)</label>
+                    <textarea rows={2} value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" placeholder="e.g. 12, Market Road, Delhi" />
+                  </div>
+                </>
+              )}
 
               <div className="space-y-1.5">
                 <label className="block font-bold text-slate-500 uppercase tracking-wide">Initial Profile Notes</label>
-                <textarea rows={3} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                <textarea rows={2} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" placeholder="Optional background details, credit terms..." />
               </div>
             </div>
@@ -961,7 +1072,7 @@ export default function Shops() {
             
             <div className="flex gap-4 pt-3 border-t border-slate-100">
               <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
-              <button type="submit" disabled={saving} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
+              <button type="submit" disabled={saving || !phoneValidation.isValid} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
                 {saving && <Loader2 size={16} className="animate-spin" />}
                 {editing ? 'Update' : 'Register Account'}
               </button>

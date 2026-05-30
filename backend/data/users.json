@@ -4,8 +4,8 @@
       "id": "1",
       "username": "admin",
       "password": "admin@123",
-      "name": "Admin",
-      "role": "admin",
+      "name": "Shiva Sharma",
+      "role": "ADMIN",
       "createdAt": "2024-01-01T00:00:00.000Z"
     },
     {
@@ -13,15 +13,15 @@
       "username": "karan",
       "password": "karantee@123",
       "name": "Karan",
-      "role": "employee",
+      "role": "EMPLOYEE",
       "createdAt": "2024-01-01T00:00:00.000Z"
     },
     {
       "id": "3",
       "username": "vikash",
       "password": "vikashtee@123",
-      "name": "Vikash",
-      "role": "employee",
+      "name": "Vikas",
+      "role": "EMPLOYEE",
       "createdAt": "2024-01-01T00:00:00.000Z"
     }
   ]

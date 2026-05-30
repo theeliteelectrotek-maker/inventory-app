@@ -21,8 +21,50 @@ function ProtectedRoute({ children }) {
 
 function AdminRoute({ children }) {
   const { user, loading } = useAuth();
+  const [redirect, setRedirect] = React.useState(false);
+  const [seconds, setSeconds] = React.useState(3);
+
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'admin' || user?.username === 'admin';
+
+  React.useEffect(() => {
+    if (!loading && (!user || !isAdmin)) {
+      const interval = setInterval(() => {
+        setSeconds((s) => s - 1);
+      }, 1000);
+      const timeout = setTimeout(() => {
+        setRedirect(true);
+      }, 3000);
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [user, loading, isAdmin]);
+
   if (loading) return <div className="flex items-center justify-center h-screen text-slate-500">Loading…</div>;
-  if (!user || user.role !== 'admin') return <Navigate to="/" replace />;
+
+  if (!user || !isAdmin) {
+    if (redirect) {
+      return <Navigate to="/" replace />;
+    }
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-slate-50 text-slate-700 px-6">
+        <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-xl border border-slate-200/80 text-center space-y-4">
+          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+            ⚠️
+          </div>
+          <h2 className="text-xl font-black text-slate-800">Access Denied</h2>
+          <p className="text-sm font-semibold text-slate-500">
+            Access Denied. Administrator privileges required.
+          </p>
+          <div className="text-xs font-medium text-slate-400">
+            Redirecting to Dashboard in {seconds} seconds...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return children;
 }
 

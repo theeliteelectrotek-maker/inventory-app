@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import SearchableSelect from '../components/SearchableSelect';
+import { useLocation } from 'react-router-dom';
 
 const PLATFORMS = ['amazon', 'flipkart', 'meesho', 'shop'];
 
@@ -114,6 +115,7 @@ function ProductThumbnail({ name }) {
 
 export default function Returns() {
   const { user } = useAuth();
+  const location = useLocation();
   const [returns, setReturns] = useState([]);
   const [products, setProducts] = useState([]);
   const [shops, setShops] = useState([]);
@@ -147,10 +149,16 @@ export default function Returns() {
         setReturns(r.reverse()); 
         setProducts(p); 
         setShops(s); 
+        if (location.state?.openAddModal) {
+          setForm(emptyForm());
+          setEditingReturn(null);
+          setError('');
+          setShowModal(true);
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [location.state]);
 
   // Helper to calculate recovery and loss values
   const getReturnValues = (r) => {
@@ -527,12 +535,14 @@ export default function Returns() {
           >
             <PlusCircle size={14} /> Bulk Return
           </button>
-          <button 
-            onClick={handleExportCSV}
-            className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold px-4.5 py-3 rounded-2xl transition-all shadow-sm hover:shadow-md"
-          >
-            <Download size={14} className="text-slate-500" /> Export Report
-          </button>
+          {(user?.role === 'ADMIN' || user?.role === 'admin' || user?.username === 'admin') && (
+            <button 
+              onClick={handleExportCSV}
+              className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold px-4.5 py-3 rounded-2xl transition-all shadow-sm hover:shadow-md"
+            >
+              <Download size={14} className="text-slate-500" /> Export Report
+            </button>
+          )}
         </div>
       </div>
 
@@ -980,7 +990,7 @@ export default function Returns() {
 
                               <button 
                                 onClick={() => handleDelete(r.id)}
-                                disabled={user?.role === 'employee'}
+                                disabled={user?.role === 'EMPLOYEE'}
                                 className="w-full px-4 py-2.5 hover:bg-rose-100 hover:text-red-700 text-red-600 transition-colors text-left flex items-center gap-2 border-t border-slate-50 disabled:opacity-40"
                               >
                                 <Trash size={12} /> Delete Record

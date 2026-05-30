@@ -58,7 +58,7 @@ export const api = {
   getStats: () => request('GET', '/stats'),
 
   // Analytics
-  getAnalytics: (startDate, endDate) => request('GET', `/analytics?startDate=${startDate}&endDate=${endDate}`),
+  getAnalytics: (startDate, endDate, customerType = 'all') => request('GET', `/analytics?startDate=${startDate}&endDate=${endDate}&customerType=${customerType}`),
 
   // Backup & Restore
   getBackupStatus: () => request('GET', '/backup/status'),
@@ -67,5 +67,8 @@ export const api = {
   // Import Center
   importPreview: (fileBase64, type) => request('POST', '/import/preview', { fileBase64, type }),
   importConfirm: (type, records) => request('POST', '/import/confirm', { type, records }),
+
+  // Admin Logs
+  logAdminAction: (action) => request('POST', '/admin/log-action', { action }),
 };
 

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import SearchableSelect from '../components/SearchableSelect';
+import { useLocation } from 'react-router-dom';
 
 const emptyItem = { productId: '', qty: '', amount: '' };
 const today = () => {
@@ -131,12 +132,22 @@ function Modal({ title, onClose, children }) {
 
 export default function OfflineSales() {
   const { user } = useAuth();
+  const location = useLocation();
   const [sales, setSales] = useState([]);
   const [products, setProducts] = useState([]);
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [customerCategory, setCustomerCategory] = useState('shop');
+  const [customerCategory, setCustomerCategory] = useState('existing_shop');
+  const [newShopName, setNewShopName] = useState('');
+  const [newShopOwner, setNewShopOwner] = useState('');
+  const [newShopMobile, setNewShopMobile] = useState('');
+  const [newShopAddress, setNewShopAddress] = useState('');
+  const [newShopGst, setNewShopGst] = useState('');
+
+  const [newIndName, setNewIndName] = useState('');
+  const [newIndMobile, setNewIndMobile] = useState('');
+  const [newIndAddress, setNewIndAddress] = useState('');
   const [walkInName, setWalkInName] = useState('');
   const [walkInMobile, setWalkInMobile] = useState('');
   const [editModal, setEditModal] = useState(null);
@@ -302,7 +313,29 @@ export default function OfflineSales() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }
-  useEffect(load, []);
+  function openLogInvoiceModal() {
+    setForm(emptyForm);
+    setCustomerCategory('existing_shop');
+    setWalkInName('');
+    setWalkInMobile('');
+    setNewShopName('');
+    setNewShopOwner('');
+    setNewShopMobile('');
+    setNewShopAddress('');
+    setNewShopGst('');
+    setNewIndName('');
+    setNewIndMobile('');
+    setNewIndAddress('');
+    setError('');
+    setShowModal(true);
+  }
+
+  useEffect(() => {
+    load();
+    if (location.state?.openAddModal) {
+      openLogInvoiceModal();
+    }
+  }, [location.state]);
 
   // ── Add-form order handlers ────────────────────────────────
   function setOrderDate(oi, date) {
@@ -483,23 +516,70 @@ export default function OfflineSales() {
     );
     if (allItems.length === 0) { setError('Add at least one product.'); return; }
     
-    let finalBuyerName = form.buyerName;
-    let finalNotes = form.notes;
-    
-    if (customerCategory === 'walk-in') {
-      finalBuyerName = walkInName.trim() || 'Walk-in Customer';
-      if (walkInMobile.trim()) {
-        finalNotes = `[Mobile: ${walkInMobile.trim()}] ${form.notes}`.trim();
-      }
-    } else {
-      if (!finalBuyerName) {
-        setError('Please select a customer shop.');
-        return;
-      }
-    }
-
     setSaving(true); setError('');
     try {
+      let finalBuyerName = form.buyerName;
+      let finalNotes = form.notes;
+      if (customerCategory === 'existing_shop') {
+        if (!finalBuyerName) {
+          setError('Please select a customer shop.');
+          setSaving(false);
+          return;
+        }
+      } else if (customerCategory === 'existing_individual') {
+        if (!finalBuyerName) {
+          setError('Please select a registered individual customer.');
+          setSaving(false);
+          return;
+        }
+      } else if (customerCategory === 'new_shop') {
+        if (!newShopName.trim()) {
+          setError('Shop name is required.');
+          setSaving(false);
+          return;
+        }
+        if (newShopMobile.trim() && (!/^\d+$/.test(newShopMobile.trim()) || newShopMobile.trim().length !== 10)) {
+          setError('Phone number must contain exactly 10 digits');
+          setSaving(false);
+          return;
+        }
+        const createdShop = await api.addShop({
+          name: newShopName.trim(),
+          type: 'shop',
+          ownerName: newShopOwner.trim(),
+          mobile: newShopMobile.trim(),
+          address: newShopAddress.trim(),
+          gstNumber: newShopGst.trim(),
+          notes: 'Created inline from Offline Sales'
+        });
+        setShops((prev) => [...prev, createdShop]);
+        finalBuyerName = createdShop.name;
+      } else if (customerCategory === 'new_individual') {
+        if (!newIndName.trim()) {
+          setError('Customer name is required.');
+          setSaving(false);
+          return;
+        }
+        if (newIndMobile.trim() && (!/^\d+$/.test(newIndMobile.trim()) || newIndMobile.trim().length !== 10)) {
+          setError('Phone number must contain exactly 10 digits');
+          setSaving(false);
+          return;
+        }
+        const createdInd = await api.addShop({
+          name: newIndName.trim(),
+          type: 'individual',
+          mobile: newIndMobile.trim(),
+          address: newIndAddress.trim(),
+          notes: 'Created inline from Offline Sales'
+        });
+        setShops((prev) => [...prev, createdInd]);
+        finalBuyerName = createdInd.name;
+      } else if (customerCategory === 'walk-in') {
+        finalBuyerName = walkInName.trim() || 'Walk-in Customer';
+        if (walkInMobile.trim()) {
+          finalNotes = `[Mobile: ${walkInMobile.trim()}] ${form.notes}`.trim();
+        }
+      }
       const validTxns = form.transactions.filter((t) => t.amount);
       const payload = {
         buyerName: finalBuyerName, items: allItems, totalAmount: computedTotal,
@@ -695,17 +775,17 @@ export default function OfflineSales() {
   // Render Customer Type Badge
   const renderCustomerBadge = (buyerName) => {
     const type = shopMap[buyerName];
-    const isWalkIn = type === 'walk-in' || buyerName === 'Walk-in Customer' || buyerName.toLowerCase().includes('walk-in');
+    const isInd = type === 'individual' || type === 'walk-in' || buyerName === 'Walk-in Customer' || buyerName.toLowerCase().includes('walk-in');
     
-    if (isWalkIn) {
+    if (isInd) {
       return (
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200/50">
-          👤 Walk-in Customer
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-100">
+          👤 Individual
         </span>
       );
     } else {
       return (
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-150">
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
           🏪 Shop
         </span>
       );
@@ -761,7 +841,7 @@ export default function OfflineSales() {
           </h1>
           <p className="text-slate-400 text-xs mt-0.5">Manage customer billing, invoices, payment history, and collection metrics.</p>
         </div>
-        <button onClick={() => { setForm(emptyForm); setCustomerCategory('shop'); setWalkInName(''); setWalkInMobile(''); setError(''); setShowModal(true); }}
+        <button onClick={openLogInvoiceModal}
           className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-sm font-semibold px-5 py-3 rounded-2xl transition-all shadow-md shadow-red-500/10 hover:shadow-lg hover:-translate-y-0.5 whitespace-nowrap">
           <Plus size={16} /> Log New Invoice
         </button>
@@ -1212,7 +1292,7 @@ export default function OfflineSales() {
                             className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors shadow-sm bg-white">
                             <Edit2 size={12} /> Edit Billing
                           </button>
-                          <button onClick={() => handleDelete(s.id)} disabled={user?.role === 'employee'} 
+                          <button onClick={() => handleDelete(s.id)} disabled={user?.role === 'EMPLOYEE'} 
                             className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-150 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
                             <Trash2 size={12} /> Void Invoice
                           </button>
@@ -1235,15 +1315,15 @@ export default function OfflineSales() {
             <div className="space-y-3 bg-slate-50/50 p-4 border border-slate-200/50 rounded-2xl">
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Customer Category</label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => {
-                      setCustomerCategory('shop');
+                      setCustomerCategory('existing_shop');
                       setForm((f) => ({ ...f, buyerName: '' }));
                     }}
-                    className={`py-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                      customerCategory === 'shop'
+                    className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
+                      customerCategory === 'existing_shop'
                         ? 'bg-red-600 text-white border-red-600 shadow-sm'
                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                     }`}
@@ -1253,36 +1333,97 @@ export default function OfflineSales() {
                   <button
                     type="button"
                     onClick={() => {
+                      setCustomerCategory('existing_individual');
+                      setForm((f) => ({ ...f, buyerName: '' }));
+                    }}
+                    className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
+                      customerCategory === 'existing_individual'
+                        ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    👤 Existing Individual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       setCustomerCategory('walk-in');
                       setForm((f) => ({ ...f, buyerName: 'Walk-in Customer' }));
                     }}
-                    className={`py-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
                       customerCategory === 'walk-in'
                         ? 'bg-red-600 text-white border-red-600 shadow-sm'
                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                     }`}
                   >
-                    👤 Walk-in Customer
+                    👤 Walk-in
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomerCategory('new_shop');
+                      setForm((f) => ({ ...f, buyerName: '' }));
+                    }}
+                    className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
+                      customerCategory === 'new_shop'
+                        ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    🏪 + New Shop
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomerCategory('new_individual');
+                      setForm((f) => ({ ...f, buyerName: '' }));
+                    }}
+                    className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
+                      customerCategory === 'new_individual'
+                        ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    👤 + New Individual
                   </button>
                 </div>
               </div>
 
-              {customerCategory === 'shop' ? (
+              {customerCategory === 'existing_shop' && (
                 <div className="space-y-1 pt-1">
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Select Registered Shop *</label>
                   <select 
-                    required={customerCategory === 'shop'} 
+                    required={customerCategory === 'existing_shop'} 
                     value={form.buyerName} 
                     onChange={(e) => setForm((f) => ({ ...f, buyerName: e.target.value }))}
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 font-medium text-slate-700 bg-white"
                   >
                     <option value="">Select customer shop…</option>
-                    {shops.map((s) => (
+                    {shops.filter((s) => s.type === 'shop').map((s) => (
                       <option key={s.id} value={s.name}>{s.name}{s.mobile ? ` — ${s.mobile}` : ''}</option>
                     ))}
                   </select>
                 </div>
-              ) : (
+              )}
+
+              {customerCategory === 'existing_individual' && (
+                <div className="space-y-1 pt-1">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Select Registered Individual *</label>
+                  <select 
+                    required={customerCategory === 'existing_individual'} 
+                    value={form.buyerName} 
+                    onChange={(e) => setForm((f) => ({ ...f, buyerName: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 font-medium text-slate-700 bg-white"
+                  >
+                    <option value="">Select registered individual…</option>
+                    {shops.filter((s) => s.type === 'individual' || s.type === 'walk-in').map((s) => (
+                      <option key={s.id} value={s.name}>{s.name}{s.mobile ? ` — ${s.mobile}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {customerCategory === 'walk-in' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Customer Name (Optional)</label>
@@ -1302,6 +1443,100 @@ export default function OfflineSales() {
                       onChange={(e) => setWalkInMobile(e.target.value)}
                       placeholder="e.g. 9988776655"
                       className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {customerCategory === 'new_shop' && (
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Shop Name *</label>
+                    <input 
+                      type="text"
+                      required={customerCategory === 'new_shop'}
+                      value={newShopName}
+                      onChange={(e) => setNewShopName(e.target.value)}
+                      placeholder="e.g. Sharma Electronics"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Owner Name</label>
+                      <input 
+                        type="text"
+                        value={newShopOwner}
+                        onChange={(e) => setNewShopOwner(e.target.value)}
+                        placeholder="e.g. Ramesh Sharma"
+                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Mobile Number</label>
+                      <input 
+                        type="text"
+                        value={newShopMobile}
+                        onChange={(e) => setNewShopMobile(e.target.value)}
+                        placeholder="e.g. 9876543210"
+                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Shop Address</label>
+                    <textarea 
+                      rows={2}
+                      value={newShopAddress}
+                      onChange={(e) => setNewShopAddress(e.target.value)}
+                      placeholder="e.g. 12, Market Road, Delhi"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white resize-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">GST Number (Optional)</label>
+                    <input 
+                      type="text"
+                      value={newShopGst}
+                      onChange={(e) => setNewShopGst(e.target.value)}
+                      placeholder="e.g. 07AAAAA1111A1Z1"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {customerCategory === 'new_individual' && (
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Customer Name *</label>
+                    <input 
+                      type="text"
+                      required={customerCategory === 'new_individual'}
+                      value={newIndName}
+                      onChange={(e) => setNewIndName(e.target.value)}
+                      placeholder="e.g. Ramesh Kumar"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Mobile Number</label>
+                    <input 
+                      type="text"
+                      value={newIndMobile}
+                      onChange={(e) => setNewIndMobile(e.target.value)}
+                      placeholder="e.g. 9876543210"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Address (Optional)</label>
+                    <textarea 
+                      rows={2}
+                      value={newIndAddress}
+                      onChange={(e) => setNewIndAddress(e.target.value)}
+                      placeholder="e.g. 12, Market Road, Delhi"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white resize-none"
                     />
                   </div>
                 </div>
@@ -1599,7 +1834,7 @@ export default function OfflineSales() {
               </div>
 
               {/* Admin Receipt Audit History */}
-              {user?.role === 'admin' && (
+              {(user?.role === 'ADMIN' || user?.role === 'admin' || user?.username === 'admin') && (
                 <div className="space-y-2 pt-4 border-t border-slate-100">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <Clock size={12} className="text-blue-500" /> Receipt Audit Trail (Admin Only)

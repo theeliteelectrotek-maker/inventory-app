@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true },
   password: { type: String, required: true },
   name: { type: String, required: true },
-  role: { type: String, default: 'user' },
+  role: { type: String, default: 'EMPLOYEE' },
   createdAt: { type: String, default: () => new Date().toISOString() }
 });
 const User = mongoose.model('User', userSchema);
@@ -97,6 +97,8 @@ const shopSchema = new mongoose.Schema({
   mobile: { type: String, default: '' },
   notes: { type: String, default: '' },
   type: { type: String, enum: ['shop', 'individual', 'walk-in'], default: 'shop' },
+  ownerName: { type: String, default: '' },
+  gstNumber: { type: String, default: '' },
   createdAt: { type: String, default: () => new Date().toISOString() },
   updatedAt: { type: String, default: () => new Date().toISOString() }
 });
@@ -126,6 +128,15 @@ const settingSchema = new mongoose.Schema({
 }, { timestamps: true });
 const Setting = mongoose.model('Setting', settingSchema);
 
+// Audit Log Model
+const auditLogSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  user: { type: String, required: true },
+  time: { type: String, required: true },
+  action: { type: String, required: true }
+}, { timestamps: true });
+const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+
 module.exports = {
   User,
   Product,
@@ -133,6 +144,7 @@ module.exports = {
   OfflineSale,
   Shop,
   Return,
-  Setting
+  Setting,
+  AuditLog
 };
 

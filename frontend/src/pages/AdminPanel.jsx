@@ -56,6 +56,7 @@ export default function AdminPanel() {
 
   useEffect(() => {
     fetchBackupStatus();
+    api.logAdminAction('Accessed Admin Control Center').catch(err => console.error(err));
   }, []);
 
   async function fetchBackupStatus() {

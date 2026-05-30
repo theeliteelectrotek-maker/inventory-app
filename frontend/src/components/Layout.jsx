@@ -12,7 +12,7 @@ const nav = [
   { to: '/analytics', label: 'Business Analytics', icon: BarChart3 },
   { to: '/products', label: 'Products', icon: Package },
   { to: '/online-sales', label: 'Online Sales', icon: ShoppingCart },
-  { to: '/shops', label: 'Shops', icon: Building2 },
+  { to: '/shops', label: 'Customer Management', icon: Building2 },
   { to: '/offline-sales', label: 'Offline Sales', icon: Store },
   { to: '/returns', label: 'Returns', icon: Undo2 },
 ];
@@ -28,7 +28,8 @@ export default function Layout() {
   }
 
   const allowedNav = [...nav];
-  if (user?.role === 'admin') {
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'admin' || user?.username === 'admin';
+  if (isAdmin) {
     allowedNav.push({ to: '/admin', label: 'Admin Panel', icon: Database });
   }
 

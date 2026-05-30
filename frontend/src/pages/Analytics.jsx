@@ -456,6 +456,7 @@ export default function Analytics() {
   const [preset, setPreset] = useState('30days');
   const [customStart, setCustomStart] = useState(getTodayStr(-29));
   const [customEnd, setCustomEnd] = useState(getTodayStr());
+  const [customerType, setCustomerType] = useState('all'); // 'all' | 'shop' | 'individual'
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -477,7 +478,7 @@ export default function Analytics() {
     setError('');
     try {
       const range = activeRange();
-      const res = await api.getAnalytics(range.start, range.end);
+      const res = await api.getAnalytics(range.start, range.end, customerType);
       setAnalytics(res);
     } catch (err) {
       setError(err.message || 'Failed to load business analytics.');
@@ -488,7 +489,7 @@ export default function Analytics() {
 
   useEffect(() => {
     fetchAnalytics();
-  }, [preset, customStart, customEnd]);
+  }, [preset, customStart, customEnd, customerType]);
 
   // Format currency helper
   const fmt = (val) => {
@@ -591,23 +592,39 @@ export default function Analytics() {
             <div className="space-y-6 animate-fadeIn">
               {/* Date Filters Header bar */}
               <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Calendar size={14} /> Period filters:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {PRESETS.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setPreset(p.id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                        preset === p.id 
-                          ? 'bg-red-600 text-white shadow-sm' 
-                          : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-4 flex-wrap">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar size={14} /> Period filters:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {PRESETS.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => setPreset(p.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                          preset === p.id 
+                            ? 'bg-red-600 text-white shadow-sm' 
+                            : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Customer Type Dropdown Filter */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Customer Type:</span>
+                  <select
+                    value={customerType}
+                    onChange={(e) => setCustomerType(e.target.value)}
+                    className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-500 font-bold text-slate-700"
+                  >
+                    <option value="all">👥 All Customers</option>
+                    <option value="shop">🏪 Shops Only</option>
+                    <option value="individual">👤 Individuals Only</option>
+                  </select>
                 </div>
               </div>
 

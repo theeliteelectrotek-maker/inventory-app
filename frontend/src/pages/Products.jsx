@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { api } from '../api';
 import { 
   Plus, Pencil, Trash2, Search, X, Loader2, Package, 
@@ -50,6 +51,7 @@ function ProductThumbnail({ productName }) {
 
 export default function Products() {
   const { user } = useAuth();
+  const location = useLocation();
   const [products, setProducts] = useState([]);
   const [onlineSales, setOnlineSales] = useState([]);
   const [offlineSales, setOfflineSales] = useState([]);
@@ -76,7 +78,12 @@ export default function Products() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    if (location.state?.openAddModal) {
+      openAdd();
+    }
+  }, [location.state]);
 
   function openAdd() { setForm(empty); setEditing(null); setError(''); setShowModal(true); }
   function openEdit(p) {
@@ -616,7 +623,7 @@ export default function Products() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all"><Pencil size={13} /></button>
-                          <button onClick={() => handleDelete(p.id)} disabled={user?.role === 'employee'} className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"><Trash2 size={13} /></button>
+                          <button onClick={() => handleDelete(p.id)} disabled={user?.role === 'EMPLOYEE'} className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"><Trash2 size={13} /></button>
                         </div>
                       </td>
                     </tr>
