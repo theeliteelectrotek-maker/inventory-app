@@ -38,27 +38,27 @@ export default function SearchableSelect({ options, value, onChange, placeholder
       )}
 
       <div
-        className="flex items-center justify-between w-full h-[42px] px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white cursor-pointer focus-within:ring-2 focus-within:ring-red-500"
+        className="flex items-center justify-between w-full h-[42px] px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] cursor-pointer focus-within:ring-2 focus-within:ring-red-500"
         onClick={() => {
           setIsOpen(!isOpen);
           if (!isOpen) setSearch('');
         }}
       >
-        <span className={`truncate mr-2 ${selectedOption ? 'text-slate-800' : 'text-slate-400'}`}>
+        <span className={`truncate mr-2 ${selectedOption ? 'text-slate-800 dark:text-[#F8FAFC]' : 'text-slate-400 dark:text-[#94A3B8]'}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown size={15} className="text-slate-400 shrink-0" />
       </div>
 
       {isOpen && (
-        <div className="absolute z-[60] mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 flex flex-col overflow-hidden min-w-full w-[598px]">
-          <div className="p-2 border-b border-slate-100 shrink-0">
+        <div className="absolute z-[60] mt-1 bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-[#334155] rounded-xl shadow-lg max-h-60 flex flex-col overflow-hidden min-w-full w-[598px]">
+          <div className="p-2 border-b border-slate-100 dark:border-[#334155] shrink-0">
             <div className="relative">
               <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 autoFocus
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-[#334155] rounded-lg text-sm text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500"
                 placeholder="Search..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -75,12 +75,12 @@ export default function SearchableSelect({ options, value, onChange, placeholder
           </div>
           <div className="overflow-y-auto">
             {filteredOptions.length === 0 ? (
-              <div className="p-3 text-sm text-center text-slate-500">No results found</div>
+              <div className="p-3 text-sm text-center text-slate-500 dark:text-[#94A3B8]">No results found</div>
             ) : (
               filteredOptions.map((opt) => (
                 <div
                   key={opt.value}
-                  className={`px-3 py-2 text-sm cursor-pointer whitespace-nowrap hover:bg-slate-50 ${String(value) === String(opt.value) ? 'bg-red-50 text-red-600 font-medium' : 'text-slate-700'}`}
+                  className={`px-3 py-2 text-sm cursor-pointer whitespace-nowrap hover:bg-slate-50 dark:hover:bg-[#334155] ${String(value) === String(opt.value) ? 'bg-red-50 dark:bg-red-950/40 text-red-600 font-medium' : 'text-slate-700 dark:text-[#CBD5E1]'}`}
                   onClick={() => {
                     onChange(opt.value);
                     setIsOpen(false);

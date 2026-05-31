@@ -297,34 +297,34 @@ export default function AdminPanel() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         
         {/* ================= SECTION 1: DATA EXPORT CENTER ================= */}
-        <section className="bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-md border border-slate-200/60 flex flex-col space-y-6">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="p-2.5 bg-red-50 text-red-600 rounded-xl">
+        <section className="bg-white/95 dark:bg-[#1E293B]/95 backdrop-blur-md rounded-3xl p-6 shadow-md border border-slate-200/60 dark:border-[#334155]/60 flex flex-col space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-[#334155] pb-4">
+            <div className="p-2.5 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-xl">
               <Download size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-extrabold text-slate-800">Export Center</h2>
-              <p className="text-xs text-slate-400 font-semibold">Generate structured reports and ledgers</p>
+              <h2 className="text-lg font-extrabold text-slate-800 dark:text-[#F8FAFC]">Export Center</h2>
+              <p className="text-xs text-slate-400 dark:text-[#94A3B8] font-semibold">Generate structured reports and ledgers</p>
             </div>
           </div>
 
           <form onSubmit={handleExport} className="space-y-4 flex-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               {/* Category */}
               <div className="space-y-2">
                 <label className="block">Dataset Category</label>
                 <select
                   value={exportType}
                   onChange={(e) => setExportType(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-700 capitalize focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all shadow-sm"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-[#334155] rounded-2xl text-sm font-semibold text-slate-700 dark:text-[#F8FAFC] capitalize focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white dark:focus:bg-[#0F172A] transition-all shadow-sm"
                 >
-                  <option value="products">Products list</option>
-                  <option value="shops">Shops & customers</option>
-                  <option value="online-sales">Online sales</option>
-                  <option value="offline-sales">Offline sales</option>
-                  <option value="returns">Product returns</option>
-                  <option value="pending-dues">Pending payments ledger</option>
-                  <option value="all">Full backup bundle</option>
+                  <option value="products" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">Products list</option>
+                  <option value="shops" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">Shops & customers</option>
+                  <option value="online-sales" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">Online sales</option>
+                  <option value="offline-sales" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">Offline sales</option>
+                  <option value="returns" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">Product returns</option>
+                  <option value="pending-dues" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">Pending payments ledger</option>
+                  <option value="all" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">Full backup bundle</option>
                 </select>
               </div>
 
@@ -334,17 +334,17 @@ export default function AdminPanel() {
                 <select
                   value={exportFormat}
                   onChange={(e) => setExportFormat(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all shadow-sm"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-[#334155] rounded-2xl text-sm font-semibold text-slate-700 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white dark:focus:bg-[#0F172A] transition-all shadow-sm"
                 >
-                  <option value="xlsx">Excel (.xlsx)</option>
-                  <option value="csv">CSV Sheet</option>
-                  <option value="pdf">PDF Report</option>
+                  <option value="xlsx" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">Excel (.xlsx)</option>
+                  <option value="csv" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">CSV Sheet</option>
+                  <option value="pdf" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">PDF Report</option>
                 </select>
               </div>
             </div>
 
             {/* Date Range Selection */}
-            <div className="space-y-2 text-xs font-bold text-slate-500 uppercase tracking-wider pt-2">
+            <div className="space-y-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pt-2">
               <label className="block">Scope & Date Range Filter</label>
               <div className="grid grid-cols-3 gap-2">
                 {['all', 'month', 'custom'].map((mode) => (
@@ -354,8 +354,8 @@ export default function AdminPanel() {
                     onClick={() => setExportRange(mode)}
                     className={`py-2 px-3 rounded-xl border text-[11px] font-bold transition-all shadow-sm ${
                       exportRange === mode
-                        ? 'bg-red-600 border-red-600 text-white'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                        ? 'bg-red-650 dark:bg-red-500 border-red-600 dark:border-red-500 text-white'
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-[#334155] text-slate-600 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-slate-700'
                     }`}
                   >
                     {mode === 'all' && 'All Time'}
@@ -373,7 +373,7 @@ export default function AdminPanel() {
                     required
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all shadow-sm"
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-[#334155] rounded-2xl text-sm font-semibold text-slate-700 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white dark:focus:bg-[#0F172A] transition-all shadow-sm"
                   />
                 </div>
               )}
@@ -381,23 +381,23 @@ export default function AdminPanel() {
               {exportRange === 'custom' && (
                 <div className="grid grid-cols-2 gap-3 pt-2 animate-fadeIn">
                   <div className="space-y-1">
-                    <span className="text-[10px] uppercase font-bold text-slate-400">Start Date</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">Start Date</span>
                     <input
                       type="date"
                       required
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all shadow-sm"
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-[#334155] rounded-xl text-sm font-semibold text-slate-700 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white dark:focus:bg-[#0F172A] transition-all shadow-sm"
                     />
                   </div>
                   <div className="space-y-1">
-                    <span className="text-[10px] uppercase font-bold text-slate-400">End Date</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">End Date</span>
                     <input
                       type="date"
                       required
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all shadow-sm"
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-[#334155] rounded-xl text-sm font-semibold text-slate-700 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white dark:focus:bg-[#0F172A] transition-all shadow-sm"
                     />
                   </div>
                 </div>
@@ -427,56 +427,56 @@ export default function AdminPanel() {
         </section>
 
         {/* ================= SECTION 2: SYSTEM BACKUP & RESTORE ================= */}
-        <section className="bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-md border border-slate-200/60 flex flex-col space-y-6">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+        <section className="bg-white/95 dark:bg-[#1E293B]/95 backdrop-blur-md rounded-3xl p-6 shadow-md border border-slate-200/60 dark:border-[#334155]/60 flex flex-col space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-[#334155] pb-4">
+            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-xl">
               <Database size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-extrabold text-slate-800">System Backup & Restore</h2>
-              <p className="text-xs text-slate-400 font-semibold">Checkpoint and restore the entire database</p>
+              <h2 className="text-lg font-extrabold text-slate-800 dark:text-[#F8FAFC]">System Backup & Restore</h2>
+              <p className="text-xs text-slate-400 dark:text-[#94A3B8] font-semibold">Checkpoint and restore the entire database</p>
             </div>
           </div>
 
           <div className="space-y-6 flex-1 flex flex-col justify-between">
             {/* Status Cards */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 relative overflow-hidden group">
-                <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Last Backup Generated</span>
-                <p className="text-xs font-bold text-slate-700 mt-1">
+              <div className="bg-slate-50 dark:bg-[#0F172A] rounded-2xl p-4 border border-slate-100 dark:border-[#334155] relative overflow-hidden group">
+                <span className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-500 tracking-wider">Last Backup Generated</span>
+                <p className="text-xs font-bold text-slate-700 dark:text-[#F8FAFC] mt-1">
                   {loadingStatus ? 'Checking...' : formatTime(backupStatus.lastBackupDate)}
                 </p>
-                <Clock size={40} className="absolute -right-4 -bottom-4 text-slate-200/50 group-hover:scale-110 transition-transform duration-300" />
+                <Clock size={40} className="absolute -right-4 -bottom-4 text-slate-200/50 dark:text-slate-800/10 group-hover:scale-110 transition-transform duration-300" />
               </div>
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 relative overflow-hidden group">
-                <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Backup File Size</span>
-                <p className="text-xs font-bold text-slate-700 mt-1">
+              <div className="bg-slate-50 dark:bg-[#0F172A] rounded-2xl p-4 border border-slate-100 dark:border-[#334155] relative overflow-hidden group">
+                <span className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-500 tracking-wider">Backup File Size</span>
+                <p className="text-xs font-bold text-slate-700 dark:text-[#F8FAFC] mt-1">
                   {loadingStatus ? 'Checking...' : formatBytes(backupStatus.backupSize)}
                 </p>
-                <FileSpreadsheet size={40} className="absolute -right-4 -bottom-4 text-slate-200/50 group-hover:scale-110 transition-transform duration-300" />
+                <FileSpreadsheet size={40} className="absolute -right-4 -bottom-4 text-slate-200/50 dark:text-slate-800/10 group-hover:scale-110 transition-transform duration-300" />
               </div>
             </div>
 
             {/* DANGER RESTORE BOX */}
-            <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 space-y-3.5">
-              <div className="flex items-center gap-2 text-rose-800 font-extrabold text-xs uppercase tracking-wider">
+            <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl p-4 space-y-3.5">
+              <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-extrabold text-xs uppercase tracking-wider">
                 <AlertTriangle size={15} className="text-rose-600 animate-pulse" /> DANGER ZONE: Database Restore
               </div>
-              <p className="text-[11px] text-rose-700 font-medium leading-relaxed">
+              <p className="text-[11px] text-rose-700 dark:text-rose-455 font-medium leading-relaxed">
                 Restoring database from ZIP will erase all current records and load backup data. Ensure you have downloaded a copy before restoring!
               </p>
               
               <div className="flex gap-2">
                 <label className="flex-1">
-                  <span className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 bg-white border border-rose-200 hover:bg-rose-100 cursor-pointer text-rose-700 rounded-xl text-xs font-bold transition-all text-center">
+                  <span className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 bg-white dark:bg-[#1E293B] border border-rose-200 dark:border-rose-900/40 hover:bg-rose-105 dark:hover:bg-rose-900/30 cursor-pointer text-rose-705 dark:text-rose-300 rounded-xl text-xs font-bold transition-all text-center">
                     <Upload size={13} />
                     {restoreFileName ? restoreFileName.slice(0, 20) + '...' : 'Select ZIP File'}
                   </span>
                   <input
-                    type="file"
-                    accept=".zip"
-                    onChange={handleRestoreFileChange}
-                    className="hidden"
+                     type="file"
+                     accept=".zip"
+                     onChange={handleRestoreFileChange}
+                     className="hidden"
                   />
                 </label>
 
@@ -518,19 +518,19 @@ export default function AdminPanel() {
       </div>
 
       {/* ================= SECTION 3: INTERACTIVE IMPORT WIZARD ================= */}
-      <section className="bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-md border border-slate-200/60 space-y-6">
-        <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-          <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+      <section className="bg-white/95 dark:bg-[#1E293B]/95 backdrop-blur-md rounded-3xl p-6 shadow-md border border-slate-200/60 dark:border-[#334155]/60 space-y-6">
+        <div className="flex items-center gap-3 border-b border-slate-100 dark:border-[#334155] pb-4">
+          <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-455 rounded-xl">
             <Upload size={20} />
           </div>
           <div>
-            <h2 className="text-lg font-extrabold text-slate-800">Interactive Import Wizard</h2>
-            <p className="text-xs text-slate-400 font-semibold">Bulk upload Excel or CSV files with real-time pre-validation preview</p>
+            <h2 className="text-lg font-extrabold text-slate-800 dark:text-[#F8FAFC]">Interactive Import Wizard</h2>
+            <p className="text-xs text-slate-400 dark:text-[#94A3B8] font-semibold">Bulk upload Excel or CSV files with real-time pre-validation preview</p>
           </div>
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             {/* Import Category Selector */}
             <div className="space-y-2 md:col-span-1">
               <label className="block">Target Import Category</label>
@@ -542,20 +542,20 @@ export default function AdminPanel() {
                   setImportFile(null);
                   setImportFileName('');
                 }}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all shadow-sm"
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-[#334155] rounded-2xl text-sm font-semibold text-slate-700 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white dark:focus:bg-[#0F172A] transition-all shadow-sm"
               >
-                <option value="products">🆕 Products (Add / Overwrite)</option>
-                <option value="shops">🏪 Shops / Customer Ledgers</option>
-                <option value="price-lists">🏷️ Price Lists (Bulk Update Prices)</option>
-                <option value="inventory-stock">📦 Inventory Stock (Bulk Update Qty)</option>
+                <option value="products" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">🆕 Products (Add / Overwrite)</option>
+                <option value="shops" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">🏪 Shops / Customer Ledgers</option>
+                <option value="price-lists" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">🏷️ Price Lists (Bulk Update Prices)</option>
+                <option value="inventory-stock" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">📦 Inventory Stock (Bulk Update Qty)</option>
               </select>
             </div>
 
             {/* File Drag and Drop Zone */}
             <div className="md:col-span-2 space-y-2">
               <label className="block">Upload Spreadsheet (.xlsx, .csv)</label>
-              <label className="flex items-center gap-3 w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all shadow-sm">
-                <FileSpreadsheet size={18} className="text-slate-400" />
+              <label className="flex items-center gap-3 w-full px-4 py-2.5 bg-slate-50 dark:bg-[#0F172A] border border-slate-200 dark:border-[#334155] rounded-2xl cursor-pointer text-slate-600 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all shadow-sm">
+                <FileSpreadsheet size={18} className="text-slate-400 dark:text-slate-500" />
                 <span className="text-xs font-semibold truncate">
                   {importFileName ? importFileName : 'Select Spreadsheet File'}
                 </span>
@@ -571,21 +571,21 @@ export default function AdminPanel() {
 
           {/* Real-time Preview Validation Table */}
           {loadingPreview && (
-            <div className="flex flex-col items-center justify-center py-12 text-slate-400 text-xs font-semibold space-y-2">
-              <RefreshCw size={24} className="animate-spin text-red-500" />
+            <div className="flex flex-col items-center justify-center py-12 text-slate-400 dark:text-[#94A3B8] text-xs font-semibold space-y-2">
+              <RefreshCw size={24} className="animate-spin text-red-505" />
               <span>Analyzing spreadsheet rows and querying duplicates...</span>
             </div>
           )}
 
           {previewError && (
-            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-xs font-semibold flex items-center gap-2">
+            <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-2xl text-red-650 dark:text-red-400 text-xs font-semibold flex items-center gap-2">
               <AlertTriangle size={16} />
               {previewError}
             </div>
           )}
 
           {importSuccessMsg && (
-            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-800 text-xs font-bold flex items-center gap-2 shadow-sm">
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl text-emerald-800 dark:text-emerald-400 text-xs font-bold flex items-center gap-2 shadow-sm">
               <CheckCircle2 size={16} className="text-emerald-500" />
               {importSuccessMsg}
             </div>
@@ -593,25 +593,25 @@ export default function AdminPanel() {
 
           {previewData && (
             <div className="space-y-4 pt-2 animate-fadeIn">
-              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 rounded-2xl p-4 border border-slate-100 text-xs font-semibold">
-                <div className="flex gap-4">
-                  <span className="flex items-center gap-1"><Info size={14} className="text-slate-400" /> Total Rows: {previewData.rows?.length || 0}</span>
-                  <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 size={14} /> Valid: {previewData.rows?.filter(r => r.errors.length === 0).length || 0}</span>
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 dark:bg-[#0F172A] rounded-2xl p-4 border border-slate-100 dark:border-[#334155] text-xs font-semibold">
+                <div className="flex gap-4 text-slate-600 dark:text-slate-300">
+                  <span className="flex items-center gap-1"><Info size={14} className="text-slate-400 dark:text-slate-550" /> Total Rows: {previewData.rows?.length || 0}</span>
+                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-450"><CheckCircle2 size={14} /> Valid: {previewData.rows?.filter(r => r.errors.length === 0).length || 0}</span>
                   <span className="flex items-center gap-1 text-red-500"><AlertTriangle size={14} /> Errors: {previewData.rows?.filter(r => r.errors.length > 0).length || 0}</span>
                 </div>
                 <div className="text-[11px] text-slate-400">
                   {previewData.isValid ? (
-                    <span className="text-emerald-600 font-extrabold">✓ Spreadsheet Validated</span>
+                    <span className="text-emerald-600 dark:text-emerald-450 font-extrabold">✓ Spreadsheet Validated</span>
                   ) : (
-                    <span className="text-rose-500 font-extrabold">⚠️ Contains Validation Errors</span>
+                    <span className="text-rose-500 dark:text-rose-400 font-extrabold">⚠️ Contains Validation Errors</span>
                   )}
                 </div>
               </div>
 
               {/* Table Data Preview */}
-              <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-[300px] overflow-y-auto text-xs">
+              <div className="border border-slate-200 dark:border-[#334155] rounded-2xl overflow-hidden max-h-[300px] overflow-y-auto text-xs">
                 <table className="w-full text-left">
-                  <thead className="bg-slate-50 text-slate-500 uppercase text-[9px] font-extrabold border-b sticky top-0">
+                  <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-[#CBD5E1] uppercase text-[9px] font-extrabold border-b dark:border-b-[#334155] sticky top-0">
                     <tr>
                       <th className="px-4 py-2.5 w-12 text-center">Row</th>
                       <th className="px-4 py-2.5">Identifier / Name</th>
@@ -619,31 +619,31 @@ export default function AdminPanel() {
                       <th className="px-4 py-2.5">Validation details</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  <tbody className="divide-y divide-slate-100 dark:divide-[#334155] font-medium text-slate-700 dark:text-[#CBD5E1] bg-white dark:bg-[#1E293B]">
                     {previewData.rows.map((row) => (
-                      <tr key={row.index} className={`hover:bg-slate-50/50 ${row.errors.length > 0 ? 'bg-red-50/20' : (row.isDuplicate ? 'bg-amber-50/20' : '')}`}>
+                      <tr key={row.index} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/50 ${row.errors.length > 0 ? 'bg-red-50/20 dark:bg-red-950/20' : (row.isDuplicate ? 'bg-amber-50/20 dark:bg-amber-950/20' : '')}`}>
                         <td className="px-4 py-3 text-center text-slate-400">{row.index}</td>
-                        <td className="px-4 py-3 font-semibold text-slate-800">
+                        <td className="px-4 py-3 font-semibold text-slate-800 dark:text-[#F8FAFC]">
                           {row.data.name || row.data.sku || 'N/A'}
                         </td>
-                        <td className="px-4 py-3 font-mono text-[10px] text-slate-500">
+                        <td className="px-4 py-3 font-mono text-[10px] text-slate-500 dark:text-slate-400">
                           {Object.entries(row.data)
                             .filter(([key]) => key !== 'name' && key !== 'sku')
                             .map(([key, val]) => `${key}: ${val}`).join(' | ') || 'No secondary fields'}
                         </td>
                         <td className="px-4 py-3 space-y-1">
                           {row.errors.map((e, i) => (
-                            <span key={i} className="inline-block bg-red-50 text-red-600 border border-red-100 rounded-full px-2.5 py-0.5 text-[9px] font-extrabold uppercase">
+                            <span key={i} className="inline-block bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/40 rounded-full px-2.5 py-0.5 text-[9px] font-extrabold uppercase">
                               {e}
                             </span>
                           ))}
                           {row.warnings.map((w, i) => (
-                            <span key={i} className="inline-block bg-amber-50 text-amber-600 border border-amber-100 rounded-full px-2.5 py-0.5 text-[9px] font-extrabold">
+                            <span key={i} className="inline-block bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/40 rounded-full px-2.5 py-0.5 text-[9px] font-extrabold">
                               {w}
                             </span>
                           ))}
                           {row.errors.length === 0 && row.warnings.length === 0 && (
-                            <span className="inline-block bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full px-2.5 py-0.5 text-[9px] font-extrabold">
+                            <span className="inline-block bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450 border border-emerald-100 dark:border-emerald-900/40 rounded-full px-2.5 py-0.5 text-[9px] font-extrabold">
                               ✓ Row Valid
                             </span>
                           )}
@@ -663,7 +663,7 @@ export default function AdminPanel() {
                     setImportFile(null);
                     setImportFileName('');
                   }}
-                  className="flex-1 py-3 border border-slate-200 rounded-2xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition-all text-center"
+                  className="flex-1 py-3 border border-slate-200 dark:border-[#334155] rounded-2xl text-xs font-bold text-slate-500 dark:text-[#CBD5E1] hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-center"
                 >
                   Clear Import
                 </button>
@@ -694,43 +694,43 @@ export default function AdminPanel() {
       {/* DANGER OVERWRITE RESTORE WARNING MODAL */}
       {showRestoreModal && (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-scaleUp space-y-6">
+          <div className="bg-white dark:bg-[#1E293B] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-[#334155] animate-scaleUp space-y-6">
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-red-100 text-red-600 rounded-2xl shrink-0">
+              <div className="p-3 bg-red-100 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-2xl shrink-0">
                 <AlertOctagon size={28} />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-black text-slate-800">Restore Complete Database</h3>
-                <p className="text-xs text-slate-400 font-semibold">WARNING: Irreversible Database Overwrite</p>
+                <h3 className="text-lg font-black text-slate-800 dark:text-[#F8FAFC]">Restore Complete Database</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold">WARNING: Irreversible Database Overwrite</p>
               </div>
             </div>
 
             <div className="space-y-4">
-              <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                You are about to restore the database from <span className="font-extrabold text-slate-800">"{restoreFileName}"</span>.
+              <p className="text-xs text-slate-600 dark:text-[#CBD5E1] font-medium leading-relaxed">
+                You are about to restore the database from <span className="font-extrabold text-slate-800 dark:text-[#F8FAFC]">"{restoreFileName}"</span>.
                 This operation will <span className="text-red-600 font-extrabold">DELETE ALL CURRENT DATA</span> including active products, shop ledgers, sales records, returns history, and metadata.
               </p>
               
-              <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-[11px] text-red-700 font-bold space-y-1.5">
+              <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/40 rounded-2xl p-4 text-[11px] text-red-700 dark:text-red-400 font-bold space-y-1.5">
                 <p>⚠️ To confirm this destructive action, please type the confirmation code below:</p>
                 <div className="flex items-center gap-2 pt-1">
-                  <span className="bg-white border border-red-200 select-all font-mono px-2 py-0.5 rounded text-xs select-none">RESTORE</span>
+                  <span className="bg-white dark:bg-[#0F172A] border border-red-200 dark:border-red-900/40 select-all font-mono px-2 py-0.5 rounded text-xs select-none">RESTORE</span>
                   <input
                     type="text"
                     value={restoreConfirmText}
                     onChange={(e) => setRestoreConfirmText(e.target.value)}
                     placeholder="Type RESTORE"
-                    className="flex-1 px-3 py-1 bg-white border border-red-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-red-500 uppercase font-mono"
+                    className="flex-1 px-3 py-1 bg-white dark:bg-[#0F172A] border border-red-200 dark:border-red-900/40 rounded text-xs focus:outline-none focus:ring-1 focus:ring-red-500 uppercase font-mono text-slate-850 dark:text-[#F8FAFC]"
                   />
                 </div>
               </div>
 
               {restoreError && (
-                <p className="text-xs text-red-600 font-bold bg-red-50 px-3 py-2 rounded-xl border border-red-100">{restoreError}</p>
+                <p className="text-xs text-red-600 dark:text-red-400 font-bold bg-red-50 dark:bg-red-950/20 px-3 py-2 rounded-xl border border-red-100 dark:border-red-900/40">{restoreError}</p>
               )}
             </div>
 
-            <div className="flex gap-4 border-t border-slate-100 pt-4">
+            <div className="flex gap-4 border-t border-slate-100 dark:border-[#334155] pt-4">
               <button
                 type="button"
                 onClick={() => {
@@ -738,7 +738,7 @@ export default function AdminPanel() {
                   setRestoreConfirmText('');
                   setRestoreError('');
                 }}
-                className="flex-1 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 transition-all"
+                className="flex-1 py-3 border border-slate-200 dark:border-[#334155] rounded-xl text-xs font-bold text-slate-500 dark:text-[#CBD5E1] hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
               >
                 Cancel
               </button>
@@ -766,45 +766,45 @@ export default function AdminPanel() {
       )}
 
       {/* ================= SECTION 4: SYSTEM AUDIT TRAIL ================= */}
-      <section className="bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-md border border-slate-200/60 space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+      <section className="bg-white/95 dark:bg-[#1E293B]/95 backdrop-blur-md rounded-3xl p-6 shadow-md border border-slate-200/60 dark:border-[#334155]/60 space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#334155] pb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+            <div className="p-2.5 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 rounded-xl">
               <Clock size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-800">System Audit Trail</h2>
-              <p className="text-xs text-slate-400 font-semibold">Real-time log of administrative and employee actions</p>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-[#F8FAFC]">System Audit Trail</h2>
+              <p className="text-xs text-slate-400 dark:text-[#94A3B8] font-semibold">Real-time log of administrative and employee actions</p>
             </div>
           </div>
-          <button onClick={fetchAuditLogs} className="p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-700 rounded-xl transition-all border border-slate-200">
+          <button onClick={fetchAuditLogs} className="p-2 text-slate-400 dark:text-[#94A3B8] hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-[#F8FAFC] rounded-xl transition-all border border-slate-200 dark:border-[#334155]">
             <RefreshCw size={14} className={loadingAudit ? 'animate-spin' : ''} />
           </button>
         </div>
 
-        <div className="max-h-[300px] overflow-y-auto border border-slate-200 rounded-2xl shadow-sm">
+        <div className="max-h-[300px] overflow-y-auto border border-slate-200 dark:border-[#334155] rounded-2xl shadow-sm">
           {loadingAudit ? (
-            <div className="flex items-center justify-center py-16 text-slate-400"><RefreshCw size={24} className="animate-spin" /></div>
+            <div className="flex items-center justify-center py-16 text-slate-400 dark:text-slate-500"><RefreshCw size={24} className="animate-spin" /></div>
           ) : auditLogs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-slate-500">
               <Info size={36} className="mb-2 opacity-30" />
               <p className="text-xs font-semibold">No audit logs registered yet</p>
             </div>
           ) : (
             <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold sticky top-0 z-10">
+              <thead className="bg-slate-50 dark:bg-[#0F172A] border-b border-slate-200 dark:border-b-[#334155] text-slate-500 dark:text-[#94A3B8] uppercase font-bold sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-3 text-xs tracking-wider">Timestamp</th>
                   <th className="px-4 py-3 text-xs tracking-wider">User Account</th>
                   <th className="px-4 py-3 text-xs tracking-wider">Action Description</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white font-medium text-slate-600">
+              <tbody className="divide-y divide-slate-100 dark:divide-[#334155] bg-white dark:bg-[#1E293B] font-medium text-slate-650 dark:text-[#CBD5E1]">
                 {auditLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap text-xs font-mono">{formatTime(log.time)}</td>
-                    <td className="px-4 py-3 text-slate-700 font-bold whitespace-nowrap">{log.user}</td>
-                    <td className="px-4 py-3 text-slate-500 text-xs font-medium max-w-md truncate animate-pulse" title={log.action}>{log.action}</td>
+                  <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="px-4 py-3 text-slate-400 dark:text-slate-500 whitespace-nowrap text-xs font-mono">{formatTime(log.time)}</td>
+                    <td className="px-4 py-3 text-slate-700 dark:text-[#F8FAFC] font-bold whitespace-nowrap">{log.user}</td>
+                    <td className="px-4 py-3 text-slate-500 dark:text-[#CBD5E1] text-xs font-medium max-w-md truncate" title={log.action}>{log.action}</td>
                   </tr>
                 ))}
               </tbody>

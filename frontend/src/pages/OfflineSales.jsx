@@ -31,32 +31,32 @@ const METHOD_LABELS = {
 };
 
 const METHOD_COLORS = { 
-  cash: 'bg-emerald-50 text-emerald-700 border-emerald-100', 
-  upi: 'bg-blue-50 text-blue-700 border-blue-100',
-  bank_transfer: 'bg-sky-50 text-sky-700 border-sky-100',
-  cheque: 'bg-indigo-50 text-indigo-700 border-indigo-100'
+  cash: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-[#10B981] dark:border-emerald-900/50', 
+  upi: 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50',
+  bank_transfer: 'bg-sky-50 text-sky-700 border-sky-100 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-900/50',
+  cheque: 'bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50'
 };
 
 function TxnRow({ txn, onChange, onRemove }) {
   return (
-    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 sm:p-0 border border-slate-100 sm:border-0 rounded-2xl sm:rounded-none bg-slate-50/50 sm:bg-transparent relative">
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 sm:p-0 border border-slate-100 dark:border-[#1E293B] sm:border-0 rounded-2xl sm:rounded-none bg-slate-50/50 dark:bg-[#1E293B]/30 sm:bg-transparent relative">
       <div className="flex gap-3">
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">₹</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 dark:text-[#94A3B8]">₹</span>
           <input type="number" min="0" value={txn.amount} onChange={(e) => onChange('amount', e.target.value)}
-            className="w-full sm:w-36 pl-7 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white" placeholder="Amount" />
+            className="w-full sm:w-36 pl-7 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" placeholder="Amount" />
         </div>
         <select value={txn.method} onChange={(e) => onChange('method', e.target.value)}
-          className="w-full sm:w-32 px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white font-medium text-slate-700">
-          <option value="cash">💵 Cash</option>
-          <option value="upi">⚡ UPI</option>
+          className="w-full sm:w-32 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] font-medium text-slate-700 dark:text-[#CBD5E1]">
+          <option value="cash" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">💵 Cash</option>
+          <option value="upi" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">⚡ UPI</option>
         </select>
       </div>
       <div className="flex items-center gap-3 w-full">
         <input type="date" value={txn.date} onChange={(e) => onChange('date', e.target.value)}
-          className="flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white" />
+          className="flex-1 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" />
         <button type="button" onClick={onRemove}
-          className="p-2 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors flex-shrink-0">
+          className="p-2 rounded-xl text-slate-400 dark:text-[#94A3B8] hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 dark:hover:text-[#EF4444] transition-colors flex-shrink-0">
           <X size={16} />
         </button>
       </div>
@@ -67,7 +67,7 @@ function TxnRow({ txn, onChange, onRemove }) {
 function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange, onRemove, showRemove, isGst }) {
   const selProd = products.find((p) => p.id === item.productId);
   return (
-    <div className="space-y-2 p-4 sm:p-0 border border-slate-100 sm:border-0 rounded-2xl sm:rounded-none bg-slate-50/50 sm:bg-transparent">
+    <div className="space-y-2 p-4 sm:p-0 border border-slate-100 dark:border-[#1E293B] sm:border-0 rounded-2xl sm:rounded-none bg-slate-50/50 dark:bg-[#1E293B]/30 sm:bg-transparent">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="flex-1">
           <SearchableSelect
@@ -81,29 +81,29 @@ function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange,
         <div className="flex items-center gap-3">
           <input type="number" min="1" max={selProd?.availableQty || 9999} value={item.qty}
             onChange={(e) => onQtyChange(e.target.value)}
-            className="w-full sm:w-24 px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white text-center" placeholder="Qty" />
+            className="w-full sm:w-24 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC] text-center" placeholder="Qty" />
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">₹</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 dark:text-[#94A3B8]">₹</span>
             <input type="number" min="0" value={item.amount}
               onChange={(e) => onAmountChange(e.target.value)}
-              className="w-full sm:w-32 pl-7 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white" placeholder="Amount" />
+              className="w-full sm:w-32 pl-7 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" placeholder="Amount" />
           </div>
           {showRemove && (
             <button type="button" onClick={onRemove}
-              className="p-2 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors flex-shrink-0">
+              className="p-2 rounded-xl text-slate-400 dark:text-[#94A3B8] hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 dark:hover:text-[#EF4444] transition-colors flex-shrink-0">
               <X size={16} />
             </button>
           )}
         </div>
       </div>
       {selProd && (
-        <p className="text-xs text-slate-400 pl-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
+        <p className="text-xs text-slate-400 dark:text-[#94A3B8] pl-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-1 bg-slate-50 dark:bg-[#1E293B]/50 p-2 rounded-lg border border-slate-100 dark:border-[#334155]">
           <span>
-            📍 Stock: <span className="font-semibold text-slate-700">{selProd.availableQty} units</span>
-            &nbsp;· Base Price: <span className="font-semibold text-rose-600">₹{selProd.offlinePrice ?? selProd.unitPrice ?? 0}</span>
+            📍 Stock: <span className="font-semibold text-slate-700 dark:text-[#CBD5E1]">{selProd.availableQty} units</span>
+            &nbsp;· Base Price: <span className="font-semibold text-rose-600 dark:text-[#EF4444]">₹{selProd.offlinePrice ?? selProd.unitPrice ?? 0}</span>
           </span>
           {item.amount && (
-            <span className={`self-start sm:self-auto text-[10px] font-bold px-2 py-0.5 rounded-full border ${isGst ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+            <span className={`self-start sm:self-auto text-[10px] font-bold px-2 py-0.5 rounded-full border ${isGst ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-[#10B981] dark:border-emerald-900/50' : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-[#1E293B] dark:text-[#CBD5E1] dark:border-[#334155]'}`}>
               {isGst ? 'GST (18%) Included' : 'Excl. GST'}
             </span>
           )}
@@ -116,13 +116,13 @@ function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange,
 function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm !m-0 animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl w-[95%] sm:w-full max-w-2xl border border-slate-100 overflow-hidden transform transition-all scale-100">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span>
+      <div className="bg-white dark:bg-[#111827] rounded-3xl shadow-2xl w-[95%] sm:w-full max-w-2xl border border-slate-100 dark:border-[#1E293B] overflow-hidden transform transition-all scale-100">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-[#1E293B] bg-slate-50/50 dark:bg-[#1E293B]/30">
+          <h3 className="font-bold text-slate-800 dark:text-[#F8FAFC] text-base flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-600 dark:bg-[#EF4444]"></span>
             {title}
           </h3>
-          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition-colors"><X size={18} /></button>
+          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 dark:text-[#CBD5E1] hover:bg-slate-200/60 dark:hover:bg-[#1E293B] hover:text-slate-600 dark:hover:text-[#F8FAFC] transition-colors"><X size={18} /></button>
         </div>
         <div className="px-6 py-6 max-h-[75vh] overflow-y-auto">{children}</div>
       </div>
@@ -747,27 +747,27 @@ export default function OfflineSales() {
     if (s.amountLeft === 0) {
       return {
         label: 'Paid',
-        colorClass: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+        colorClass: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-[#10B981] dark:border-emerald-900/50',
         dotClass: 'bg-emerald-500'
       };
     }
     if (isOverdue) {
       return {
         label: 'Overdue',
-        colorClass: 'bg-rose-50 text-rose-800 border-rose-200 font-semibold animate-pulse',
+        colorClass: 'bg-rose-50 text-rose-850 border-rose-200 font-semibold animate-pulse dark:bg-rose-950/30 dark:text-[#EF4444] dark:border-rose-900/50',
         dotClass: 'bg-rose-600'
       };
     }
     if (s.amountReceived > 0) {
       return {
         label: 'Partial',
-        colorClass: 'bg-amber-50 text-amber-700 border-amber-200',
+        colorClass: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50',
         dotClass: 'bg-amber-500'
       };
     }
     return {
       label: 'Pending',
-      colorClass: 'bg-red-50 text-red-700 border-red-200',
+      colorClass: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-[#EF4444] dark:border-red-900/50',
       dotClass: 'bg-red-500'
     };
   };
@@ -779,13 +779,13 @@ export default function OfflineSales() {
     
     if (isInd) {
       return (
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-100">
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-100 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-900/50">
           👤 Individual
         </span>
       );
     } else {
       return (
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50">
           🏪 Shop
         </span>
       );
@@ -813,130 +813,131 @@ export default function OfflineSales() {
   return (
     <div className="space-y-6">
       {/* Main Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-[#1E293B]">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight flex items-center gap-2">
+            <span className="w-2.5 h-8 bg-red-650 dark:bg-[#EF4444] rounded-full"></span>
             Offline Sales Dashboard
           </h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium">Manage customer billing, invoices, payment history, and collection metrics.</p>
+          <p className="text-slate-500 dark:text-[#94A3B8] text-sm mt-1 font-medium">Manage customer billing, invoices, payment history, and collection metrics.</p>
         </div>
         <button onClick={openLogInvoiceModal}
-          className="flex items-center justify-center gap-2 bg-[#EF4444] hover:bg-red-600 text-white text-sm font-bold px-5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg hover:shadow-red-500/10 self-start">
+          className="flex items-center justify-center gap-2 bg-[#EF4444] hover:bg-red-600 text-white text-xs font-bold px-5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg hover:shadow-red-500/10 self-start">
           <Plus size={16} /> Log New Invoice
         </button>
       </div>
 
       {/* Business Insights Strip */}
-      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 grid grid-cols-2 md:grid-cols-5 gap-4 text-xs shadow-sm">
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-slate-50 dark:bg-[#1E293B] border border-slate-200 dark:border-[#334155] rounded-2xl p-4 grid grid-cols-2 md:grid-cols-5 gap-4 text-xs shadow-sm">
+        <div className="bg-white dark:bg-[#111827] p-3.5 rounded-xl border border-slate-200 dark:border-[#334155] hover:shadow-sm transition-all flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider flex items-center gap-1.5">
             <CalendarDays size={14} className="text-indigo-500" /> Today's Sales
           </span>
-          <span className="font-extrabold text-slate-900 text-base mt-2">{fmt(todaySalesVal)}</span>
+          <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-base mt-2">{fmt(todaySalesVal)}</span>
         </div>
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+        <div className="bg-white dark:bg-[#111827] p-3.5 rounded-xl border border-slate-200 dark:border-[#334155] hover:shadow-sm transition-all flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider flex items-center gap-1.5">
             <TrendingUp size={14} className="text-emerald-500" /> This Month
           </span>
-          <span className="font-extrabold text-slate-900 text-base mt-2">{fmt(thisMonthSalesVal)}</span>
+          <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-base mt-2">{fmt(thisMonthSalesVal)}</span>
         </div>
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+        <div className="bg-white dark:bg-[#111827] p-3.5 rounded-xl border border-slate-200 dark:border-[#334155] hover:shadow-sm transition-all flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider flex items-center gap-1.5">
             <AlertTriangle size={14} className="text-red-500" /> Total Outstanding
           </span>
-          <span className="font-extrabold text-red-600 text-base mt-2">{fmt(totalOutstandingDues)}</span>
+          <span className="font-extrabold text-red-600 dark:text-[#EF4444] text-base mt-2">{fmt(totalOutstandingDues)}</span>
         </div>
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all flex flex-col justify-between truncate">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+        <div className="bg-white dark:bg-[#111827] p-3.5 rounded-xl border border-slate-200 dark:border-[#334155] hover:shadow-sm transition-all flex flex-col justify-between truncate">
+          <span className="text-[11px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider flex items-center gap-1.5 truncate">
             <UserCheck size={14} className="text-sky-500" /> Top Customer
           </span>
-          <span className="font-extrabold text-slate-900 text-base mt-2 truncate" title={topCustomerName}>{topCustomerName}</span>
+          <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-base mt-2 truncate" title={topCustomerName}>{topCustomerName}</span>
         </div>
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all flex flex-col justify-between col-span-2 md:col-span-1">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+        <div className="bg-white dark:bg-[#111827] p-3.5 rounded-xl border border-slate-200 dark:border-[#334155] hover:shadow-sm transition-all flex flex-col justify-between col-span-2 md:col-span-1">
+          <span className="text-[11px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider flex items-center gap-1.5">
             <Percent size={14} className="text-violet-500" /> Avg Order Value
           </span>
-          <span className="font-extrabold text-slate-900 text-base mt-2">{fmt(avgOrderValue)}</span>
+          <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-base mt-2">{fmt(avgOrderValue)}</span>
         </div>
       </div>
 
       {/* KPI Header Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Revenue */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-indigo-500 hover:shadow-md transition-all flex flex-col justify-between h-36 relative overflow-hidden group">
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-indigo-500 dark:border-t-indigo-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Sales</span>
-            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 truncate" title={fmt(summaryRevenue)}>{fmt(summaryRevenue)}</p>
+            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Sales</span>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight mt-1 truncate" title={fmt(summaryRevenue)}>{fmt(summaryRevenue)}</p>
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-indigo-650 bg-indigo-50 px-2 py-0.5 rounded-lg inline-block">
+            <span className="text-[11px] font-semibold text-indigo-650 bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 rounded-lg inline-block">
               Sales aggregate
             </span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-[#1E293B] border border-indigo-100 dark:border-[#334155] text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
               <TrendingUp size={16} />
             </div>
           </div>
         </div>
 
         {/* Amount Received */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-emerald-500 hover:shadow-md transition-all flex flex-col justify-between h-36 relative overflow-hidden group">
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-emerald-500 dark:border-t-emerald-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Received</span>
-            <p className="text-3xl font-extrabold text-emerald-600 tracking-tight mt-1 truncate" title={fmt(summaryReceived)}>{fmt(summaryReceived)}</p>
+            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Received</span>
+            <p className="text-3xl font-extrabold text-emerald-600 dark:text-[#10B981] tracking-tight mt-1 truncate" title={fmt(summaryReceived)}>{fmt(summaryReceived)}</p>
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg inline-block">
+            <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-lg inline-block">
               Cleared collections
             </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-[#1E293B] border border-emerald-100 dark:border-[#334155] text-emerald-600 dark:text-[#10B981] flex items-center justify-center flex-shrink-0">
               <CheckCircle2 size={16} />
             </div>
           </div>
         </div>
 
         {/* Pending Amount */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-red-500 hover:shadow-md transition-all flex flex-col justify-between h-36 relative overflow-hidden group">
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-red-500 dark:border-t-red-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Pending Dues</span>
-            <p className="text-3xl font-extrabold text-red-600 tracking-tight mt-1 truncate" title={fmt(summaryPending)}>{fmt(summaryPending)}</p>
+            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Pending Dues</span>
+            <p className="text-3xl font-extrabold text-red-600 dark:text-[#EF4444] tracking-tight mt-1 truncate" title={fmt(summaryPending)}>{fmt(summaryPending)}</p>
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg inline-block">
+            <span className="text-[11px] font-semibold text-red-600 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded-lg inline-block">
               Awaiting collection
             </span>
-            <div className="w-8 h-8 rounded-lg bg-red-50 border border-red-100 text-red-500 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-[#1E293B] border border-red-100 dark:border-[#334155] text-red-500 dark:text-[#EF4444] flex items-center justify-center flex-shrink-0">
               <Clock size={16} />
             </div>
           </div>
         </div>
 
         {/* UPI Collection */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-blue-500 hover:shadow-md transition-all flex flex-col justify-between h-36 relative overflow-hidden group">
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-blue-500 dark:border-t-blue-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">UPI Payments</span>
-            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 truncate" title={fmt(summaryUpi)}>{fmt(summaryUpi)}</p>
+            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">UPI Payments</span>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight mt-1 truncate" title={fmt(summaryUpi)}>{fmt(summaryUpi)}</p>
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg inline-block">
+            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-lg inline-block">
               ⚡ Digital receipts
             </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-[#1E293B] border border-blue-100 dark:border-[#334155] text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
               <CreditCard size={16} />
             </div>
           </div>
         </div>
 
         {/* Cash Collection */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-violet-500 hover:shadow-md transition-all flex flex-col justify-between h-36 relative overflow-hidden group">
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-violet-500 dark:border-t-violet-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Cash Payments</span>
-            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 truncate" title={fmt(summaryCash)}>{fmt(summaryCash)}</p>
+            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Cash Payments</span>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight mt-1 truncate" title={fmt(summaryCash)}>{fmt(summaryCash)}</p>
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-lg inline-block">
-              💵 Store cash registers
+            <span className="text-[11px] font-semibold text-violet-600 bg-violet-50 dark:bg-violet-950/30 px-2 py-0.5 rounded-lg inline-block">
+              💵 Paper receipts
             </span>
-            <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-100 text-violet-650 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-[#1E293B] border border-violet-100 dark:border-[#334155] text-violet-600 dark:text-violet-400 flex items-center justify-center flex-shrink-0">
               <Wallet size={16} />
             </div>
           </div>
@@ -944,14 +945,14 @@ export default function OfflineSales() {
       </div>
 
       {/* Smart Filters Panel */}
-      <div className="bg-white/80 backdrop-blur-md border border-slate-200/50 p-6 rounded-3xl shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-white/80 dark:bg-[#111827]/80 backdrop-blur-md border border-slate-200/50 dark:border-[#1E293B]/50 p-6 rounded-3xl shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1E293B] pb-3">
+          <span className="text-xs font-bold text-slate-700 dark:text-[#CBD5E1] uppercase tracking-wider flex items-center gap-1.5">
             <Filter size={14} className="text-slate-400" /> Filter & Search Operations
           </span>
           {hasActiveFilters && (
             <button onClick={resetFilters}
-              className="text-[11px] font-bold text-red-500 hover:text-red-700 transition-colors flex items-center gap-1 bg-red-50 hover:bg-red-100/60 px-3 py-1 rounded-lg">
+              className="text-[11px] font-bold text-red-500 hover:text-red-700 transition-colors flex items-center gap-1 bg-red-50 dark:bg-red-950/30 hover:bg-red-100/60 dark:hover:bg-red-900/40 px-3 py-1 rounded-lg">
               <RefreshCw size={10} /> Reset Filters
             </button>
           )}
@@ -960,66 +961,66 @@ export default function OfflineSales() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Search Box */}
           <div className="space-y-1 md:col-span-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Search</label>
+            <label className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Search</label>
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by SKU, customer, or ID…"
-                className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50 hover:bg-white transition-colors" />
+                className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50 dark:bg-[#1E293B] hover:bg-white dark:hover:bg-[#1E293B]/80 text-slate-900 dark:text-[#F8FAFC] transition-colors" />
             </div>
           </div>
 
           {/* Payment Status Dropdown */}
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payment Status</label>
+            <label className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Payment Status</label>
             <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50 hover:bg-white transition-colors font-medium text-slate-700">
-              <option value="all">🟢 All Statuses</option>
-              <option value="paid">✅ Fully Paid</option>
-              <option value="partial">🟠 Partially Paid</option>
-              <option value="pending">🔴 Unpaid / Pending</option>
-              <option value="overdue">🚨 Overdue (&gt;10 Days)</option>
+              className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50 dark:bg-[#1E293B] hover:bg-white dark:hover:bg-[#1E293B]/80 transition-colors font-medium text-slate-700 dark:text-[#CBD5E1]">
+              <option value="all" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">🟢 All Statuses</option>
+              <option value="paid" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">✅ Fully Paid</option>
+              <option value="partial" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">🟠 Partially Paid</option>
+              <option value="pending" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">🔴 Unpaid / Pending</option>
+              <option value="overdue" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">🚨 Overdue (&gt;10 Days)</option>
             </select>
           </div>
 
           {/* Customer Dropdown */}
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Customer / Shop</label>
+            <label className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Customer / Shop</label>
             <select value={filterShop} onChange={(e) => setFilterShop(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50 hover:bg-white transition-colors font-medium text-slate-700">
-              <option value="all">👥 All Customers</option>
+              className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50 dark:bg-[#1E293B] hover:bg-white dark:hover:bg-[#1E293B]/80 transition-colors font-medium text-slate-700 dark:text-[#CBD5E1]">
+              <option value="all" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">👥 All Customers</option>
               {Array.from(new Set(sales.map(s => s.buyerName))).map(name => (
-                <option key={name} value={name}>{name}</option>
+                <option key={name} value={name} className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">{name}</option>
               ))}
             </select>
           </div>
 
           {/* Payment Method Dropdown */}
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payment Method</label>
+            <label className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Payment Method</label>
             <select value={filterMethod} onChange={(e) => setFilterMethod(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50 hover:bg-white transition-colors font-medium text-slate-700">
-              <option value="all">💳 All Methods</option>
-              <option value="upi">⚡ UPI Payment</option>
-              <option value="cash">💵 Cash Payment</option>
-              <option value="none">🛑 No Payments</option>
+              className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50 dark:bg-[#1E293B] hover:bg-white dark:hover:bg-[#1E293B]/80 transition-colors font-medium text-slate-700 dark:text-[#CBD5E1]">
+              <option value="all" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">💳 All Methods</option>
+              <option value="upi" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">⚡ UPI Payment</option>
+              <option value="cash" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">💵 Cash Payment</option>
+              <option value="none" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">🛑 No Payments</option>
             </select>
           </div>
         </div>
 
         {/* Date Range Sub-row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2 border-t border-slate-50">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2 border-t border-slate-100 dark:border-[#1E293B]">
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Start Date</label>
+            <label className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Start Date</label>
             <input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50 hover:bg-white transition-colors text-slate-600" />
+              className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50 dark:bg-[#1E293B] hover:bg-white dark:hover:bg-[#1E293B]/80 transition-colors text-slate-650 dark:text-[#CBD5E1]" />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">End Date</label>
+            <label className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">End Date</label>
             <input type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50 hover:bg-white transition-colors text-slate-600" />
+              className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50 dark:bg-[#1E293B] hover:bg-white dark:hover:bg-[#1E293B]/80 transition-colors text-slate-650 dark:text-[#CBD5E1]" />
           </div>
           {filtered.length !== sales.length && (
-            <div className="flex items-end justify-start pb-2.5 text-xs font-semibold text-indigo-600">
+            <div className="flex items-end justify-start pb-2.5 text-xs font-semibold text-indigo-650 dark:text-indigo-400">
               ⚡ Showing {filtered.length} of {sales.length} invoices matching filters.
             </div>
           )}
@@ -1059,30 +1060,30 @@ export default function OfflineSales() {
 
               return (
                 <div key={s.id} 
-                  className={`bg-white border rounded-3xl shadow-sm overflow-hidden hover:border-slate-300 transition-all duration-300 ${isExpanded ? 'ring-2 ring-red-500/20 border-red-200' : 'border-slate-100/80'}`}>
+                  className={`bg-white dark:bg-[#1E293B] border rounded-3xl shadow-sm overflow-hidden hover:border-slate-300 dark:hover:border-[#334155] transition-all duration-300 ${isExpanded ? 'ring-2 ring-red-500/20 border-red-200 dark:border-red-900/50' : 'border-slate-100/80 dark:border-[#334155]/80'}`}>
                   
                   {/* Collapsed Top Header row */}
                   <div 
                     onClick={() => toggleExpand(s.id)}
-                    className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 cursor-pointer select-none hover:bg-slate-50/30 transition-colors">
+                    className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 cursor-pointer select-none hover:bg-slate-50/30 dark:hover:bg-[#111827]/30 transition-colors">
                     
                     {/* Left block: Product & Date */}
                     <div className="flex items-start gap-3.5 flex-1 min-w-[280px]">
-                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex-shrink-0 text-slate-400 mt-1">
+                      <div className="p-3 bg-slate-50 dark:bg-[#111827] rounded-2xl border border-slate-100 dark:border-[#334155] flex-shrink-0 text-slate-400 dark:text-[#94A3B8] mt-1">
                         <FileText size={20} />
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-sm text-slate-800">
+                          <span className="font-extrabold text-sm text-slate-800 dark:text-[#F8FAFC]">
                             {s.items && s.items.length > 0
                               ? s.items[0].productName + (s.items.length > 1 ? ` (+${s.items.length - 1} products)` : '')
                               : s.productName || 'Unknown Product'}
                           </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200/30">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#111827] text-slate-500 dark:text-[#94A3B8] border border-slate-200/30 dark:border-[#334155]/30">
                             {totalQty(s)} units
                           </span>
                         </div>
-                        <p className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                        <p className="text-xs text-slate-400 dark:text-[#94A3B8] font-medium flex items-center gap-1">
                           <Calendar size={12} /> Date: {s.date}
                         </p>
                       </div>
@@ -1092,12 +1093,12 @@ export default function OfflineSales() {
                     <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[240px]">
                       <div className="space-y-1 w-full">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-extrabold text-sm text-slate-700">{s.buyerName}</span>
+                          <span className="font-extrabold text-sm text-slate-700 dark:text-[#CBD5E1]">{s.buyerName}</span>
                           {renderCustomerBadge(s.buyerName)}
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                           {s.gst && (
-                            <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold px-1.5 py-0.2 bg-emerald-50 text-emerald-700 border border-emerald-200/50 rounded">
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold px-1.5 py-0.2 bg-emerald-50 text-emerald-700 border border-emerald-200/50 rounded dark:bg-emerald-950/30 dark:text-[#10B981] dark:border-emerald-900/50">
                               GST 18%
                             </span>
                           )}
@@ -1108,7 +1109,7 @@ export default function OfflineSales() {
                               </span>
                             ))
                           ) : (
-                            <span className="text-[9px] font-bold px-2 py-0.2 rounded border bg-rose-50 text-rose-600 border-rose-100 uppercase">
+                            <span className="text-[9px] font-bold px-2 py-0.2 rounded border bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/30 dark:text-[#EF4444] dark:border-rose-900/50 uppercase">
                               Unpaid
                             </span>
                           )}
@@ -1117,19 +1118,19 @@ export default function OfflineSales() {
                     </div>
 
                     {/* Right block: Financial status pills & expansion toggle */}
-                    <div className="flex items-center justify-between lg:justify-end gap-5 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-50">
+                    <div className="flex items-center justify-between lg:justify-end gap-5 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-50 dark:border-[#334155]">
                       <div className="grid grid-cols-3 gap-4 text-right">
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Total</p>
-                          <p className="text-xs font-black text-slate-800 mt-0.5">{fmt(s.totalAmount)}</p>
+                          <p className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Total</p>
+                          <p className="text-xs font-black text-slate-800 dark:text-[#F8FAFC] mt-0.5">{fmt(s.totalAmount)}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Received</p>
-                          <p className="text-xs font-black text-emerald-600 mt-0.5">{fmt(s.amountReceived)}</p>
+                          <p className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Received</p>
+                          <p className="text-xs font-black text-emerald-600 dark:text-[#10B981] mt-0.5">{fmt(s.amountReceived)}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Pending</p>
-                          <p className={`text-xs font-black mt-0.5 ${s.amountLeft > 0 ? 'text-red-500' : 'text-slate-400'}`}>
+                          <p className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Pending</p>
+                          <p className={`text-xs font-black mt-0.5 ${s.amountLeft > 0 ? 'text-red-505 dark:text-[#EF4444]' : 'text-slate-400 dark:text-[#94A3B8]'}`}>
                             {fmt(s.amountLeft)}
                           </p>
                         </div>
@@ -1141,7 +1142,7 @@ export default function OfflineSales() {
                           {status.label}
                         </span>
                         
-                        <div className="text-slate-400 p-1.5 rounded-xl hover:bg-slate-100 transition-colors">
+                        <div className="text-slate-400 dark:text-[#94A3B8] p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-[#111827] transition-colors">
                           {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </div>
                       </div>
@@ -1150,25 +1151,25 @@ export default function OfflineSales() {
 
                   {/* Expanded detail section */}
                   {isExpanded && (
-                    <div className="px-5 pb-5 border-t border-slate-100 bg-slate-50/30 animate-fadeIn">
+                    <div className="px-5 pb-5 border-t border-slate-100 dark:border-[#334155] bg-slate-50/30 dark:bg-[#111827]/10 animate-fadeIn">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
                         
                         {/* Products list detail */}
-                        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <div className="bg-white dark:bg-[#1E293B] p-4 rounded-2xl border border-slate-100 dark:border-[#334155] shadow-sm space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider flex items-center gap-1.5">
                             <Store size={12} /> Itemized Order Details
                           </h4>
-                          <div className="divide-y divide-slate-50 max-h-[250px] overflow-y-auto pr-1">
+                          <div className="divide-y divide-slate-50 dark:divide-[#334155] max-h-[250px] overflow-y-auto pr-1">
                             {itemsList.map(([date, items]) => (
                               <div key={date} className="py-2.5 first:pt-0 last:pb-0">
-                                <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md">{date}</span>
+                                <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 rounded-md">{date}</span>
                                 <div className="mt-2 space-y-1.5">
                                   {items.map((item, i) => (
-                                    <div key={i} className="flex justify-between items-center text-xs text-slate-700">
-                                      <span className="font-semibold">{item.productName}</span>
-                                      <div className="space-x-3 text-slate-500 font-medium">
+                                    <div key={i} className="flex justify-between items-center text-xs text-slate-700 dark:text-[#CBD5E1]">
+                                      <span className="font-semibold text-slate-900 dark:text-[#F8FAFC]">{item.productName}</span>
+                                      <div className="space-x-3 text-slate-500 dark:text-[#94A3B8] font-medium">
                                         <span>×{item.qty} units</span>
-                                        <span className="text-slate-800 font-bold">{fmt(item.amount)}</span>
+                                        <span className="text-slate-800 dark:text-[#F8FAFC] font-bold">{fmt(item.amount)}</span>
                                       </div>
                                     </div>
                                   ))}
@@ -1179,11 +1180,11 @@ export default function OfflineSales() {
                         </div>
 
                         {/* Payment list detail */}
-                        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <div className="bg-white dark:bg-[#1E293B] p-4 rounded-2xl border border-slate-100 dark:border-[#334155] shadow-sm space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider flex items-center gap-1.5">
                             <Wallet size={12} /> Transaction Clearing History
                           </h4>
-                          <div className="divide-y divide-slate-50 max-h-[250px] overflow-y-auto pr-1">
+                          <div className="divide-y divide-slate-50 dark:divide-[#334155] max-h-[250px] overflow-y-auto pr-1">
                             {s.transactions && s.transactions.length > 0 ? (
                               s.transactions.map((t, idx) => {
                                 const txn = ensureTxnId(t);
@@ -1193,34 +1194,34 @@ export default function OfflineSales() {
                                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase ${METHOD_COLORS[txn.method] || 'bg-slate-100 text-slate-600'}`}>
                                         {METHOD_LABELS[txn.method] || txn.method}
                                       </span>
-                                      <span className="text-slate-400 font-medium">{txn.date}</span>
+                                      <span className="text-slate-400 dark:text-[#94A3B8] font-medium">{txn.date}</span>
                                       {txn.referenceNumber && (
-                                        <span className="text-[9px] text-slate-400 font-medium bg-slate-50 border px-1.5 py-0.2 rounded-md">
+                                        <span className="text-[9px] text-slate-400 dark:text-[#94A3B8] font-medium bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-[#334155] px-1.5 py-0.2 rounded-md">
                                           Ref: {txn.referenceNumber}
                                         </span>
                                       )}
                                     </div>
                                     <div className="flex items-center gap-3">
-                                      <span className="font-extrabold text-emerald-600">{fmt(txn.amount)}</span>
+                                      <span className="font-extrabold text-emerald-600 dark:text-[#10B981]">{fmt(txn.amount)}</span>
                                       <div className="flex items-center gap-1">
                                         <button 
                                           onClick={() => handleOpenEditReceipt(s, txn)}
                                           title="Edit Receipt"
-                                          className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                                          className="p-1 rounded-lg text-slate-400 dark:text-[#94A3B8] hover:bg-slate-100 dark:hover:bg-[#111827] hover:text-slate-800 dark:hover:text-[#F8FAFC] transition-colors"
                                         >
                                           <Edit2 size={12} />
                                         </button>
                                         <button 
                                           onClick={() => handleOpenDeleteReceipt(s, txn)}
                                           title="Delete Receipt"
-                                          className="p-1 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                                          className="p-1 rounded-lg text-slate-400 dark:text-[#94A3B8] hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-[#EF4444] transition-colors"
                                         >
                                           <Trash2 size={12} />
                                         </button>
                                         <button 
                                           onClick={() => handleViewReceiptHistory(s, txn.id)}
                                           title="View Receipt History"
-                                          className="p-1 rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                          className="p-1 rounded-lg text-slate-400 dark:text-[#94A3B8] hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                                         >
                                           <Clock size={12} />
                                         </button>
@@ -1230,7 +1231,7 @@ export default function OfflineSales() {
                                 );
                               })
                             ) : (
-                              <div className="py-8 text-center text-slate-400 text-xs font-medium">
+                              <div className="py-8 text-center text-slate-400 dark:text-[#94A3B8] text-xs font-medium">
                                 🛑 No transaction payments recorded yet for this invoice.
                               </div>
                             )}
@@ -1240,21 +1241,21 @@ export default function OfflineSales() {
 
                       {/* Notes row if any */}
                       {s.notes && (
-                        <div className="mt-4 p-3 bg-amber-50/50 border border-amber-100/50 rounded-2xl text-xs text-amber-800">
+                        <div className="mt-4 p-3 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100/50 dark:border-amber-900/30 text-amber-800 dark:text-amber-400 rounded-2xl text-xs">
                           <strong>📝 Notes:</strong> {s.notes}
                         </div>
                       )}
 
                       {/* Action buttons footer */}
-                      <div className="flex items-center justify-between border-t border-slate-100 mt-4 pt-4">
+                      <div className="flex items-center justify-between border-t border-slate-100 dark:border-[#334155] mt-4 pt-4">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            Invoice ID: <span className="text-slate-500 select-all font-mono">{s.id}</span>
+                          <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">
+                            Invoice ID: <span className="text-slate-500 dark:text-[#CBD5E1] select-all font-mono">{s.id}</span>
                           </span>
                           {s.corrections && s.corrections.length > 0 && (
                             <button
                               onClick={() => handleViewReceiptHistory(s, null)}
-                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-blue-50 text-blue-700 border border-blue-150 shadow-sm hover:bg-blue-100 transition-colors"
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-150 dark:border-blue-900/50 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                             >
                               📋 Audit Logs ({s.corrections.length})
                             </button>
@@ -1263,11 +1264,11 @@ export default function OfflineSales() {
                         
                         <div className="flex items-center gap-3">
                           <button onClick={() => { setEditModal(s); setEditNewItems([]); setEditNewDate(today()); setEditNewTxns([]); setEditError(''); setEditGst(s.gst || false); }}
-                            className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors shadow-sm bg-white">
+                            className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-xs font-semibold text-slate-600 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#111827] transition-colors shadow-sm bg-white dark:bg-[#1E293B]">
                             <Edit2 size={12} /> Edit Billing
                           </button>
                           <button onClick={() => handleDelete(s.id)} disabled={user?.role === 'EMPLOYEE'} 
-                            className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-150 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
+                            className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-150 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm dark:bg-rose-950/30 dark:text-[#EF4444] dark:border-rose-900/50 dark:hover:bg-rose-900/40">
                             <Trash2 size={12} /> Void Invoice
                           </button>
                         </div>
@@ -1286,9 +1287,9 @@ export default function OfflineSales() {
         <Modal title="Log Offline Invoice" onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Customer Type / Selection */}
-            <div className="space-y-3 bg-slate-50/50 p-4 border border-slate-200/50 rounded-2xl">
+            <div className="space-y-3 bg-slate-50/50 dark:bg-[#1E293B]/20 p-4 border border-slate-200/50 dark:border-[#334155]/50 rounded-2xl">
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Customer Category</label>
+                <label className="block text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Customer Category</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
@@ -1299,7 +1300,7 @@ export default function OfflineSales() {
                     className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
                       customerCategory === 'existing_shop'
                         ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-sm'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        : 'bg-white dark:bg-[#1E293B] text-slate-600 dark:text-[#CBD5E1] border-slate-200 dark:border-[#334155] hover:bg-slate-50 dark:hover:bg-[#334155]/50'
                     }`}
                   >
                     🏪 Existing Shop
@@ -1313,7 +1314,7 @@ export default function OfflineSales() {
                     className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
                       customerCategory === 'existing_individual'
                         ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-sm'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        : 'bg-white dark:bg-[#1E293B] text-slate-600 dark:text-[#CBD5E1] border-slate-200 dark:border-[#334155] hover:bg-slate-50 dark:hover:bg-[#334155]/50'
                     }`}
                   >
                     👤 Existing Individual
@@ -1327,7 +1328,7 @@ export default function OfflineSales() {
                     className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
                       customerCategory === 'walk-in'
                         ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-sm'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        : 'bg-white dark:bg-[#1E293B] text-slate-600 dark:text-[#CBD5E1] border-slate-200 dark:border-[#334155] hover:bg-slate-50 dark:hover:bg-[#334155]/50'
                     }`}
                   >
                     👤 Walk-in
@@ -1341,7 +1342,7 @@ export default function OfflineSales() {
                     className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
                       customerCategory === 'new_shop'
                         ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-sm'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        : 'bg-white dark:bg-[#1E293B] text-slate-600 dark:text-[#CBD5E1] border-slate-200 dark:border-[#334155] hover:bg-slate-50 dark:hover:bg-[#334155]/50'
                     }`}
                   >
                     🏪 + New Shop
@@ -1355,7 +1356,7 @@ export default function OfflineSales() {
                     className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
                       customerCategory === 'new_individual'
                         ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-sm'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        : 'bg-white dark:bg-[#1E293B] text-slate-600 dark:text-[#CBD5E1] border-slate-200 dark:border-[#334155] hover:bg-slate-50 dark:hover:bg-[#334155]/50'
                     }`}
                   >
                     👤 + New Individual
@@ -1365,16 +1366,16 @@ export default function OfflineSales() {
 
               {customerCategory === 'existing_shop' && (
                 <div className="space-y-1 pt-1">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Select Registered Shop *</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Select Registered Shop *</label>
                   <select 
                     required={customerCategory === 'existing_shop'} 
                     value={form.buyerName} 
                     onChange={(e) => setForm((f) => ({ ...f, buyerName: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 font-medium text-slate-700 bg-white"
+                    className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 font-medium text-slate-700 dark:text-[#CBD5E1] bg-white dark:bg-[#1E293B]"
                   >
-                    <option value="">Select customer shop…</option>
+                    <option value="" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">Select customer shop…</option>
                     {shops.filter((s) => s.type === 'shop').map((s) => (
-                      <option key={s.id} value={s.name}>{s.name}{s.mobile ? ` — ${s.mobile}` : ''}</option>
+                      <option key={s.id} value={s.name} className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">{s.name}{s.mobile ? ` — ${s.mobile}` : ''}</option>
                     ))}
                   </select>
                 </div>
@@ -1382,16 +1383,16 @@ export default function OfflineSales() {
 
               {customerCategory === 'existing_individual' && (
                 <div className="space-y-1 pt-1">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Select Registered Individual *</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Select Registered Individual *</label>
                   <select 
                     required={customerCategory === 'existing_individual'} 
                     value={form.buyerName} 
                     onChange={(e) => setForm((f) => ({ ...f, buyerName: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 font-medium text-slate-700 bg-white"
+                    className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 font-medium text-slate-700 dark:text-[#CBD5E1] bg-white dark:bg-[#1E293B]"
                   >
-                    <option value="">Select registered individual…</option>
+                    <option value="" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">Select registered individual…</option>
                     {shops.filter((s) => s.type === 'individual' || s.type === 'walk-in').map((s) => (
-                      <option key={s.id} value={s.name}>{s.name}{s.mobile ? ` — ${s.mobile}` : ''}</option>
+                      <option key={s.id} value={s.name} className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">{s.name}{s.mobile ? ` — ${s.mobile}` : ''}</option>
                     ))}
                   </select>
                 </div>
@@ -1400,23 +1401,23 @@ export default function OfflineSales() {
               {customerCategory === 'walk-in' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Customer Name (Optional)</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Customer Name (Optional)</label>
                     <input 
                       type="text"
                       value={walkInName}
                       onChange={(e) => setWalkInName(e.target.value)}
                       placeholder="e.g. Ram Kumar"
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                      className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-800 dark:text-[#F8FAFC]"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Mobile Number (Optional)</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Mobile Number (Optional)</label>
                     <input 
                       type="text"
                       value={walkInMobile}
                       onChange={(e) => setWalkInMobile(e.target.value)}
                       placeholder="e.g. 9988776655"
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                      className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-800 dark:text-[#F8FAFC]"
                     />
                   </div>
                 </div>
@@ -1425,56 +1426,56 @@ export default function OfflineSales() {
               {customerCategory === 'new_shop' && (
                 <div className="space-y-3 pt-1">
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Shop Name *</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Shop Name *</label>
                     <input 
                       type="text"
                       required={customerCategory === 'new_shop'}
                       value={newShopName}
                       onChange={(e) => setNewShopName(e.target.value)}
                       placeholder="e.g. Sharma Electronics"
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                      className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-800 dark:text-[#F8FAFC]"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Owner Name</label>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Owner Name</label>
                       <input 
                         type="text"
                         value={newShopOwner}
                         onChange={(e) => setNewShopOwner(e.target.value)}
                         placeholder="e.g. Ramesh Sharma"
-                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                        className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-850 dark:text-[#F8FAFC]"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Mobile Number</label>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Mobile Number</label>
                       <input 
                         type="text"
                         value={newShopMobile}
                         onChange={(e) => setNewShopMobile(e.target.value)}
                         placeholder="e.g. 9876543210"
-                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                        className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-850 dark:text-[#F8FAFC]"
                       />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Shop Address</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Shop Address</label>
                     <textarea 
                       rows={2}
                       value={newShopAddress}
                       onChange={(e) => setNewShopAddress(e.target.value)}
                       placeholder="e.g. 12, Market Road, Delhi"
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white resize-none"
+                      className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-850 dark:text-[#F8FAFC] resize-none"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">GST Number (Optional)</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">GST Number (Optional)</label>
                     <input 
                       type="text"
                       value={newShopGst}
                       onChange={(e) => setNewShopGst(e.target.value)}
                       placeholder="e.g. 07AAAAA1111A1Z1"
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                      className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-850 dark:text-[#F8FAFC]"
                     />
                   </div>
                 </div>
@@ -1483,34 +1484,34 @@ export default function OfflineSales() {
               {customerCategory === 'new_individual' && (
                 <div className="space-y-3 pt-1">
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Customer Name *</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Customer Name *</label>
                     <input 
                       type="text"
                       required={customerCategory === 'new_individual'}
                       value={newIndName}
                       onChange={(e) => setNewIndName(e.target.value)}
                       placeholder="e.g. Ramesh Kumar"
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                      className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-850 dark:text-[#F8FAFC]"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Mobile Number</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Mobile Number</label>
                     <input 
                       type="text"
                       value={newIndMobile}
                       onChange={(e) => setNewIndMobile(e.target.value)}
                       placeholder="e.g. 9876543210"
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                      className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-850 dark:text-[#F8FAFC]"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">Address (Optional)</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Address (Optional)</label>
                     <textarea 
                       rows={2}
                       value={newIndAddress}
                       onChange={(e) => setNewIndAddress(e.target.value)}
                       placeholder="e.g. 12, Market Road, Delhi"
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white resize-none"
+                      className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-850 dark:text-[#F8FAFC] resize-none"
                     />
                   </div>
                 </div>
@@ -1519,24 +1520,24 @@ export default function OfflineSales() {
 
             {/* Orders */}
             <div className="space-y-4">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Orders List</label>
+              <label className="block text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Orders List</label>
               {form.orders.map((order, oi) => (
-                <div key={oi} className="border border-slate-200/80 rounded-2xl overflow-hidden bg-slate-50/20">
-                  <div className="flex items-center justify-between gap-3 bg-slate-50 px-4 py-3 border-b border-slate-200/50">
-                    <span className="text-xs font-extrabold text-slate-500">Order {oi + 1}</span>
+                <div key={oi} className="border border-slate-200/80 dark:border-[#334155]/80 rounded-2xl overflow-hidden bg-slate-50/20 dark:bg-[#1E293B]/20">
+                  <div className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-[#111827] px-4 py-3 border-b border-slate-200/50 dark:border-b-[#334155]">
+                    <span className="text-xs font-extrabold text-slate-500 dark:text-[#CBD5E1]">Order {oi + 1}</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-slate-400">Date:</span>
+                      <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8]">Date:</span>
                       <input type="date" value={order.date} onChange={(e) => setOrderDate(oi, e.target.value)}
-                        className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-600 font-medium" />
+                        className="px-2 py-1.5 border border-slate-200 dark:border-[#334155] rounded-lg text-xs bg-white dark:bg-[#1E293B] focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-650 dark:text-[#CBD5E1] font-medium" />
                       {form.orders.length > 1 && (
                         <button type="button" onClick={() => removeOrder(oi)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors">
+                          className="p-1.5 rounded-lg text-slate-400 dark:text-[#94A3B8] hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 dark:hover:text-[#EF4444] transition-colors">
                           <Trash2 size={14} />
                         </button>
                       )}
                     </div>
                   </div>
-                  <div className="p-4 space-y-3 bg-white">
+                  <div className="p-4 space-y-3 bg-white dark:bg-[#1E293B]">
                     {order.items.map((item, ii) => (
                       <ItemRow key={ii} item={item} products={products}
                         onProductChange={(v) => handleItemProductChange(oi, ii, v)}
@@ -1547,9 +1548,9 @@ export default function OfflineSales() {
                         isGst={order.gst}
                       />
                     ))}
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-50">
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-50 dark:border-[#334155]">
                       <button type="button" onClick={() => addItemToOrder(oi)}
-                        className="flex items-center gap-1.5 text-red-600 hover:text-red-700 text-xs font-bold transition-colors">
+                        className="flex items-center gap-1.5 text-red-650 dark:text-[#EF4444] hover:text-red-700 dark:hover:text-red-500 text-xs font-bold transition-colors">
                         <PlusCircle size={14} /> Add Product Row
                       </button>
                       <label className="inline-flex items-center gap-2 cursor-pointer select-none">
@@ -1559,38 +1560,38 @@ export default function OfflineSales() {
                            onChange={() => toggleOrderGst(oi)}
                            className="sr-only"
                         />
-                        <div className={`relative w-8 h-4.5 rounded-full transition-colors duration-200 ${order.gst ? 'bg-red-600' : 'bg-slate-200'}`}>
-                          <div className={`absolute top-[2px] left-[2px] bg-white border border-slate-300 rounded-full h-3.5 w-3.5 transition-transform duration-200 ${order.gst ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                        <div className={`relative w-8 h-4.5 rounded-full transition-colors duration-200 ${order.gst ? 'bg-[#EF4444]' : 'bg-slate-200 dark:bg-[#334155]'}`}>
+                          <div className={`absolute top-[2px] left-[2px] bg-white border border-slate-300 dark:border-slate-600 rounded-full h-3.5 w-3.5 transition-transform duration-200 ${order.gst ? 'translate-x-3.5' : 'translate-x-0'}`} />
                         </div>
-                        <span className="text-xs font-bold text-slate-500">Apply GST (18%)</span>
+                        <span className="text-xs font-bold text-slate-500 dark:text-[#CBD5E1]">Apply GST (18%)</span>
                       </label>
                     </div>
                   </div>
                 </div>
               ))}
               <button type="button" onClick={addOrder}
-                className="flex items-center justify-center gap-2 w-full py-3 border border-dashed border-red-200 hover:border-red-500 rounded-2xl text-xs font-bold text-red-600 hover:bg-red-50/30 transition-all">
+                className="flex items-center justify-center gap-2 w-full py-3 border border-dashed border-red-200 dark:border-red-900/50 hover:border-red-500 dark:hover:border-[#EF4444] rounded-2xl text-xs font-bold text-[#EF4444] hover:bg-red-50/30 dark:hover:bg-red-950/20 transition-all">
                 <PlusCircle size={15} /> Add Another Order Date Group
               </button>
             </div>
 
             {/* Total */}
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 flex justify-between text-sm font-bold text-slate-700 shadow-inner">
-              <span className="uppercase text-slate-400 text-xs font-bold tracking-wider">Grand Total Amount</span>
-              <span className="text-base text-slate-800 font-extrabold">{fmt(computedTotal)}</span>
+            <div className="bg-slate-50 dark:bg-[#1E293B] border border-slate-100 dark:border-[#334155] rounded-2xl px-5 py-3.5 flex justify-between text-sm font-bold text-slate-700 dark:text-[#CBD5E1] shadow-inner">
+              <span className="uppercase text-slate-400 dark:text-[#94A3B8] text-xs font-bold tracking-wider">Grand Total Amount</span>
+              <span className="text-base text-slate-800 dark:text-[#F8FAFC] font-extrabold">{fmt(computedTotal)}</span>
             </div>
 
             {/* Transactions */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between border-b border-slate-50 pb-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Payments Received</label>
+              <div className="flex items-center justify-between border-b border-slate-50 dark:border-[#334155] pb-2">
+                <label className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Payments Received</label>
                 <button type="button" onClick={addTxn}
-                  className="flex items-center gap-1 text-red-600 hover:text-red-700 text-xs font-bold transition-colors">
+                  className="flex items-center gap-1 text-[#EF4444] hover:text-red-500 text-xs font-bold transition-colors">
                   <PlusCircle size={14} /> Add Transaction
                 </button>
               </div>
               {form.transactions.length === 0 ? (
-                <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 text-xs text-slate-400 font-medium">
+                <div className="text-center py-6 border border-dashed border-slate-200 dark:border-[#334155] rounded-2xl bg-slate-50/50 dark:bg-[#1E293B]/20 text-xs text-slate-400 dark:text-[#CBD5E1] font-medium">
                   💳 No payments logged yet. Invoice defaults to fully pending.
                 </div>
               ) : (
@@ -1601,7 +1602,7 @@ export default function OfflineSales() {
                 </div>
               )}
               {form.transactions.length > 0 && (
-                <div className={`mt-3 flex justify-between px-5 py-3.5 rounded-2xl text-sm font-semibold shadow-sm ${amountLeft > 0 ? 'bg-amber-50/70 text-amber-800 border border-amber-100/50' : 'bg-emerald-50 text-emerald-800 border border-emerald-100'}`}>
+                <div className={`mt-3 flex justify-between px-5 py-3.5 rounded-2xl text-sm font-semibold shadow-sm ${amountLeft > 0 ? 'bg-amber-50/70 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 border border-amber-100/50 dark:border-amber-900/30' : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-[#10B981] border border-emerald-100 dark:border-emerald-900/30'}`}>
                   <span>Cleared: {fmt(totalReceived)}</span>
                   <span>Pending Dues: {fmt(amountLeft)}</span>
                 </div>
@@ -1609,16 +1610,16 @@ export default function OfflineSales() {
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Remarks / Notes</label>
+              <label className="block text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Remarks / Notes</label>
               <textarea rows={2.5} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none bg-white" placeholder="Optional notes…" />
+                className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" placeholder="Optional notes…" />
             </div>
 
-            {error && <p className="text-sm text-red-500 bg-red-50 px-3 py-2.5 rounded-xl border border-red-200">{error}</p>}
+            {error && <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 px-3 py-2.5 rounded-xl border border-red-200 dark:border-red-900/50">{error}</p>}
 
-            <div className="flex gap-4 pt-3 border-t border-slate-100">
-              <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-slate-200 rounded-2xl text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors">Cancel</button>
-              <button type="submit" disabled={saving} className="flex-1 py-3 bg-[#EF4444] hover:bg-red-600 disabled:opacity-60 text-white text-sm font-semibold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md shadow-red-500/10">
+            <div className="flex gap-4 pt-3 border-t border-slate-100 dark:border-[#334155]">
+              <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-slate-200 dark:border-[#334155] rounded-2xl text-sm font-bold text-slate-500 dark:text-[#CBD5E1] hover:bg-slate-50 dark:hover:bg-[#1E293B] transition-colors">Cancel</button>
+              <button type="submit" disabled={saving} className="flex-1 py-3 bg-[#EF4444] hover:bg-red-650 disabled:opacity-60 text-white text-sm font-semibold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md shadow-red-500/10">
                 {saving && <Loader2 size={16} className="animate-spin" />} Submit Invoice
               </button>
             </div>
@@ -1640,8 +1641,8 @@ export default function OfflineSales() {
 
               {/* Existing orders (read-only) */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Current Orders</label>
-                <div className="border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100 bg-white">
+                <label className="block text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Current Orders</label>
+                <div className="border border-slate-200 dark:border-[#334155] rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-[#334155] bg-white dark:bg-[#1E293B]">
                   {(() => {
                     const src = editModal.items || [{ productName: editModal.productName, qty: editModal.qty, amount: editModal.totalAmount, date: editModal.date }];
                     const groups = {};
@@ -1652,15 +1653,15 @@ export default function OfflineSales() {
                     }
                     return Object.entries(groups).map(([date, items], gi) => (
                       <div key={date}>
-                        <div className="bg-slate-50/70 px-4 py-2 text-xs font-bold text-slate-500">{date}</div>
+                        <div className="bg-slate-50/70 dark:bg-[#111827]/70 px-4 py-2 text-xs font-bold text-slate-500 dark:text-[#CBD5E1]">{date}</div>
                         {items.map((item, i) => (
-                          <div key={i} className="flex items-center justify-between px-4 py-3 text-xs border-t border-slate-50">
-                            <span className="text-slate-800 font-bold">{item.productName}</span>
-                            <div className="flex items-center gap-3 text-slate-500">
+                          <div key={i} className="flex items-center justify-between px-4 py-3 text-xs border-t border-slate-50 dark:border-[#334155]">
+                            <span className="text-slate-800 dark:text-[#F8FAFC] font-bold">{item.productName}</span>
+                            <div className="flex items-center gap-3 text-slate-500 dark:text-[#94A3B8]">
                               <span>×{item.qty} units</span>
-                              <span className="font-extrabold text-slate-800 flex items-center gap-1.5">
+                              <span className="font-extrabold text-slate-800 dark:text-[#F8FAFC] flex items-center gap-1.5">
                                 {fmt(item.amount)}
-                                {editGst && <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-green-50 text-green-700 border border-green-200">GST</span>}
+                                {editGst && <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-green-50 dark:bg-emerald-950/30 text-green-700 dark:text-[#10B981] border border-green-200 dark:border-emerald-900/50">GST</span>}
                               </span>
                             </div>
                           </div>
@@ -1674,7 +1675,7 @@ export default function OfflineSales() {
               {/* Add new order */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Add Products to Billing</label>
+                  <label className="block text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Add Products to Billing</label>
                   <label className="inline-flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
@@ -1682,24 +1683,24 @@ export default function OfflineSales() {
                       onChange={toggleEditGst}
                       className="sr-only"
                     />
-                    <div className={`relative w-8 h-4.5 rounded-full transition-colors duration-200 ${editGst ? 'bg-red-600' : 'bg-slate-200'}`}>
-                      <div className={`absolute top-[2px] left-[2px] bg-white border border-slate-300 rounded-full h-3.5 w-3.5 transition-transform duration-200 ${editGst ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                    <div className={`relative w-8 h-4.5 rounded-full transition-colors duration-200 ${editGst ? 'bg-red-650' : 'bg-slate-200 dark:bg-[#334155]'}`}>
+                      <div className={`absolute top-[2px] left-[2px] bg-white border border-slate-300 dark:border-slate-600 rounded-full h-3.5 w-3.5 transition-transform duration-200 ${editGst ? 'translate-x-3.5' : 'translate-x-0'}`} />
                     </div>
-                    <span className="text-xs font-bold text-slate-500">Apply GST (18%)</span>
+                    <span className="text-xs font-bold text-slate-500 dark:text-[#CBD5E1]">Apply GST (18%)</span>
                   </label>
                 </div>
                 
                 {editNewItems.length === 0 ? (
                   <button type="button" onClick={addEditItem}
-                    className="flex items-center justify-center gap-2 w-full py-3.5 border border-dashed border-red-200 hover:border-red-500 rounded-2xl text-xs font-bold text-red-600 hover:bg-red-50/20 transition-all">
+                    className="flex items-center justify-center gap-2 w-full py-3.5 border border-dashed border-red-200 dark:border-red-900/50 hover:border-red-500 dark:hover:border-[#EF4444] rounded-2xl text-xs font-bold text-[#EF4444] hover:bg-red-50/20 dark:hover:bg-red-950/20 transition-all">
                     <PlusCircle size={15} /> Add Products to Current Invoice
                   </button>
                 ) : (
-                  <div className="space-y-3 bg-slate-50/30 p-4 border border-slate-200/50 rounded-2xl">
+                  <div className="space-y-3 bg-slate-50/30 dark:bg-[#1E293B]/20 p-4 border border-slate-200/50 dark:border-[#334155]/50 rounded-2xl">
                     {editNewItems.map((item, idx) => {
                       const selProd = products.find((p) => p.id === item.productId);
                       return (
-                        <div key={idx} className="border border-red-100 rounded-2xl p-4 space-y-3 bg-white shadow-sm">
+                        <div key={idx} className="border border-red-100 dark:border-red-900/30 rounded-2xl p-4 space-y-3 bg-white dark:bg-[#1E293B] shadow-sm">
                           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                             <div className="flex-1">
                               <SearchableSelect
@@ -1713,27 +1714,27 @@ export default function OfflineSales() {
                             <div className="flex items-center gap-3">
                               <input type="number" min="1" max={selProd?.availableQty || 9999} value={item.qty}
                                 onChange={(e) => handleEditItemQtyChange(idx, e.target.value)}
-                                className="w-full sm:w-20 px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-center" placeholder="Qty" />
+                                className="w-full sm:w-20 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-center bg-white dark:bg-[#111827] text-slate-900 dark:text-[#F8FAFC]" placeholder="Qty" />
                               <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">₹</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 dark:text-[#94A3B8]">₹</span>
                                 <input type="number" min="0" value={item.amount}
                                   onChange={(e) => handleEditItemAmountChange(idx, e.target.value)}
-                                  className="w-full sm:w-28 pl-7 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Amt" />
+                                  className="w-full sm:w-28 pl-7 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#111827] text-slate-900 dark:text-[#F8FAFC]" placeholder="Amt" />
                               </div>
                               <button type="button" onClick={() => removeEditItem(idx)}
-                                className="p-2 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors flex-shrink-0">
+                                className="p-2 rounded-xl text-slate-400 dark:text-[#94A3B8] hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 dark:hover:text-[#EF4444] transition-colors flex-shrink-0">
                                 <X size={15} />
                               </button>
                             </div>
                           </div>
                           {selProd && (
-                            <p className="text-[11px] text-slate-400 flex items-center justify-between mt-1">
+                            <p className="text-[11px] text-slate-400 dark:text-[#94A3B8] flex items-center justify-between mt-1">
                               <span>
-                                📍 Stock: <span className="font-semibold text-slate-600">{selProd.availableQty} units</span>
-                                &nbsp;· Base Price: <span className="font-semibold text-rose-600">₹{selProd.offlinePrice ?? selProd.unitPrice ?? 0}</span>
+                                📍 Stock: <span className="font-semibold text-slate-650 dark:text-[#CBD5E1]">{selProd.availableQty} units</span>
+                                &nbsp;· Base Price: <span className="font-semibold text-rose-600 dark:text-[#EF4444]">₹{selProd.offlinePrice ?? selProd.unitPrice ?? 0}</span>
                               </span>
                               {item.amount && (
-                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${editGst ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${editGst ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-[#10B981] border border-emerald-200 dark:border-emerald-900/50' : 'bg-slate-100 dark:bg-[#111827] text-slate-500 dark:text-[#CBD5E1] border border-slate-200 dark:border-[#334155]'}`}>
                                   {editGst ? 'GST (18%) Included' : 'Excl. GST'}
                                 </span>
                               )}
@@ -1744,14 +1745,14 @@ export default function OfflineSales() {
                     })}
                     
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Group Date</label>
+                      <label className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider whitespace-nowrap">Group Date</label>
                       <input type="date" value={editNewDate} onChange={(e) => setEditNewDate(e.target.value)}
-                        className="flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-600 font-medium" />
+                        className="flex-1 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#111827] focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-650 dark:text-[#CBD5E1] font-medium" />
                     </div>
 
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-200/50">
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-200/50 dark:border-[#334155]/50">
                       <button type="button" onClick={addEditItem}
-                        className="flex items-center gap-1.5 text-red-600 hover:text-red-700 text-xs font-bold transition-colors">
+                        className="flex items-center gap-1.5 text-[#EF4444] hover:text-red-500 text-xs font-bold transition-colors">
                         <PlusCircle size={14} /> Add Another Product Line
                       </button>
                     </div>
@@ -1809,19 +1810,19 @@ export default function OfflineSales() {
 
               {/* Admin Receipt Audit History */}
               {(user?.role === 'ADMIN' || user?.role === 'admin' || user?.username === 'admin') && (
-                <div className="space-y-2 pt-4 border-t border-slate-100">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <div className="space-y-2 pt-4 border-t border-slate-100 dark:border-[#334155]">
+                  <h4 className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider flex items-center gap-1.5">
                     <Clock size={12} className="text-blue-500" /> Receipt Audit Trail (Admin Only)
                   </h4>
                   
                   {!editModal.corrections || editModal.corrections.length === 0 ? (
-                    <div className="text-center py-4 bg-slate-50 border border-dashed rounded-2xl text-slate-400 text-[11px] font-semibold">
+                    <div className="text-center py-4 bg-slate-50 dark:bg-[#1E293B] border border-dashed border-slate-200 dark:border-[#334155] rounded-2xl text-slate-400 dark:text-[#CBD5E1] text-[11px] font-semibold">
                       📋 No corrections or deletion logs recorded yet.
                     </div>
                   ) : (
-                    <div className="border border-slate-200 rounded-2xl overflow-hidden text-xs max-h-[180px] overflow-y-auto">
+                    <div className="border border-slate-200 dark:border-[#334155] rounded-2xl overflow-hidden text-xs max-h-[180px] overflow-y-auto">
                       <table className="w-full text-left">
-                        <thead className="bg-slate-50 text-slate-500 font-extrabold uppercase text-[9px] border-b sticky top-0">
+                        <thead className="bg-slate-50 dark:bg-[#111827] text-slate-500 dark:text-[#CBD5E1] font-extrabold uppercase text-[9px] border-b dark:border-[#334155] sticky top-0">
                           <tr>
                             <th className="px-3 py-2">Timestamp</th>
                             <th className="px-3 py-2">Changed By</th>
@@ -1829,17 +1830,17 @@ export default function OfflineSales() {
                             <th className="px-3 py-2 text-right">Summary</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 font-medium text-slate-600 bg-white text-[10px]">
+                        <tbody className="divide-y divide-slate-100 dark:divide-[#334155] font-medium text-slate-600 dark:text-[#CBD5E1] bg-white dark:bg-[#1E293B] text-[10px]">
                           {editModal.corrections.map((log, li) => (
-                            <tr key={li} className="hover:bg-slate-50/50">
-                              <td className="px-3 py-2 whitespace-nowrap text-slate-400">{log.timestamp}</td>
-                              <td className="px-3 py-2 text-slate-700 font-bold">{log.changedBy}</td>
+                            <tr key={li} className="hover:bg-slate-50/50 dark:hover:bg-[#111827]/50">
+                              <td className="px-3 py-2 whitespace-nowrap text-slate-400 dark:text-[#94A3B8]">{log.timestamp}</td>
+                              <td className="px-3 py-2 text-slate-700 dark:text-[#F8FAFC] font-bold">{log.changedBy}</td>
                               <td className="px-3 py-2">{log.reason}</td>
                               <td className="px-3 py-2 text-right">
-                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${log.type === 'delete' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${log.type === 'delete' ? 'bg-red-50 dark:bg-rose-950/30 text-red-600 dark:text-[#EF4444]' : 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400'}`}>
                                   {log.type === 'delete' ? 'Deleted' : 'Edited'}
                                 </span>
-                                <div className="text-[9px] text-slate-400 mt-0.5 truncate max-w-[120px]" title={`Prev: ${log.previous}`}>
+                                <div className="text-[9px] text-slate-400 dark:text-[#94A3B8] mt-0.5 truncate max-w-[120px]" title={`Prev: ${log.previous}`}>
                                   {log.previous}
                                 </div>
                               </td>
@@ -1852,11 +1853,11 @@ export default function OfflineSales() {
                 </div>
               )}
 
-              {editError && <p className="text-sm text-red-500 bg-red-50 px-3 py-2.5 rounded-xl border border-red-200">{editError}</p>}
+              {editError && <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/30 px-3 py-2.5 rounded-xl border border-red-200 dark:border-red-900/50">{editError}</p>}
 
-              <div className="flex gap-4 pt-3 border-t border-slate-100">
+              <div className="flex gap-4 pt-3 border-t border-slate-100 dark:border-[#334155]">
                 <button type="button" onClick={() => { setEditModal(null); setEditNewItems([]); setEditNewDate(''); setEditNewTxns([]); setEditGst(false); }}
-                  className="flex-1 py-3 border border-slate-200 rounded-2xl text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors">Cancel</button>
+                  className="flex-1 py-3 border border-slate-200 dark:border-[#334155] rounded-2xl text-sm font-bold text-slate-500 dark:text-[#CBD5E1] hover:bg-slate-50 dark:hover:bg-[#1E293B] transition-colors">Cancel</button>
                 <button type="submit" disabled={saving}
                   className="flex-1 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 disabled:opacity-60 text-white text-sm font-semibold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md shadow-red-500/10">
                   {saving && <Loader2 size={16} className="animate-spin" />} Save Billing Changes
@@ -1872,68 +1873,68 @@ export default function OfflineSales() {
           <form onSubmit={handleSaveEditReceipt} className="space-y-4">
             <div className="flex flex-col gap-3.5 text-xs">
               <div className="space-y-1.5">
-                <label className="block font-bold text-slate-500 uppercase tracking-wide">Payment Method *</label>
+                <label className="block font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Payment Method *</label>
                 <select 
                   required
                   value={editReceiptForm.method} 
                   onChange={(e) => setEditReceiptForm(f => ({ ...f, method: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white font-medium text-slate-700"
+                  className="w-full px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] font-medium text-slate-700 dark:text-[#CBD5E1]"
                 >
-                  <option value="cash">💵 Cash</option>
-                  <option value="upi">⚡ UPI</option>
-                  <option value="bank_transfer">🏦 Bank Transfer</option>
-                  <option value="cheque">✍️ Cheque</option>
+                  <option value="cash" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">💵 Cash</option>
+                  <option value="upi" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">⚡ UPI</option>
+                  <option value="bank_transfer" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">🏦 Bank Transfer</option>
+                  <option value="cheque" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">✍️ Cheque</option>
                 </select>
               </div>
 
               <div className="space-y-1.5">
-                <label className="block font-bold text-slate-500 uppercase tracking-wide">Amount *</label>
+                <label className="block font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Amount *</label>
                 <input 
                   type="number" 
                   min="1" 
                   required 
                   value={editReceiptForm.amount} 
                   onChange={(e) => setEditReceiptForm(f => ({ ...f, amount: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" 
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" 
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block font-bold text-slate-500 uppercase tracking-wide">Payment Date *</label>
+                <label className="block font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Payment Date *</label>
                 <input 
                   type="date" 
                   required 
                   value={editReceiptForm.date} 
                   onChange={(e) => setEditReceiptForm(f => ({ ...f, date: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" 
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" 
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block font-bold text-slate-500 uppercase tracking-wide">Reference Number (Optional)</label>
+                <label className="block font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Reference Number (Optional)</label>
                 <input 
                   type="text" 
                   value={editReceiptForm.referenceNumber} 
                   onChange={(e) => setEditReceiptForm(f => ({ ...f, referenceNumber: e.target.value }))}
                   placeholder="e.g. UPI Transaction ID or Cheque No."
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" 
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" 
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block font-bold text-slate-500 uppercase tracking-wide">Notes (Optional)</label>
+                <label className="block font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Notes (Optional)</label>
                 <textarea 
                   rows={2} 
                   value={editReceiptForm.notes} 
                   onChange={(e) => setEditReceiptForm(f => ({ ...f, notes: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" 
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC] resize-none" 
                 />
               </div>
 
               {/* Mandatory Correction Reason */}
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                <label className="block font-bold text-red-600 uppercase tracking-wide">Correction Reason *</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-slate-600">
+              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-[#334155]">
+                <label className="block font-bold text-red-655 dark:text-[#EF4444] uppercase tracking-wide">Correction Reason *</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-slate-650 dark:text-[#CBD5E1]">
                   {[
                     'Wrong Payment Method',
                     'Wrong Amount',
@@ -1943,7 +1944,7 @@ export default function OfflineSales() {
                     'Customer Request',
                     'Other'
                   ].map((r) => (
-                    <label key={r} className="flex items-center gap-2 cursor-pointer p-2 border border-slate-150 rounded-xl hover:bg-slate-50">
+                    <label key={r} className="flex items-center gap-2 cursor-pointer p-2 border border-slate-150 dark:border-[#334155] rounded-xl hover:bg-slate-50 dark:hover:bg-[#1E293B]">
                       <input 
                         type="radio" 
                         name="correctionReason" 
@@ -1963,24 +1964,24 @@ export default function OfflineSales() {
 
               {correctionReason === 'Other' && (
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-slate-500 uppercase tracking-wide">Correction Notes *</label>
+                  <label className="block font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Correction Notes *</label>
                   <textarea 
                     rows={2} 
                     required 
                     value={correctionNotes} 
                     onChange={(e) => setCorrectionNotes(e.target.value)}
                     placeholder="Provide detailed correction details..."
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none bg-white" 
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" 
                   />
                 </div>
               )}
             </div>
 
-            {error && <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-xl">{error}</p>}
+            {error && <p className="text-sm text-red-505 dark:text-[#EF4444] bg-red-50 dark:bg-rose-950/30 px-3 py-2 rounded-xl border border-red-200 dark:border-rose-900/50">{error}</p>}
             
-            <div className="flex gap-4 pt-3 border-t border-slate-100">
-              <button type="button" onClick={() => setReceiptToEdit(null)} className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
-              <button type="submit" disabled={saving || !correctionReason || (correctionReason === 'Other' && !correctionNotes.trim())} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
+            <div className="flex gap-4 pt-3 border-t border-slate-100 dark:border-[#334155]">
+              <button type="button" onClick={() => setReceiptToEdit(null)} className="flex-1 py-3 border border-slate-200 dark:border-[#334155] rounded-xl text-sm font-semibold text-slate-600 dark:text-[#CBD5E1] hover:bg-slate-50 dark:hover:bg-[#1E293B] transition-colors">Cancel</button>
+              <button type="submit" disabled={saving || !correctionReason || (correctionReason === 'Other' && !correctionNotes.trim())} className="flex-1 py-3 bg-red-650 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
                 {saving && <Loader2 size={16} className="animate-spin" />} Save Correction
               </button>
             </div>
@@ -1992,22 +1993,22 @@ export default function OfflineSales() {
       {receiptToDelete && (
         <Modal title="Delete Payment Receipt?" onClose={() => setReceiptToDelete(null)}>
           <div className="space-y-4">
-            <div className="p-3 bg-red-50 border border-red-100 text-red-700 rounded-2xl text-xs font-semibold leading-relaxed">
+            <div className="p-3 bg-red-50 dark:bg-rose-950/30 border border-red-100 dark:border-rose-900/50 text-red-700 dark:text-[#EF4444] rounded-2xl text-xs font-semibold leading-relaxed">
               ⚠️ <strong>Warning:</strong> This action will affect dues and payment calculations. The invoice's outstanding amount will increase by <strong>{fmt(receiptToDelete.amount)}</strong>.
             </div>
 
             <form onSubmit={handleSaveDeleteReceipt} className="space-y-4">
               <div className="flex flex-col gap-3.5 text-xs">
                 <div className="space-y-2">
-                  <label className="block font-bold text-slate-500 uppercase tracking-wide">Select Reason for Deletion *</label>
-                  <div className="grid grid-cols-1 gap-2 font-semibold text-slate-600">
+                  <label className="block font-bold text-slate-505 dark:text-[#CBD5E1] uppercase tracking-wide">Select Reason for Deletion *</label>
+                  <div className="grid grid-cols-1 gap-2 font-semibold text-slate-650 dark:text-[#CBD5E1]">
                     {[
                       'Duplicate Entry',
                       'Wrong Receipt',
                       'Testing Entry',
                       'Other'
                     ].map((r) => (
-                      <label key={r} className="flex items-center gap-2 cursor-pointer p-2 border border-slate-150 rounded-xl hover:bg-slate-50">
+                      <label key={r} className="flex items-center gap-2 cursor-pointer p-2 border border-slate-150 dark:border-[#334155] rounded-xl hover:bg-slate-50 dark:hover:bg-[#1E293B]">
                         <input 
                           type="radio" 
                           name="deleteReason" 
@@ -2027,24 +2028,24 @@ export default function OfflineSales() {
 
                 {deleteReason === 'Other' && (
                   <div className="space-y-1.5">
-                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Deletion Notes *</label>
+                    <label className="block font-bold text-slate-505 dark:text-[#CBD5E1] uppercase tracking-wide">Deletion Notes *</label>
                     <textarea 
                       rows={2} 
                       required 
                       value={deleteNotes} 
                       onChange={(e) => setDeleteNotes(e.target.value)}
                       placeholder="Provide detailed deletion notes..."
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none bg-white" 
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC] resize-none" 
                     />
                   </div>
                 )}
               </div>
 
-              {error && <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-xl">{error}</p>}
+              {error && <p className="text-sm text-red-500 dark:text-[#EF4444] bg-red-50 dark:bg-rose-950/30 px-3 py-2 rounded-xl border border-red-200 dark:border-rose-900/50">{error}</p>}
               
-              <div className="flex gap-4 pt-3 border-t border-slate-100">
-                <button type="button" onClick={() => setReceiptToDelete(null)} className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" disabled={saving || !deleteReason || (deleteReason === 'Other' && !deleteNotes.trim())} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
+              <div className="flex gap-4 pt-3 border-t border-slate-100 dark:border-[#334155]">
+                <button type="button" onClick={() => setReceiptToDelete(null)} className="flex-1 py-3 border border-slate-200 dark:border-[#334155] rounded-xl text-sm font-semibold text-slate-650 dark:text-[#CBD5E1] hover:bg-slate-50 dark:hover:bg-[#1E293B] transition-colors">Cancel</button>
+                <button type="submit" disabled={saving || !deleteReason || (deleteReason === 'Other' && !deleteNotes.trim())} className="flex-1 py-3 bg-red-650 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
                   {saving && <Loader2 size={16} className="animate-spin" />} Confirm Deletion
                 </button>
               </div>
@@ -2057,45 +2058,45 @@ export default function OfflineSales() {
       {viewReceiptHistorySale && (
         <Modal title="Payment Receipt History & Audit Timeline" onClose={() => setViewReceiptHistorySale(null)} maxWidth="max-w-lg">
           <div className="space-y-4">
-            <p className="text-xs text-slate-500 font-medium">
-              Audit log trace for invoice: <span className="font-bold text-slate-800">{viewReceiptHistorySale.buyerName}</span> (ID: {viewReceiptHistorySale.id.slice(0, 8)})
+            <p className="text-xs text-slate-500 dark:text-[#94A3B8] font-medium">
+              Audit log trace for invoice: <span className="font-bold text-slate-800 dark:text-[#F8FAFC]">{viewReceiptHistorySale.buyerName}</span> (ID: {viewReceiptHistorySale.id.slice(0, 8)})
             </p>
 
             <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
               {!viewReceiptHistorySale.corrections || viewReceiptHistorySale.corrections.length === 0 ? (
-                <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed text-slate-400 text-xs font-semibold">
+                <div className="text-center py-10 bg-slate-50 dark:bg-[#1E293B] border border-dashed border-slate-200 dark:border-[#334155] text-slate-400 dark:text-[#CBD5E1] text-xs font-semibold rounded-2xl">
                   📋 No receipt corrections or audit trail logged yet for this invoice.
                 </div>
               ) : (
-                <div className="relative border-l-2 border-slate-150 pl-4 ml-2 space-y-6 py-2">
+                <div className="relative border-l-2 border-slate-150 dark:border-[#334155] pl-4 ml-2 space-y-6 py-2">
                   {viewReceiptHistorySale.corrections.map((log, idx) => {
                     const isDelete = log.type === 'delete';
                     return (
                       <div key={idx} className="relative space-y-1.5">
                         {/* Dot icon */}
-                        <span className={`absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full ring-4 ring-white ${isDelete ? 'bg-rose-500' : 'bg-blue-500'}`} />
+                        <span className={`absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full ring-4 ring-white dark:ring-[#111827] ${isDelete ? 'bg-rose-500' : 'bg-blue-500'}`} />
                         
-                        <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400 font-semibold">
+                        <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400 dark:text-[#94A3B8] font-semibold">
                           <span>{log.timestamp}</span>
-                          <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">By: {log.changedBy}</span>
+                          <span className="bg-slate-100 dark:bg-[#1E293B] text-slate-600 dark:text-[#CBD5E1] px-2 py-0.5 rounded-md">By: {log.changedBy}</span>
                         </div>
                         
-                        <div className="bg-slate-50/70 border border-slate-150 rounded-2xl p-3.5 text-xs text-slate-700 font-medium leading-relaxed space-y-2">
-                          <p className="font-extrabold text-slate-800 text-[11px]">
+                        <div className="bg-slate-50/70 dark:bg-[#1E293B]/50 border border-slate-150 dark:border-[#334155] rounded-2xl p-3.5 text-xs text-slate-700 dark:text-[#CBD5E1] font-medium leading-relaxed space-y-2">
+                          <p className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-[11px]">
                             {isDelete ? '❌ Receipt Deletion Log' : '✏️ Receipt Edit Log'}
                           </p>
                           <div className="grid grid-cols-2 gap-2 text-[10px] pt-1">
                             <div>
-                              <span className="text-slate-400 block uppercase font-bold text-[8px]">Reason</span>
-                              <span className="font-bold text-slate-800">{log.reason}</span>
+                              <span className="text-slate-400 dark:text-[#94A3B8] block uppercase font-bold text-[8px]">Reason</span>
+                              <span className="font-bold text-slate-850 dark:text-[#F8FAFC]">{log.reason}</span>
                             </div>
                             <div>
-                              <span className="text-slate-400 block uppercase font-bold text-[8px]">Operator</span>
-                              <span className="font-bold text-slate-800">{log.changedBy}</span>
+                              <span className="text-slate-400 dark:text-[#94A3B8] block uppercase font-bold text-[8px]">Operator</span>
+                              <span className="font-bold text-slate-850 dark:text-[#F8FAFC]">{log.changedBy}</span>
                             </div>
                           </div>
 
-                          <div className="pt-2 border-t border-slate-200/50 text-[10px] space-y-1">
+                          <div className="pt-2 border-t border-slate-200/50 dark:border-[#334155]/50 text-[10px] space-y-1">
                             <p><strong>Previous:</strong> <span className="text-rose-600">{log.previous}</span></p>
                             {!isDelete && <p><strong>Updated:</strong> <span className="text-emerald-600 font-extrabold">{log.updated}</span></p>}
                           </div>
@@ -2107,8 +2108,8 @@ export default function OfflineSales() {
               )}
             </div>
 
-            <div className="pt-2 border-t flex justify-end">
-              <button onClick={() => setViewReceiptHistorySale(null)} className="px-5 py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition-colors">
+            <div className="pt-2 border-t dark:border-[#334155] flex justify-end">
+              <button onClick={() => setViewReceiptHistorySale(null)} className="px-5 py-2.5 bg-slate-800 dark:bg-[#111827] text-white rounded-xl text-xs font-bold hover:bg-slate-900 dark:hover:bg-[#1E293B] transition-colors">
                 Close Timeline
               </button>
             </div>

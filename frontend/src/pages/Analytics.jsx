@@ -7,6 +7,7 @@ import {
   Boxes, Package2, DollarSign
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useIsDarkMode } from '../context/ThemeContext';
 
 // --- Date Range Presets Helper ---
 const getTodayStr = (offsetDays = 0) => {
@@ -56,11 +57,12 @@ const PLATFORM_INFO = {
 // --- Custom Responsive SVG Donut Chart ---
 function DonutChart({ data, title, centerValueLabel, centerValue }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
+  const isDark = useIsDarkMode();
   
   const total = data.reduce((sum, item) => sum + item.value, 0);
   if (total === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 text-slate-400 text-sm">
+      <div className="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-[#94A3B8] text-sm">
         No asset data available.
       </div>
     );
@@ -81,7 +83,7 @@ function DonutChart({ data, title, centerValueLabel, centerValue }) {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-around gap-4 py-2">
+    <div className="flex flex-col sm:flex-row items-center justify-around gap-4 py-2 w-full">
       {/* SVG Container */}
       <div className="relative w-36 h-36 flex-shrink-0">
         <svg viewBox="-1.2 -1.2 2.4 2.4" className="w-full h-full -rotate-90">
@@ -110,25 +112,25 @@ function DonutChart({ data, title, centerValueLabel, centerValue }) {
             );
           })}
           {/* Inner cutout for Donut */}
-          <circle cx="0" cy="0" r="0.65" fill="#ffffff" />
+          <circle cx="0" cy="0" r="0.65" fill={isDark ? '#111827' : '#ffffff'} />
         </svg>
         {/* Absolute Center Content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
           {hoveredIdx !== null ? (
             <>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-full">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider truncate max-w-full">
                 {sectors[hoveredIdx].label}
               </span>
-              <span className="text-sm font-extrabold text-slate-800">
+              <span className="text-sm font-extrabold text-slate-800 dark:text-[#F8FAFC]">
                 {((sectors[hoveredIdx].percent) * 100).toFixed(1)}%
               </span>
             </>
           ) : (
             <>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-full">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider truncate max-w-full">
                 {centerValueLabel}
               </span>
-              <span className="text-xs font-extrabold text-slate-800 truncate max-w-full">
+              <span className="text-xs font-extrabold text-slate-800 dark:text-[#F8FAFC] truncate max-w-full">
                 {centerValue}
               </span>
             </>
@@ -137,22 +139,22 @@ function DonutChart({ data, title, centerValueLabel, centerValue }) {
       </div>
 
       {/* Legends */}
-      <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 hidden sm:block">{title}</h4>
+      <div className="flex flex-col gap-1.5 flex-1 min-w-0 w-full">
+        <h4 className="text-xs font-bold text-slate-505 dark:text-[#94A3B8] uppercase tracking-wider mb-1 hidden sm:block">{title}</h4>
         {sectors.map((s) => (
           <div
             key={s.idx}
             className={`flex items-center justify-between text-xs px-2 py-1 rounded-lg transition-colors cursor-pointer ${
-              hoveredIdx === s.idx ? 'bg-slate-50' : ''
+              hoveredIdx === s.idx ? 'bg-slate-50 dark:bg-[#1E293B]/60 text-slate-900 dark:text-[#F8FAFC]' : 'text-slate-700 dark:text-[#CBD5E1]'
             }`}
             onMouseEnter={() => setHoveredIdx(s.idx)}
             onMouseLeave={() => setHoveredIdx(null)}
           >
             <div className="flex items-center gap-2 truncate mr-2">
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-              <span className="font-semibold text-slate-700 truncate">{s.label}</span>
+              <span className="font-semibold truncate">{s.label}</span>
             </div>
-            <span className="font-bold text-slate-500 text-[11px] whitespace-nowrap">
+            <span className="font-bold text-[11px] whitespace-nowrap text-slate-505 dark:text-[#94A3B8]">
               ₹{s.value.toLocaleString('en-IN')} ({((s.percent) * 100).toFixed(0)}%)
             </span>
           </div>
@@ -165,6 +167,7 @@ function DonutChart({ data, title, centerValueLabel, centerValue }) {
 // --- Custom Responsive SVG Line Chart ---
 function LineChart({ data, dataKeys, colors, labels }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
+  const isDark = useIsDarkMode();
 
   if (!data || data.length === 0) {
     return (
@@ -214,7 +217,7 @@ function LineChart({ data, dataKeys, colors, labels }) {
           const y = getY(val);
           return (
             <g key={i} className="opacity-40">
-              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke="#e2e8f0" strokeDasharray="3,3" />
+              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke={isDark ? '#334155' : '#e2e8f0'} strokeDasharray="3,3" />
               <text x={paddingLeft - 8} y={y + 4} textAnchor="end" className="text-[10px] font-bold fill-slate-400">
                 ₹{val >= 100000 ? `${(val / 100000).toFixed(1)}L` : val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
               </text>
@@ -327,10 +330,11 @@ function LineChart({ data, dataKeys, colors, labels }) {
 // --- Custom Responsive SVG Bar Chart ---
 function BarChart({ data, dataKey, color, label }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
+  const isDark = useIsDarkMode();
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-slate-400 text-sm">
+      <div className="flex items-center justify-center h-48 text-slate-400 dark:text-[#94A3B8] text-sm">
         No asset details found.
       </div>
     );
@@ -373,7 +377,7 @@ function BarChart({ data, dataKey, color, label }) {
           const y = getY(val);
           return (
             <g key={i} className="opacity-45">
-              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke="#f1f5f9" strokeWidth="1" />
+              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke={isDark ? '#334155' : '#f1f5f9'} strokeWidth="1" />
               <text x={paddingLeft - 8} y={y + 4} textAnchor="end" className="text-[9px] font-bold fill-slate-400">
                 {val >= 100000 ? `${(val / 100000).toFixed(1)}L` : val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
               </text>
@@ -536,22 +540,25 @@ export default function Analytics() {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* 1. Header Page Title Block */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-[#1E293B]">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Business Analytics & Profit Dashboard</h1>
-          <p className="text-slate-500 text-sm mt-1">Real-time overview of business profitability, marketplaces, and current inventory assets</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight flex items-center gap-2">
+            <span className="w-2.5 h-8 bg-[#EF4444] rounded-full"></span>
+            Business Analytics & Profit Dashboard
+          </h1>
+          <p className="text-slate-500 dark:text-[#94A3B8] font-medium text-sm mt-1">Real-time overview of business profitability, marketplaces, and current inventory assets</p>
         </div>
 
         {/* Section View Tabs Switched Navigation */}
-        <div className="flex p-1 bg-slate-200/80 rounded-2xl self-start w-full sm:w-auto">
+        <div className="flex p-1 bg-slate-150/70 dark:bg-[#1E293B] rounded-2xl self-start w-full sm:w-auto">
           <button
             onClick={() => setActiveTab('profitability')}
             className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'profitability'
-                ? 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 dark:text-[#94A3B8] dark:hover:text-[#F8FAFC]'
             }`}
           >
             <DollarSign size={14} />
@@ -561,8 +568,8 @@ export default function Analytics() {
             onClick={() => setActiveTab('inventory')}
             className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'inventory'
-                ? 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 dark:text-[#94A3B8] dark:hover:text-[#F8FAFC]'
             }`}
           >
             <Boxes size={14} />
@@ -574,12 +581,12 @@ export default function Analytics() {
       {/* Loading & Error Overlays */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-32 text-slate-400 gap-3">
-          <Loader2 size={36} className="animate-spin text-red-600" />
-          <p className="text-sm font-semibold">Recalculating analytics ledger indices…</p>
+          <Loader2 size={36} className="animate-spin text-[#EF4444]" />
+          <p className="text-sm font-semibold text-slate-500 dark:text-[#94A3B8]">Recalculating analytics ledger indices…</p>
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl flex items-center gap-3">
-          <AlertTriangle className="text-red-500 flex-shrink-0" />
+        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 text-[#EF4444] p-6 rounded-2xl flex items-center gap-3">
+          <AlertTriangle className="text-red-505 flex-shrink-0" />
           <div>
             <h4 className="font-bold">Error Loading Data</h4>
             <p className="text-sm">{error}</p>
@@ -590,21 +597,21 @@ export default function Analytics() {
           {/* TAB 1: SALES & PROFITABILITY VIEW */}
           {activeTab === 'profitability' && (
             <div className="space-y-6 animate-fadeIn">
-              {/* Date Filters Header bar */}
-              <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
-                <div className="flex items-center gap-4 flex-wrap">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              {/* Date & Customer Type Filters Header bar */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4">
+                <div className="flex items-center gap-4 flex-wrap w-full lg:w-auto">
+                  <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap">
                     <Calendar size={14} /> Period filters:
                   </span>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex gap-1 bg-slate-150/70 dark:bg-[#1E293B] rounded-xl p-1 overflow-x-auto scrollbar-none max-w-full">
                     {PRESETS.map((p) => (
                       <button
                         key={p.id}
                         onClick={() => setPreset(p.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
                           preset === p.id 
-                            ? 'bg-red-600 text-white shadow-sm' 
-                            : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800'
+                            ? 'bg-[#EF4444] text-white shadow-sm' 
+                            : 'text-slate-550 hover:text-slate-800 dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] bg-transparent'
                         }`}
                       >
                         {p.label}
@@ -614,44 +621,44 @@ export default function Analytics() {
                 </div>
 
                 {/* Customer Type Dropdown Filter */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Customer Type:</span>
+                <div className="flex items-center gap-2.5 text-xs self-start lg:self-center">
+                  <span className="text-slate-400 dark:text-[#94A3B8] font-bold uppercase whitespace-nowrap">Customer Type:</span>
                   <select
                     value={customerType}
                     onChange={(e) => setCustomerType(e.target.value)}
-                    className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-500 font-bold text-slate-700"
+                    className="px-3 py-2 border border-slate-200 dark:border-[#1E293B] rounded-xl text-xs font-bold bg-slate-55/60 hover:bg-white dark:bg-[#0F172A] dark:text-[#CBD5E1] dark:hover:bg-[#111827] focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-550 transition-all text-slate-705"
                   >
-                    <option value="all">👥 All Customers</option>
-                    <option value="shop">🏪 Shops Only</option>
-                    <option value="individual">👤 Individuals Only</option>
+                    <option value="all">All Customers</option>
+                    <option value="shop">Shops Only</option>
+                    <option value="individual">Individuals Only</option>
                   </select>
                 </div>
               </div>
 
               {preset === 'custom' && (
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-wrap items-center gap-4 animate-fadeIn">
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-2xl p-4 shadow-sm flex flex-wrap items-center gap-4 animate-fadeIn">
                   <div className="flex items-center gap-2">
-                    <Calendar size={16} className="text-slate-400" />
-                    <span className="text-xs font-bold text-slate-500 uppercase">Custom Dates</span>
+                    <Calendar size={16} className="text-slate-400 dark:text-[#94A3B8]" />
+                    <span className="text-xs font-bold text-slate-500 dark:text-[#CBD5E1] uppercase">Custom Dates</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <input
                       type="date"
                       value={customStart}
                       onChange={(e) => setCustomStart(e.target.value)}
-                      className="py-1.5 px-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="py-1.5 px-3 border border-slate-200 dark:border-[#1E293B] rounded-xl text-xs bg-slate-50/50 dark:bg-[#0F172A] dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
-                    <span className="text-slate-400 text-xs font-bold uppercase">to</span>
+                    <span className="text-slate-400 dark:text-slate-500 text-xs font-bold uppercase">to</span>
                     <input
                       type="date"
                       value={customEnd}
                       onChange={(e) => setCustomEnd(e.target.value)}
-                      className="py-1.5 px-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="py-1.5 px-3 border border-slate-200 dark:border-[#1E293B] rounded-xl text-xs bg-slate-50/50 dark:bg-[#0F172A] dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
                   </div>
                   <button
                     onClick={fetchAnalytics}
-                    className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                    className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 dark:bg-[#1E293B] dark:hover:bg-[#334155] text-white text-xs font-bold rounded-xl transition-all shadow-sm"
                   >
                     Apply Range
                   </button>
@@ -659,88 +666,95 @@ export default function Analytics() {
               )}
 
               {/* Profitability Overview Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Revenue</span>
-                    <p className="text-xl font-black text-slate-800 mt-1">{fmt(overview.revenue)}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6">
+                {/* Revenue */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Revenue</span>
+                    <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{fmt(overview.revenue)}</p>
                   </div>
-                  <div className="mt-3 text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg self-start">
+                  <div className="mt-4 text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] bg-slate-50 dark:bg-[#1E293B] px-2.5 py-1 rounded-lg self-start">
                     Gross sales receipts
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Product Cost (COGS)</span>
-                    <p className="text-xl font-black text-slate-800 mt-1">{fmt(overview.productCost)}</p>
+                {/* COGS */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#3B82F6] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Product Cost (COGS)</span>
+                    <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{fmt(overview.productCost)}</p>
                   </div>
-                  <div className="mt-3 text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg self-start">
+                  <div className="mt-4 text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] bg-slate-50 dark:bg-[#1E293B] px-2.5 py-1 rounded-lg self-start">
                     Cost of materials sold
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Gross Profit</span>
-                    <p className="text-xl font-black text-slate-800 mt-1">{fmt(overview.grossProfit)}</p>
+                {/* Gross Profit */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Gross Profit</span>
+                    <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{fmt(overview.grossProfit)}</p>
                   </div>
-                  <div className="mt-3 flex items-center gap-1 text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-lg self-start">
-                    <TrendingUp size={11} /> {overview.revenue > 0 ? ((overview.grossProfit / overview.revenue) * 100).toFixed(0) : 0}% margin
+                  <div className="mt-4 flex items-center gap-1 text-[10px] font-extrabold text-emerald-600 dark:text-[#10B981] bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-lg self-start">
+                    <TrendingUp size={12} /> {overview.revenue > 0 ? ((overview.grossProfit / overview.revenue) * 100).toFixed(0) : 0}% margin
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Returns Cost</span>
-                    <p className="text-xl font-black text-red-500 mt-1">{fmt(overview.returnsValue)}</p>
+                {/* Returns Cost */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#EF4444] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Returns Cost</span>
+                    <p className="text-3xl font-extrabold text-[#EF4444] tracking-tight leading-none">{fmt(overview.returnsValue)}</p>
                   </div>
-                  <div className="mt-3 text-[10px] font-semibold text-red-500 bg-red-50 px-2 py-1 rounded-lg self-start">
+                  <div className="mt-4 text-[10px] font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2.5 py-1 rounded-lg self-start">
                     Lost returned sales value
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden ring-2 ring-emerald-500 ring-offset-2">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Net Profit</span>
-                    <p className="text-2xl font-black text-emerald-600 mt-1">{fmt(overview.netProfit)}</p>
+                {/* Net Profit */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-5 shadow-md shadow-[#10B981]/10 dark:shadow-none flex flex-col justify-between relative overflow-hidden ring-2 ring-[#10B981] dark:ring-[#10B981] ring-offset-2 dark:ring-offset-[#0F172A] hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Net Profit</span>
+                    <p className="text-3xl font-extrabold text-emerald-600 dark:text-[#10B981] tracking-tight leading-none">{fmt(overview.netProfit)}</p>
                   </div>
-                  <div className={`mt-3 flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg self-start ${
-                    overview.netProfit >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                  <div className={`mt-4 flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-1 rounded-lg self-start ${
+                    overview.netProfit >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-[#10B981]' : 'bg-red-50 text-red-650 dark:bg-red-950/30 dark:text-[#EF4444]'
                   }`}>
-                    {overview.netProfit >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                    {overview.netProfit >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                     {overview.revenue > 0 ? ((overview.netProfit / overview.revenue) * 100).toFixed(0) : 0}% net margin
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Units Sold</span>
-                    <p className="text-xl font-black text-slate-800 mt-1">{overview.unitsSold || 0} pcs</p>
+                {/* Units Sold */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#3B82F6] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Units Sold</span>
+                    <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{overview.unitsSold || 0} pcs</p>
                   </div>
-                  <div className="mt-3 flex items-center gap-1 text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg self-start">
-                    <Percent size={11} className="text-orange-500" /> {overview.returnPercentage ? overview.returnPercentage.toFixed(1) : 0}% returns
+                  <div className="mt-4 flex items-center gap-1 text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] bg-slate-50 dark:bg-[#1E293B] px-2.5 py-1 rounded-lg self-start">
+                    <Percent size={12} className="text-orange-500" /> {overview.returnPercentage ? overview.returnPercentage.toFixed(1) : 0}% returns
                   </div>
                 </div>
               </div>
 
               {/* Profit Trends and Platform Share charts */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 lg:col-span-2 flex flex-col">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
+                {/* Trend Chart */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none lg:col-span-2 flex flex-col hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-[#1E293B] pb-4 mb-4">
                     <div>
-                      <h3 className="font-extrabold text-slate-800 text-base">Monthly Profit Trend</h3>
-                      <p className="text-slate-400 text-xs mt-0.5">Tracking revenue vs net profit over time</p>
+                      <h3 className="font-extrabold text-slate-850 dark:text-[#F8FAFC] text-base">Monthly Profit Trend</h3>
+                      <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Tracking revenue vs net profit over time</p>
                     </div>
-                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl self-start">
+                    <div className="flex gap-1 bg-slate-150/70 dark:bg-[#1E293B] p-1 rounded-xl self-start">
                       {['daily', 'weekly', 'monthly'].map((t) => (
                         <button
                           key={t}
                           onClick={() => setTrendTab(t)}
-                          className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all ${
+                          className={`px-3 py-1 rounded-lg text-xs font-bold capitalize transition-all ${
                             trendTab === t 
-                              ? 'bg-white text-slate-800 shadow-sm' 
-                              : 'text-slate-400 hover:text-slate-700'
+                              ? 'bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] shadow-sm' 
+                              : 'text-slate-550 hover:text-slate-805 dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] bg-transparent'
                           }`}
                         >
                           {t}
@@ -748,23 +762,24 @@ export default function Analytics() {
                       ))}
                     </div>
                   </div>
-                  <div className="flex-1 flex items-center">
+                  <div className="flex-1 flex items-center w-full">
                     <LineChart
                       data={trends[trendTab] || []}
                       dataKeys={['revenue', 'profit']}
-                      colors={['#e11d48', '#10b981']}
+                      colors={['#EF4444', '#10b981']}
                       labels={['Revenue', 'Net Profit']}
                     />
                   </div>
                 </div>
 
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col gap-6">
+                {/* Platform Donut Card */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col gap-6 hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
                   <div>
-                    <h3 className="font-extrabold text-slate-800 text-base">Platform Distribution</h3>
-                    <p className="text-slate-400 text-xs mt-0.5">Distribution of revenue and profits per marketplace</p>
+                    <h3 className="font-extrabold text-slate-850 dark:text-[#F8FAFC] text-base">Platform Distribution</h3>
+                    <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Distribution of revenue and profits per marketplace</p>
                   </div>
                   
-                  <div className="divide-y divide-slate-100 flex-1 flex flex-col justify-around">
+                  <div className="divide-y divide-slate-100 dark:divide-[#1E293B] flex-1 flex flex-col justify-around">
                     <div className="pb-4">
                       <DonutChart
                         data={getDonutData('revenue')}
@@ -787,52 +802,60 @@ export default function Analytics() {
 
               {/* Platform performance breakdown */}
               <div className="space-y-4">
-                <h3 className="font-extrabold text-slate-800 text-base">Marketplace & Offline Performance</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-3 w-1 bg-indigo-500 rounded-full" />
+                  <span className="text-xs font-bold tracking-wider text-slate-400 dark:text-[#94A3B8] uppercase">Marketplace & Offline Performance</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   {Object.keys(PLATFORM_INFO).map((key) => {
                     const p = platforms[key] || { revenue: 0, productCost: 0, grossProfit: 0, returnsValue: 0, netProfit: 0, unitsSold: 0, unitsReturned: 0 };
                     const info = PLATFORM_INFO[key];
                     const rPercent = p.unitsSold > 0 ? ((p.unitsReturned / p.unitsSold) * 100) : 0;
                     
                     return (
-                      <div key={key} className={`bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col`}>
-                        <div className={`px-4 py-3 flex items-center justify-between border-b ${info.bg}`}>
-                          <span className={`text-sm font-bold uppercase tracking-wider ${info.text}`}>{info.label}</span>
-                          <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-full shadow-sm">
+                      <div key={key} className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl shadow-md shadow-slate-100/50 dark:shadow-none overflow-hidden flex flex-col hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
+                        <div className={`px-4 py-3 flex items-center justify-between border-b dark:border-[#1E293B] ${
+                          key === 'amazon' ? 'bg-orange-50/50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400 border-orange-100' :
+                          key === 'flipkart' ? 'bg-blue-50/50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-100' :
+                          key === 'meesho' ? 'bg-pink-50/50 dark:bg-pink-950/20 text-pink-700 dark:text-pink-400 border-pink-100' :
+                          'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-[#CBD5E1] border-slate-200'
+                        }`}>
+                          <span className="text-sm font-bold uppercase tracking-wider">{info.label}</span>
+                          <span className="text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] bg-white/90 dark:bg-[#1E293B]/80 px-2 py-0.5 rounded-full shadow-sm">
                             {p.unitsSold} sold
                           </span>
                         </div>
 
-                        <div className="p-4 flex-1 flex flex-col justify-between gap-3 text-xs">
+                        <div className="p-5 flex-1 flex flex-col justify-between gap-4 text-xs">
                           <div className="space-y-2">
                             <div className="flex justify-between">
-                              <span className="text-slate-400 font-semibold">Revenue</span>
-                              <span className="font-bold text-slate-800">{fmt(p.revenue)}</span>
+                              <span className="text-slate-400 dark:text-[#94A3B8] font-bold">Revenue</span>
+                              <span className="font-extrabold text-slate-800 dark:text-[#F8FAFC]">{fmt(p.revenue)}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-400 font-semibold">Product Cost</span>
-                              <span className="font-bold text-slate-600">{fmt(p.productCost)}</span>
+                              <span className="text-slate-400 dark:text-[#94A3B8] font-bold">Product Cost</span>
+                              <span className="font-extrabold text-slate-500 dark:text-[#94A3B8]">{fmt(p.productCost)}</span>
                             </div>
-                            <div className="flex justify-between border-t border-slate-50 pt-1.5">
-                              <span className="text-slate-400 font-semibold">Gross Profit</span>
-                              <span className="font-bold text-slate-800">{fmt(p.grossProfit)}</span>
+                            <div className="flex justify-between border-t border-slate-50 dark:border-[#1E293B] pt-2">
+                              <span className="text-slate-400 dark:text-[#94A3B8] font-bold">Gross Profit</span>
+                              <span className="font-extrabold text-slate-805 dark:text-[#F8FAFC]">{fmt(p.grossProfit)}</span>
                             </div>
-                            <div className="flex justify-between text-red-500">
-                              <span className="font-semibold">Returns Loss</span>
-                              <span className="font-bold">-{fmt(p.returnsValue)}</span>
+                            <div className="flex justify-between text-red-500 dark:text-[#EF4444]">
+                              <span className="font-bold">Returns Loss</span>
+                              <span className="font-black">-{fmt(p.returnsValue)}</span>
                             </div>
                           </div>
 
-                          <div className="border-t pt-3 flex justify-between items-center">
+                          <div className="border-t border-slate-100 dark:border-[#1E293B] pt-3.5 flex justify-between items-center">
                             <div>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase block">Net Profit</span>
-                              <span className={`text-base font-extrabold ${p.netProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                              <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase block">Net Profit</span>
+                              <span className={`text-base font-extrabold ${p.netProfit >= 0 ? 'text-emerald-600 dark:text-[#10B981]' : 'text-red-500 dark:text-[#EF4444]'}`}>
                                 {fmt(p.netProfit)}
                               </span>
                             </div>
                             <div className="text-right">
-                              <span className="text-[10px] font-bold text-slate-400 block">Returns %</span>
-                              <span className="font-bold text-slate-600">{rPercent.toFixed(0)}%</span>
+                              <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] block">Returns %</span>
+                              <span className="font-extrabold text-slate-650 dark:text-[#CBD5E1]">{rPercent.toFixed(0)}%</span>
                             </div>
                           </div>
                         </div>
@@ -844,29 +867,30 @@ export default function Analytics() {
 
               {/* Product rankings lists & returns cost */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 lg:col-span-2 flex flex-col">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                {/* Ranking table */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none lg:col-span-2 flex flex-col hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1E293B] pb-4 mb-4">
                     <div>
-                      <h3 className="font-extrabold text-slate-800 text-base">Product Contribution Profit</h3>
-                      <p className="text-slate-400 text-xs mt-0.5">Rankings of product profit performance</p>
+                      <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-base">Product Contribution Profit</h3>
+                      <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Rankings of product profit performance</p>
                     </div>
-                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                    <div className="flex gap-1 bg-slate-150/70 dark:bg-[#1E293B] p-1 rounded-xl">
                       <button
                         onClick={() => setProductTab('profitable')}
-                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                           productTab === 'profitable' 
-                            ? 'bg-white text-slate-800 shadow-sm' 
-                            : 'text-slate-400 hover:text-slate-700'
+                            ? 'bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] shadow-sm' 
+                            : 'text-slate-550 hover:text-slate-800 dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] bg-transparent'
                         }`}
                       >
                         Top Profitable
                       </button>
                       <button
                         onClick={() => setProductTab('leastProfitable')}
-                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                           productTab === 'leastProfitable' 
-                            ? 'bg-white text-slate-800 shadow-sm' 
-                            : 'text-slate-400 hover:text-slate-700'
+                            ? 'bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] shadow-sm' 
+                            : 'text-slate-550 hover:text-slate-805 dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] bg-transparent'
                         }`}
                       >
                         Least Profitable
@@ -875,37 +899,37 @@ export default function Analytics() {
                   </div>
 
                   <div className="flex-1 overflow-x-auto">
-                    <table className="w-full text-xs text-left">
+                    <table className="w-full text-xs text-left border-collapse">
                       <thead>
-                        <tr className="text-[10px] font-bold uppercase text-slate-400 tracking-wider border-b pb-2">
-                          <th className="py-2">Rank / Product</th>
-                          <th className="py-2 text-center">Qty Sold</th>
-                          <th className="py-2 text-right">Revenue</th>
-                          <th className="py-2 text-right">Product Cost</th>
-                          <th className="py-2 text-right">Net Profit</th>
+                        <tr className="bg-slate-50/80 dark:bg-[#1E293B] border-b border-slate-200 dark:border-[#1E293B] text-slate-500 dark:text-[#94A3B8] font-bold uppercase text-[10px] tracking-wider">
+                          <th className="px-4 py-3">Rank / Product</th>
+                          <th className="px-4 py-3 text-center">Qty Sold</th>
+                          <th className="px-4 py-3 text-right">Revenue</th>
+                          <th className="px-4 py-3 text-right">Product Cost</th>
+                          <th className="px-4 py-3 text-right">Net Profit</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-slate-100 dark:divide-[#1E293B] bg-white dark:bg-[#111827] font-semibold text-slate-700 dark:text-[#CBD5E1]">
                         {(productTab === 'profitable' ? productsList.top10 : productsList.least10 || []).map((p, idx) => (
-                          <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-2.5">
-                              <div className="flex items-center gap-2">
-                                <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] flex-shrink-0 ${
+                          <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1E293B]/40 transition-colors">
+                            <td className="px-4 py-3.5">
+                              <div className="flex items-center gap-2.5">
+                                <span className={`w-5.5 h-5.5 rounded-lg flex items-center justify-center font-black text-[10px] flex-shrink-0 ${
                                   productTab === 'profitable' 
-                                    ? idx < 3 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                                    : idx < 3 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
+                                    ? idx < 3 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-[#10B981]' : 'bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400'
+                                    : idx < 3 ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-[#EF4444]' : 'bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400'
                                 }`}>
                                   {idx + 1}
                                 </span>
-                                <span className="font-semibold text-slate-800 max-w-[150px] sm:max-w-[200px] truncate block" title={p.name}>
+                                <span className="font-bold text-slate-800 dark:text-[#F8FAFC] max-w-[150px] sm:max-w-[200px] truncate block" title={p.name}>
                                   {p.name}
                                 </span>
                               </div>
                             </td>
-                            <td className="py-2.5 text-center font-medium text-slate-600">{p.soldQty}</td>
-                            <td className="py-2.5 text-right font-medium text-slate-700">{fmt(p.revenue)}</td>
-                            <td className="py-2.5 text-right font-medium text-slate-600">{fmt(p.productCost)}</td>
-                            <td className={`py-2.5 text-right font-bold ${p.netProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            <td className="px-4 py-3.5 text-center font-bold text-slate-600 dark:text-[#94A3B8]">{p.soldQty}</td>
+                            <td className="px-4 py-3.5 text-right font-extrabold text-slate-900 dark:text-[#F8FAFC]">{fmt(p.revenue)}</td>
+                            <td className="px-4 py-3.5 text-right font-semibold text-slate-500 dark:text-[#94A3B8]">{fmt(p.productCost)}</td>
+                            <td className={`px-4 py-3.5 text-right font-black ${p.netProfit >= 0 ? 'text-emerald-600 dark:text-[#10B981]' : 'text-red-500 dark:text-[#EF4444]'}`}>
                               {fmt(p.netProfit)}
                             </td>
                           </tr>
@@ -915,48 +939,49 @@ export default function Analytics() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col gap-4">
+                {/* Returns Trends Summary */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col gap-5 hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
                   <div>
-                    <h3 className="font-extrabold text-slate-800 text-base">Return Trends & Metrics</h3>
-                    <p className="text-slate-400 text-xs mt-0.5">Analysis of items returned and refunds per channel</p>
+                    <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-base">Return Trends & Metrics</h3>
+                    <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Analysis of items returned and refunds per channel</p>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-2.5 text-center">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Returns</span>
-                      <span className="text-sm font-black text-slate-700 block mt-0.5">{overview.unitsReturned || 0} pcs</span>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <div className="bg-slate-50 dark:bg-[#1E293B]/40 border border-slate-100 dark:border-[#1E293B] rounded-2xl p-2.5 text-center">
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Returns</span>
+                      <span className="text-sm font-black text-slate-700 dark:text-[#F8FAFC] block mt-0.5">{overview.unitsReturned || 0} pcs</span>
                     </div>
-                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-2.5 text-center">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Return Rate</span>
-                      <span className="text-sm font-black text-orange-600 block mt-0.5">
+                    <div className="bg-slate-50 dark:bg-[#1E293B]/40 border border-slate-100 dark:border-[#1E293B] rounded-2xl p-2.5 text-center">
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Return Rate</span>
+                      <span className="text-sm font-black text-orange-600 dark:text-[#F59E0B] block mt-0.5">
                         {overview.returnPercentage ? overview.returnPercentage.toFixed(1) : 0}%
                       </span>
                     </div>
-                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-2.5 text-center">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Refund Cost</span>
-                      <span className="text-sm font-black text-red-500 block mt-0.5">{fmt(overview.returnsValue)}</span>
+                    <div className="bg-slate-50 dark:bg-[#1E293B]/40 border border-slate-100 dark:border-[#1E293B] rounded-2xl p-2.5 text-center">
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Refund Cost</span>
+                      <span className="text-sm font-black text-red-500 dark:text-[#EF4444] block mt-0.5">{fmt(overview.returnsValue)}</span>
                     </div>
                   </div>
 
-                  <div className="space-y-1.5 text-xs">
+                  <div className="space-y-2 text-xs font-semibold">
                     {Object.keys(platforms).map(key => {
                       const p = platforms[key] || {};
                       const label = PLATFORM_INFO[key]?.label || key;
                       const count = p.unitsReturned || 0;
                       const val = p.returnsValue || 0;
                       return (
-                        <div key={key} className="flex justify-between items-center bg-slate-50/50 p-2 rounded-xl border border-slate-100">
-                          <span className="font-semibold text-slate-600">{label} Returns</span>
-                          <span className="font-bold text-slate-800 text-[11px]">
-                            {count} items <span className="text-slate-400 font-normal">({fmt(val)})</span>
+                        <div key={key} className="flex justify-between items-center bg-slate-50/50 dark:bg-[#1E293B]/30 p-2.5 rounded-xl border border-slate-100 dark:border-[#1E293B]">
+                          <span className="text-slate-655 dark:text-[#CBD5E1]">{label} Returns</span>
+                          <span className="font-bold text-slate-800 dark:text-[#F8FAFC] text-[11px]">
+                            {count} items <span className="text-slate-400 dark:text-slate-500 font-normal">({fmt(val)})</span>
                           </span>
                         </div>
                       );
                     })}
                   </div>
 
-                  <div className="mt-2 pt-2 border-t border-slate-100 flex-1 flex flex-col justify-end">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Returns Trend Timeline</span>
+                  <div className="mt-2 pt-2 border-t border-slate-100 dark:border-[#1E293B] flex-1 flex flex-col justify-end">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider mb-2 block">Returns Trend Timeline</span>
                     <BarChart
                       data={trends[trendTab] || []}
                       dataKey="returns"
@@ -975,7 +1000,7 @@ export default function Analytics() {
               {/* 1. Inventory Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {/* Total Inventory Value */}
-                <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-3xl p-6 shadow-md relative overflow-hidden">
+                <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-3xl p-6 shadow-md relative overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
                   <div className="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-10">
                     <IndianRupee size={160} />
                   </div>
@@ -985,23 +1010,23 @@ export default function Analytics() {
                 </div>
 
                 {/* Total Products */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-red-600 rounded-3xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
                   <div>
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Products</span>
-                    <p className="text-3xl font-black text-slate-800 mt-2">{inv.summary.totalProducts || 0}</p>
+                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Products</span>
+                    <p className="text-3xl font-black text-slate-800 dark:text-[#F8FAFC] mt-2">{inv.summary.totalProducts || 0}</p>
                   </div>
-                  <div className="mt-4 text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl self-start">
+                  <div className="mt-4 text-xs font-semibold text-slate-400 dark:text-[#94A3B8] bg-slate-50 dark:bg-[#1E293B] px-3 py-1.5 rounded-xl self-start">
                     Unique active SKUs in collection
                   </div>
                 </div>
 
                 {/* Total Units In Stock */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-blue-500 rounded-3xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
                   <div>
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Units in Stock</span>
-                    <p className="text-3xl font-black text-slate-800 mt-2">{(inv.summary.totalUnits || 0).toLocaleString()}</p>
+                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Units in Stock</span>
+                    <p className="text-3xl font-black text-slate-800 dark:text-[#F8FAFC] mt-2">{(inv.summary.totalUnits || 0).toLocaleString()}</p>
                   </div>
-                  <div className="mt-4 text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl self-start">
+                  <div className="mt-4 text-xs font-semibold text-slate-400 dark:text-[#94A3B8] bg-slate-50 dark:bg-[#1E293B] px-3 py-1.5 rounded-xl self-start">
                     Aggregate pieces in warehouses
                   </div>
                 </div>
@@ -1010,10 +1035,10 @@ export default function Analytics() {
               {/* 2. Charts Section */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Category Donut Share Chart */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col">
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
                   <div>
-                    <h3 className="font-extrabold text-slate-800 text-base">Value share by Category</h3>
-                    <p className="text-slate-400 text-xs mt-0.5">Asset investment share per product category</p>
+                    <h3 className="font-extrabold text-slate-850 dark:text-[#F8FAFC] text-base">Value share by Category</h3>
+                    <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Asset investment share per product category</p>
                   </div>
                   <div className="flex-1 flex items-center">
                     <DonutChart
@@ -1026,10 +1051,10 @@ export default function Analytics() {
                 </div>
 
                 {/* Highest Investment Products Bar Chart */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 lg:col-span-2 flex flex-col">
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none lg:col-span-2 flex flex-col hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
                   <div>
-                    <h3 className="font-extrabold text-slate-800 text-base">Top Product Investments</h3>
-                    <p className="text-slate-400 text-xs mt-0.5">Highest value concentrations in stock</p>
+                    <h3 className="font-extrabold text-slate-850 dark:text-[#F8FAFC] text-base">Top Product Investments</h3>
+                    <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Highest value concentrations in stock</p>
                   </div>
                   <div className="flex-1 flex items-center">
                     <BarChart
@@ -1045,33 +1070,33 @@ export default function Analytics() {
               {/* 3. Alerts: Low stock / Out of stock lists */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Low Stock Alerts */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-red-100 flex flex-col max-h-[380px]">
-                  <div className="flex items-center gap-2 pb-3 border-b border-slate-100 mb-3 flex-shrink-0">
-                    <AlertTriangle className="text-red-500" size={18} />
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col max-h-[380px] hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
+                  <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-[#1E293B] mb-3 flex-shrink-0">
+                    <AlertTriangle className="text-red-500 dark:text-[#EF4444]" size={20} />
                     <div>
-                      <h3 className="font-extrabold text-slate-800 text-sm">Low Stock Alerts (Stock &le; 10)</h3>
-                      <p className="text-slate-400 text-[11px] mt-0.5">Products running low and needing restock</p>
+                      <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-sm">Low Stock Alerts (Stock &le; 10)</h3>
+                      <p className="text-slate-400 dark:text-[#94A3B8] text-[11px] mt-0.5">Products running low and needing restock</p>
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto pr-1">
                     {inv.lowStock.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-2">
+                      <div className="flex flex-col items-center justify-center py-12 text-slate-400 dark:text-[#94A3B8] gap-2">
                         <Boxes size={24} className="opacity-40" />
                         <span className="text-xs font-semibold">No low stock items. All good!</span>
                       </div>
                     ) : (
-                      <table className="w-full text-xs text-left">
+                      <table className="w-full text-xs text-left border-collapse">
                         <thead>
-                          <tr className="text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b pb-1.5">
-                            <th className="py-1">Product</th>
-                            <th className="py-1 text-right">Available Qty</th>
+                          <tr className="bg-slate-50/80 dark:bg-[#1E293B] border-b border-slate-200 dark:border-[#1E293B] text-slate-500 dark:text-[#94A3B8] font-bold uppercase text-[9px] tracking-wider">
+                            <th className="px-3 py-2">Product</th>
+                            <th className="px-3 py-2 text-right">Available Qty</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="divide-y divide-slate-100 dark:divide-[#1E293B] font-semibold text-slate-700 dark:text-[#CBD5E1]">
                           {inv.lowStock.map((p) => (
-                            <tr key={p.id} className="hover:bg-slate-50">
-                              <td className="py-2 font-medium text-slate-700">{p.name}</td>
-                              <td className="py-2 text-right font-black text-red-600">{p.availableQty} units</td>
+                            <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1E293B]/40 transition-colors">
+                              <td className="px-3 py-2.5 font-bold text-slate-805 dark:text-[#F8FAFC]">{p.name}</td>
+                              <td className="px-3 py-2.5 text-right font-black text-red-600 dark:text-[#EF4444]">{p.availableQty} units</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1081,33 +1106,33 @@ export default function Analytics() {
                 </div>
 
                 {/* Out of Stock Products */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 flex flex-col max-h-[380px]">
-                  <div className="flex items-center gap-2 pb-3 border-b border-slate-100 mb-3 flex-shrink-0">
-                    <AlertOctagon className="text-slate-400" size={18} />
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col max-h-[380px] hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
+                  <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-[#1E293B] mb-3 flex-shrink-0">
+                    <AlertOctagon className="text-slate-400 dark:text-[#94A3B8]" size={20} />
                     <div>
-                      <h3 className="font-extrabold text-slate-800 text-sm">Out of Stock Products</h3>
-                      <p className="text-slate-400 text-[11px] mt-0.5">Products with zero units in stock</p>
+                      <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-sm">Out of Stock Products</h3>
+                      <p className="text-slate-400 dark:text-[#94A3B8] text-[11px] mt-0.5">Products with zero units in stock</p>
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto pr-1">
                     {inv.outOfStock.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-2">
+                      <div className="flex flex-col items-center justify-center py-12 text-slate-400 dark:text-[#94A3B8] gap-2">
                         <Package2 size={24} className="opacity-40" />
                         <span className="text-xs font-semibold">No products are completely out of stock.</span>
                       </div>
                     ) : (
-                      <table className="w-full text-xs text-left">
+                      <table className="w-full text-xs text-left border-collapse">
                         <thead>
-                          <tr className="text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b pb-1.5">
-                            <th className="py-1">Product</th>
-                            <th className="py-1 text-right">Stock</th>
+                          <tr className="bg-slate-50/80 dark:bg-[#1E293B] border-b border-slate-200 dark:border-[#1E293B] text-slate-550 dark:text-[#94A3B8] font-bold uppercase text-[9px] tracking-wider">
+                            <th className="px-3 py-2">Product</th>
+                            <th className="px-3 py-2 text-right">Stock</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="divide-y divide-slate-100 dark:divide-[#1E293B] font-semibold text-slate-700 dark:text-[#CBD5E1]">
                           {inv.outOfStock.map((p) => (
-                            <tr key={p.id} className="hover:bg-slate-50">
-                              <td className="py-2 font-medium text-slate-700">{p.name}</td>
-                              <td className="py-2 text-right font-bold text-slate-400">0 units</td>
+                            <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1E293B]/40 transition-colors">
+                              <td className="px-3 py-2.5 font-bold text-slate-705 dark:text-[#F8FAFC]">{p.name}</td>
+                              <td className="px-3 py-2.5 text-right font-bold text-slate-400 dark:text-slate-500">0 units</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1120,33 +1145,33 @@ export default function Analytics() {
               {/* 4. Investment Rankings listings */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Highest Value Products */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col">
-                  <div className="pb-3 border-b border-slate-100 mb-3">
-                    <h3 className="font-extrabold text-slate-800 text-sm">Highest Inventory Value (Top 10)</h3>
-                    <p className="text-slate-400 text-[11px] mt-0.5">Top products carrying maximum investment capital</p>
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
+                  <div className="pb-3 border-b border-slate-100 dark:border-[#1E293B] mb-3">
+                    <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-sm">Highest Inventory Value (Top 10)</h3>
+                    <p className="text-slate-400 dark:text-[#94A3B8] text-[11px] mt-0.5">Top products carrying maximum investment capital</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left">
+                    <table className="w-full text-xs text-left border-collapse">
                       <thead>
-                        <tr className="text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b pb-2">
-                          <th className="py-2">Product</th>
-                          <th className="py-2 text-center">Stock Qty</th>
-                          <th className="py-2 text-right">Cost Price</th>
-                          <th className="py-2 text-right">Inventory Value</th>
+                        <tr className="bg-slate-50/80 dark:bg-[#1E293B] border-b border-slate-200 dark:border-[#1E293B] text-slate-550 dark:text-[#94A3B8] font-bold uppercase text-[10px] tracking-wider">
+                          <th className="px-4 py-3">Product</th>
+                          <th className="px-4 py-3 text-center">Stock Qty</th>
+                          <th className="px-4 py-3 text-right">Cost Price</th>
+                          <th className="px-4 py-3 text-right">Inventory Value</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50">
+                      <tbody className="divide-y divide-slate-100 dark:divide-[#1E293B] bg-white dark:bg-[#111827] font-semibold text-slate-700 dark:text-[#CBD5E1]">
                         {inv.rankings.highest.map((p) => (
-                          <tr key={p.id} className="hover:bg-slate-50/50">
-                            <td className="py-2.5 font-semibold text-slate-800">{p.name}</td>
-                            <td className="py-2.5 text-center font-medium text-slate-600">{p.qty}</td>
-                            <td className="py-2.5 text-right font-medium text-slate-600">{fmt(p.costPrice)}</td>
-                            <td className="py-2.5 text-right font-extrabold text-slate-800">{fmt(p.value)}</td>
+                          <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1E293B]/40 transition-colors">
+                            <td className="px-4 py-3.5 font-bold text-slate-805 dark:text-[#F8FAFC]">{p.name}</td>
+                            <td className="px-4 py-3.5 text-center font-bold text-slate-600 dark:text-[#CBD5E1]">{p.qty}</td>
+                            <td className="px-4 py-3.5 text-right font-semibold text-slate-500 dark:text-[#94A3B8]">{fmt(p.costPrice)}</td>
+                            <td className="px-4 py-3.5 text-right font-black text-slate-900 dark:text-[#F8FAFC]">{fmt(p.value)}</td>
                           </tr>
                         ))}
                         {inv.rankings.highest.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="py-6 text-center text-slate-400 font-semibold">No stock values to list.</td>
+                            <td colSpan={4} className="py-6 text-center text-slate-400 dark:text-[#94A3B8] font-semibold">No stock values to list.</td>
                           </tr>
                         )}
                       </tbody>
@@ -1155,33 +1180,33 @@ export default function Analytics() {
                 </div>
 
                 {/* Lowest Value Products */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col">
-                  <div className="pb-3 border-b border-slate-100 mb-3">
-                    <h3 className="font-extrabold text-slate-800 text-sm">Lowest Inventory Value (Top 10 Active)</h3>
-                    <p className="text-slate-400 text-[11px] mt-0.5">Active products holding minimal stock asset values</p>
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
+                  <div className="pb-3 border-b border-slate-100 dark:border-[#1E293B] mb-3">
+                    <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-sm">Lowest Inventory Value (Top 10 Active)</h3>
+                    <p className="text-slate-400 dark:text-[#94A3B8] text-[11px] mt-0.5">Active products holding minimal stock asset values</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left">
+                    <table className="w-full text-xs text-left border-collapse">
                       <thead>
-                        <tr className="text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b pb-2">
-                          <th className="py-2">Product</th>
-                          <th className="py-2 text-center">Stock Qty</th>
-                          <th className="py-2 text-right">Cost Price</th>
-                          <th className="py-2 text-right">Inventory Value</th>
+                        <tr className="bg-slate-50/80 dark:bg-[#1E293B] border-b border-slate-200 dark:border-[#1E293B] text-slate-550 dark:text-[#94A3B8] font-bold uppercase text-[10px] tracking-wider">
+                          <th className="px-4 py-3">Product</th>
+                          <th className="px-4 py-3 text-center">Stock Qty</th>
+                          <th className="px-4 py-3 text-right">Cost Price</th>
+                          <th className="px-4 py-3 text-right">Inventory Value</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50">
+                      <tbody className="divide-y divide-slate-100 dark:divide-[#1E293B] bg-white dark:bg-[#111827] font-semibold text-slate-750 dark:text-[#CBD5E1]">
                         {inv.rankings.lowest.map((p) => (
-                          <tr key={p.id} className="hover:bg-slate-50/50">
-                            <td className="py-2.5 font-semibold text-slate-700">{p.name}</td>
-                            <td className="py-2.5 text-center font-medium text-slate-600">{p.qty}</td>
-                            <td className="py-2.5 text-right font-medium text-slate-600">{fmt(p.costPrice)}</td>
-                            <td className="py-2.5 text-right font-bold text-slate-600">{fmt(p.value)}</td>
+                          <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1E293B]/40 transition-colors">
+                            <td className="px-4 py-3.5 font-bold text-slate-700 dark:text-[#F8FAFC]">{p.name}</td>
+                            <td className="px-4 py-3.5 text-center font-semibold text-slate-500 dark:text-[#94A3B8]">{p.qty}</td>
+                            <td className="px-4 py-3.5 text-right font-semibold text-slate-500 dark:text-[#94A3B8]">{fmt(p.costPrice)}</td>
+                            <td className="px-4 py-3.5 text-right font-extrabold text-slate-700 dark:text-[#CBD5E1]">{fmt(p.value)}</td>
                           </tr>
                         ))}
                         {inv.rankings.lowest.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="py-6 text-center text-slate-400 font-semibold">No stock values to list.</td>
+                            <td colSpan={4} className="py-6 text-center text-slate-400 dark:text-[#94A3B8] font-semibold">No stock values to list.</td>
                           </tr>
                         )}
                       </tbody>

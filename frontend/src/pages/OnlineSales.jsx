@@ -995,7 +995,7 @@ export default function OnlineSales() {
           </div>
           
           {/* Preset select buttons */}
-          <div className="flex flex-wrap gap-1 bg-slate-105 dark:bg-[#1E293B] p-1 rounded-2xl border border-slate-200 dark:border-[#1E293B]">
+          <div className="flex gap-1 bg-slate-150/70 dark:bg-[#1E293B] rounded-xl p-1 overflow-x-auto scrollbar-none max-w-full shrink-0">
             {[
               { id: 'today', label: 'Today' },
               { id: 'yesterday', label: 'Yesterday' },
@@ -1008,10 +1008,10 @@ export default function OnlineSales() {
                 key={p.id}
                 type="button"
                 onClick={() => handlePresetClick(p.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
                   dateMode === p.id 
                     ? 'bg-indigo-600 text-white shadow-sm' 
-                    : 'text-slate-700 dark:text-[#CBD5E1] hover:text-slate-950 dark:hover:text-[#F8FAFC] hover:bg-slate-200 dark:hover:bg-[#1E293B]'
+                    : 'text-slate-550 hover:text-slate-805 dark:text-[#94A3B8] dark:hover:text-[#F8FAFC] bg-transparent'
                 }`}
               >
                 {p.label}

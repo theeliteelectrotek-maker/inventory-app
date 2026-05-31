@@ -281,121 +281,122 @@ export default function Dashboard() {
     });
   };
 
-  return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-8">
-      {/* Header & Compact Quick Action Buttons */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/60">
+    return (
+    <div className="space-y-8 max-w-7xl mx-auto pb-12">
+      {/* Header & Quick Action Buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-[#1E293B]">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-1.5">
-            <Activity className="text-red-600" size={22} /> Daily Operations Center
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight flex items-center gap-2">
+            <span className="w-2.5 h-8 bg-[#EF4444] rounded-full"></span>
+            Daily Operations Center
           </h1>
-          <p className="text-slate-500 text-xs mt-0.5">Real-time daily operations telemetry and warehouse control</p>
+          <p className="text-slate-500 dark:text-[#94A3B8] font-medium text-sm mt-1">Real-time daily operations telemetry and warehouse control</p>
         </div>
 
         {/* Quick actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 self-start sm:self-center">
           <button 
             onClick={() => navigate('/offline-sales', { state: { openAddModal: true } })}
-            className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold px-3 py-2 rounded-xl shadow-sm hover:shadow transition-all"
+            className="flex items-center gap-1.5 bg-[#EF4444] hover:bg-red-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-red-650/10 dark:shadow-none hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
           >
-            <Plus size={13} /> Add Sale
+            <Plus size={14} /> Add Sale
           </button>
           <button 
             onClick={() => navigate('/shops', { state: { openAddModal: true } })}
-            className="flex items-center gap-1 bg-slate-850 hover:bg-slate-900 text-white text-[11px] font-bold px-3 py-2 rounded-xl shadow-sm hover:shadow transition-all"
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 dark:bg-[#1E293B] dark:hover:bg-[#334155] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md dark:shadow-none hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
           >
-            <Plus size={13} /> Add Shop
+            <Plus size={14} /> Add Shop
           </button>
           <button 
             onClick={() => navigate('/products', { state: { openAddModal: true } })}
-            className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold px-3 py-2 rounded-xl shadow-sm hover:shadow transition-all"
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-650/10 dark:shadow-none hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
           >
-            <Plus size={13} /> Add Product
+            <Plus size={14} /> Add Product
           </button>
         </div>
       </div>
 
       {/* ROW 1: 4 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Sales Today */}
-        <div className="bg-white border border-slate-200/50 rounded-2xl p-4.5 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
-          <div className="space-y-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Total Sales Today</span>
-            <p className="text-xl font-black text-slate-800 leading-none">{fmt(salesToday)}</p>
-            <span className="text-[9px] font-medium text-slate-400 block pt-1">Online & Offline orders</span>
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
+          <div className="space-y-1.5">
+            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Sales Today</span>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{fmt(salesToday)}</p>
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">Online & Offline orders</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center">
-            <ShoppingCart size={18} />
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
+            <ShoppingCart size={22} />
           </div>
         </div>
 
         {/* Total Collections Today */}
-        <div className="bg-white border border-slate-200/50 rounded-2xl p-4.5 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
-          <div className="space-y-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Collections Today</span>
-            <p className="text-xl font-black text-emerald-600 leading-none">{fmt(collectionsToday)}</p>
-            <span className="text-[9px] font-medium text-slate-400 block pt-1">Total payments collected</span>
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
+          <div className="space-y-1.5">
+            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Collections Today</span>
+            <p className="text-3xl font-extrabold text-[#10B981] tracking-tight leading-none">{fmt(collectionsToday)}</p>
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">Total payments collected</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center">
-            <IndianRupee size={18} />
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
+            <IndianRupee size={22} />
           </div>
         </div>
 
         {/* Total Pending Dues */}
-        <div className="bg-white border border-slate-200/50 rounded-2xl p-4.5 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
-          <div className="space-y-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Total Outstanding Dues</span>
-            <p className="text-xl font-black text-red-500 leading-none">{fmt(totalPendingDues)}</p>
-            <span className="text-[9px] font-medium text-slate-400 block pt-1">Awaiting shop clearances</span>
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#EF4444] rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
+          <div className="space-y-1.5">
+            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Outstanding Dues</span>
+            <p className="text-3xl font-extrabold text-[#EF4444] tracking-tight leading-none">{fmt(totalPendingDues)}</p>
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">Awaiting shop clearances</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 text-red-600 flex items-center justify-center">
-            <Clock size={18} />
+          <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 text-[#EF4444] flex items-center justify-center shrink-0">
+            <Clock size={22} />
           </div>
         </div>
 
         {/* Low Stock Count */}
-        <div className="bg-white border border-slate-200/50 rounded-2xl p-4.5 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
-          <div className="space-y-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Low Stock Items</span>
-            <p className="text-xl font-black text-amber-500 leading-none">{lowStockCount}</p>
-            <span className="text-[9px] font-medium text-slate-400 block pt-1">SKUs running low (&lt;= 20)</span>
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#F59E0B] rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
+          <div className="space-y-1.5">
+            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Low Stock Items</span>
+            <p className="text-3xl font-extrabold text-[#F59E0B] tracking-tight leading-none">{lowStockCount}</p>
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">SKUs running low (&lt;= 20)</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 text-amber-500 flex items-center justify-center">
-            <Package size={18} />
+          <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 text-[#F59E0B] flex items-center justify-center shrink-0">
+            <Package size={22} />
           </div>
         </div>
       </div>
 
       {/* CUSTOMER COUNTS SUB-ROW */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Shops Card */}
-        <div className="bg-white border border-slate-200/50 rounded-2xl p-4 shadow-sm flex items-center justify-between hover:shadow-md transition-all">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center">
-              <Building2 size={18} />
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-indigo-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 text-indigo-650 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <Building2 size={22} />
             </div>
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Registered Shops</span>
-              <p className="text-lg font-black text-slate-800 leading-none mt-1">{totalShopsCount}</p>
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Registered Shops</span>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-[#F8FAFC] leading-none mt-1">{totalShopsCount}</p>
             </div>
           </div>
-          <span className="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 uppercase tracking-wider">
+          <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 uppercase tracking-wider">
             🏪 Shop
           </span>
         </div>
 
         {/* Individual Customers Card */}
-        <div className="bg-white border border-slate-200/50 rounded-2xl p-4 shadow-sm flex items-center justify-between hover:shadow-md transition-all">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 text-orange-600 flex items-center justify-center">
-              <User size={18} />
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-orange-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-950/30 border border-orange-100 dark:border-orange-900/50 text-orange-650 dark:text-orange-400 flex items-center justify-center shrink-0">
+              <User size={22} />
             </div>
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Individual Customers</span>
-              <p className="text-lg font-black text-slate-800 leading-none mt-1">{totalIndividualsCount}</p>
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Individual Customers</span>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-[#F8FAFC] leading-none mt-1">{totalIndividualsCount}</p>
             </div>
           </div>
-          <span className="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-100 uppercase tracking-wider">
+          <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 border border-orange-100 dark:border-orange-900/50 uppercase tracking-wider">
             👤 Individual
           </span>
         </div>
@@ -404,37 +405,37 @@ export default function Dashboard() {
       {/* ROW 2: Transaction Tables Split */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Sales */}
-        <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-            <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Recent Sales (Last 10)</span>
-            <ShoppingCart className="text-slate-400" size={14} />
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl shadow-md shadow-slate-100/50 dark:shadow-none overflow-hidden flex flex-col hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-[#1E293B]">
+            <span className="text-sm font-extrabold text-slate-850 dark:text-[#F8FAFC] uppercase tracking-wider">Recent Sales (Last 10)</span>
+            <ShoppingCart className="text-slate-400 dark:text-[#94A3B8]" size={16} />
           </div>
           {recentSales10.length === 0 ? (
-            <p className="text-center text-slate-400 text-xs py-10">No sales transactions logged.</p>
+            <p className="text-center text-slate-400 dark:text-[#94A3B8] text-xs py-10">No sales transactions logged.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-500 font-extrabold uppercase text-[9px] border-b">
-                    <th className="px-4 py-2">Item/Invoice</th>
-                    <th className="px-4 py-2">Customer/Channel</th>
-                    <th className="px-4 py-2">Date</th>
-                    <th className="px-4 py-2 text-right">Amount</th>
+                <thead className="bg-slate-50/80 dark:bg-[#1E293B] text-slate-500 dark:text-[#94A3B8] font-bold uppercase text-[10px] tracking-wider border-b border-slate-100 dark:border-[#1E293B]">
+                  <tr>
+                    <th className="px-6 py-3.5">Item/Invoice</th>
+                    <th className="px-6 py-3.5">Customer/Channel</th>
+                    <th className="px-6 py-3.5">Date</th>
+                    <th className="px-6 py-3.5 text-right">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#1E293B] bg-white dark:bg-[#111827] font-semibold text-slate-700 dark:text-[#CBD5E1]">
                   {recentSales10.map((s) => (
-                    <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-2.5 font-bold text-slate-800 truncate max-w-[160px]">{s.productName}</td>
-                      <td className="px-4 py-2.5">
+                    <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1E293B]/40 transition-colors">
+                      <td className="px-6 py-4 font-bold text-slate-800 dark:text-[#F8FAFC] truncate max-w-[160px]">{s.productName}</td>
+                      <td className="px-6 py-4">
                         {s.type === 'online' ? (
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase ${PLATFORM_COLORS[(s.buyerName || '').toLowerCase()] || 'bg-slate-100 text-slate-600'}`}>{s.buyerName}</span>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded border uppercase ${PLATFORM_COLORS[(s.buyerName || '').toLowerCase()] || 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>{s.buyerName}</span>
                         ) : (
-                          <span className="font-semibold text-slate-500">{s.buyerName}</span>
+                          <span className="font-semibold text-slate-550 dark:text-[#94A3B8]">{s.buyerName}</span>
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-400 font-medium">{s.date}</td>
-                      <td className="px-4 py-2.5 text-right font-black text-slate-700">{fmt(s.amount)}</td>
+                      <td className="px-6 py-4 text-slate-400 dark:text-slate-500 font-medium">{s.date}</td>
+                      <td className="px-6 py-4 text-right font-black text-slate-900 dark:text-[#F8FAFC]">{fmt(s.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -444,37 +445,37 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Payments */}
-        <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-            <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Recent Payments (Last 10)</span>
-            <IndianRupee className="text-slate-400" size={14} />
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl shadow-md shadow-slate-100/50 dark:shadow-none overflow-hidden flex flex-col hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-[#1E293B]">
+            <span className="text-sm font-extrabold text-slate-850 dark:text-[#F8FAFC] uppercase tracking-wider">Recent Payments (Last 10)</span>
+            <IndianRupee className="text-slate-400 dark:text-[#94A3B8]" size={16} />
           </div>
           {recentPayments10.length === 0 ? (
-            <p className="text-center text-slate-400 text-xs py-10">No payments collected yet.</p>
+            <p className="text-center text-slate-400 dark:text-[#94A3B8] text-xs py-10">No payments collected yet.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-500 font-extrabold uppercase text-[9px] border-b">
-                    <th className="px-4 py-2">Customer</th>
-                    <th className="px-4 py-2">Method</th>
-                    <th className="px-4 py-2">Date</th>
-                    <th className="px-4 py-2 text-right">Amount</th>
+                <thead className="bg-slate-50/80 dark:bg-[#1E293B] text-slate-500 dark:text-[#94A3B8] font-bold uppercase text-[10px] tracking-wider border-b border-slate-100 dark:border-[#1E293B]">
+                  <tr>
+                    <th className="px-6 py-3.5">Customer</th>
+                    <th className="px-6 py-3.5">Method</th>
+                    <th className="px-6 py-3.5">Date</th>
+                    <th className="px-6 py-3.5 text-right">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#1E293B] bg-white dark:bg-[#111827] font-semibold text-slate-700 dark:text-[#CBD5E1]">
                   {recentPayments10.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-2.5 font-bold text-slate-800 truncate max-w-[160px]">{p.buyerName}</td>
-                      <td className="px-4 py-2.5">
+                    <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1E293B]/40 transition-colors">
+                      <td className="px-6 py-4 font-bold text-slate-800 dark:text-[#F8FAFC] truncate max-w-[160px]">{p.buyerName}</td>
+                      <td className="px-6 py-4">
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded border uppercase ${
-                          p.method?.toLowerCase() === 'cash' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          p.method?.toLowerCase() === 'cash' ? 'bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/30 dark:text-[#F59E0B] dark:border-amber-900/50' : 'bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-[#10B981] dark:border-emerald-900/50'
                         }`}>
                           {p.method}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-slate-400 font-medium">{p.date}</td>
-                      <td className="px-4 py-2.5 text-right font-black text-emerald-600">+ {fmt(p.amount)}</td>
+                      <td className="px-6 py-4 text-slate-400 dark:text-slate-500 font-medium">{p.date}</td>
+                      <td className="px-6 py-4 text-right font-black text-emerald-600 dark:text-[#10B981]">+ {fmt(p.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -485,95 +486,95 @@ export default function Dashboard() {
       </div>
 
       {/* ROW 3: Action Required Alert Strip */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center gap-1.5">
           <span className="h-3 w-1 bg-amber-500 rounded-full" />
-          <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">Action Required</span>
+          <span className="text-xs font-bold tracking-wider text-slate-400 dark:text-[#94A3B8] uppercase">Action Required</span>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-semibold">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-xs font-semibold">
           {/* Overdue Payments */}
-          <div className={`p-4 border rounded-2xl flex items-center justify-between transition-colors shadow-sm ${overduePaymentsCount > 0 ? 'bg-rose-50 border-rose-100 text-rose-800' : 'bg-white border-slate-200/50 text-slate-700'}`}>
+          <div className={`p-5 border rounded-2xl flex items-center justify-between transition-all duration-300 shadow-md shadow-slate-100/50 dark:shadow-none hover:shadow-lg hover:-translate-y-0.5 ${overduePaymentsCount > 0 ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/40 text-rose-800 dark:text-[#EF4444]' : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-[#1E293B] text-slate-700 dark:text-[#CBD5E1]'}`}>
             <div>
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Overdue Invoices</span>
-              <span className="text-lg font-black text-slate-800 block">{overduePaymentsCount}</span>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Overdue Invoices</span>
+              <span className="text-2xl font-black text-slate-805 dark:text-[#F8FAFC] block mt-1">{overduePaymentsCount}</span>
             </div>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${overduePaymentsCount > 0 ? 'bg-rose-100 text-rose-600' : 'bg-slate-50 text-slate-400'}`}>
-              <ShieldAlert size={16} />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${overduePaymentsCount > 0 ? 'bg-rose-100/80 text-rose-600 dark:bg-rose-950/50 dark:text-[#EF4444]' : 'bg-slate-50 dark:bg-[#1E293B] text-slate-400 dark:text-[#CBD5E1]'}`}>
+              <ShieldAlert size={18} />
             </div>
           </div>
 
           {/* Low Stock */}
-          <div className={`p-4 border rounded-2xl flex items-center justify-between transition-colors shadow-sm ${lowStockCount > 0 ? 'bg-amber-50 border-amber-100 text-amber-800' : 'bg-white border-slate-200/50 text-slate-700'}`}>
+          <div className={`p-5 border rounded-2xl flex items-center justify-between transition-all duration-300 shadow-md shadow-slate-100/50 dark:shadow-none hover:shadow-lg hover:-translate-y-0.5 ${lowStockCount > 0 ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40 text-amber-800 dark:text-[#F59E0B]' : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-[#1E293B] text-slate-700 dark:text-[#CBD5E1]'}`}>
             <div>
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Low Stock SKUs</span>
-              <span className="text-lg font-black text-slate-800 block">{lowStockCount}</span>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Low Stock SKUs</span>
+              <span className="text-2xl font-black text-slate-805 dark:text-[#F8FAFC] block mt-1">{lowStockCount}</span>
             </div>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${lowStockCount > 0 ? 'bg-amber-100 text-amber-600' : 'bg-slate-50 text-slate-400'}`}>
-              <AlertCircle size={16} />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${lowStockCount > 0 ? 'bg-amber-100/80 text-amber-600 dark:bg-amber-950/50 dark:text-[#F59E0B]' : 'bg-slate-50 dark:bg-[#1E293B] text-slate-400 dark:text-[#CBD5E1]'}`}>
+              <AlertCircle size={18} />
             </div>
           </div>
 
           {/* Out Of Stock */}
-          <div className={`p-4 border rounded-2xl flex items-center justify-between transition-colors shadow-sm ${outOfStockCount > 0 ? 'bg-red-50 border-red-100 text-red-850' : 'bg-white border-slate-200/50 text-slate-700'}`}>
+          <div className={`p-5 border rounded-2xl flex items-center justify-between transition-all duration-300 shadow-md shadow-slate-100/50 dark:shadow-none hover:shadow-lg hover:-translate-y-0.5 ${outOfStockCount > 0 ? 'bg-red-50/50 dark:bg-red-950/20 border-red-100 dark:border-red-900/40 text-red-850 dark:text-[#EF4444]' : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-[#1E293B] text-slate-700 dark:text-[#CBD5E1]'}`}>
             <div>
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Out Of Stock</span>
-              <span className="text-lg font-black text-slate-800 block">{outOfStockCount}</span>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Out Of Stock</span>
+              <span className="text-2xl font-black text-slate-805 dark:text-[#F8FAFC] block mt-1">{outOfStockCount}</span>
             </div>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${outOfStockCount > 0 ? 'bg-red-100 text-red-600' : 'bg-slate-50 text-slate-400'}`}>
-              <AlertTriangle size={16} />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${outOfStockCount > 0 ? 'bg-red-100/80 text-red-650 dark:bg-red-950/50 dark:text-[#EF4444]' : 'bg-slate-50 dark:bg-[#1E293B] text-slate-400 dark:text-[#CBD5E1]'}`}>
+              <AlertTriangle size={18} />
             </div>
           </div>
 
           {/* Pending Returns */}
-          <div className={`p-4 border rounded-2xl flex items-center justify-between transition-colors shadow-sm ${pendingReturnsCount > 0 ? 'bg-violet-50 border-violet-100 text-violet-850' : 'bg-white border-slate-200/50 text-slate-700'}`}>
+          <div className={`p-5 border rounded-2xl flex items-center justify-between transition-all duration-300 shadow-md shadow-slate-100/50 dark:shadow-none hover:shadow-lg hover:-translate-y-0.5 ${pendingReturnsCount > 0 ? 'bg-violet-50/50 dark:bg-violet-950/20 border-violet-100 dark:border-violet-900/40 text-violet-850 dark:text-violet-400' : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-[#1E293B] text-slate-700 dark:text-[#CBD5E1]'}`}>
             <div>
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Returns Review</span>
-              <span className="text-lg font-black text-slate-800 block">{pendingReturnsCount}</span>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Returns Review</span>
+              <span className="text-2xl font-black text-slate-805 dark:text-[#F8FAFC] block mt-1">{pendingReturnsCount}</span>
             </div>
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${pendingReturnsCount > 0 ? 'bg-violet-100 text-violet-650' : 'bg-slate-50 text-slate-400'}`}>
-              <RotateCcw size={16} />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${pendingReturnsCount > 0 ? 'bg-violet-100/80 text-violet-650 dark:bg-violet-950/50 dark:text-violet-400' : 'bg-slate-50 dark:bg-[#1E293B] text-slate-400 dark:text-[#CBD5E1]'}`}>
+              <RotateCcw size={18} />
             </div>
           </div>
         </div>
       </div>
 
       {/* ROW 4: Live Activity Feed */}
-      <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-          <div className="flex items-center gap-1.5">
-            <Activity className="text-red-600 animate-pulse" size={14} />
-            <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Live Activity Feed</span>
+      <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl shadow-md shadow-slate-100/50 dark:shadow-none overflow-hidden flex flex-col hover:shadow-lg dark:hover:shadow-none transition-all duration-300">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-[#1E293B]">
+          <div className="flex items-center gap-2">
+            <Activity className="text-[#EF4444] animate-pulse" size={16} />
+            <span className="text-sm font-extrabold text-slate-850 dark:text-[#F8FAFC] uppercase tracking-wider">Live Activity Feed</span>
           </div>
-          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full">Telemetry Log</span>
+          <span className="text-[9px] font-bold text-slate-405 dark:text-[#94A3B8] uppercase tracking-widest bg-slate-50 dark:bg-[#0F172A] border border-slate-100 dark:border-[#1E293B] px-2.5 py-1 rounded-full">Telemetry Log</span>
         </div>
 
         {recentActivities.length === 0 ? (
-          <div className="text-center py-10 text-slate-400 text-xs">No activity logged.</div>
+          <div className="text-center py-10 text-slate-400 dark:text-[#94A3B8] text-xs">No activity logged.</div>
         ) : (
-          <div className="divide-y divide-slate-50">
+          <div className="divide-y divide-slate-100 dark:divide-[#1E293B]">
             {recentActivities.map((act) => (
-              <div key={act.id} className="flex items-center justify-between px-5 py-2.5 hover:bg-slate-50/40 transition-colors text-xs">
+              <div key={act.id} className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50/40 dark:hover:bg-[#1E293B]/30 transition-colors text-xs">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-7.5 h-7.5 rounded-lg border flex items-center justify-center flex-shrink-0 ${act.iconColor}`}>
-                    <act.icon size={13} />
+                  <div className={`w-8 h-8 rounded-lg border flex items-center justify-center flex-shrink-0 bg-slate-50 dark:bg-[#1E293B] border-slate-100 dark:border-[#334155] ${act.iconColor}`}>
+                    <act.icon size={15} />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-bold text-slate-800 truncate">{act.title}</p>
-                    <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">{act.details}</p>
+                    <p className="font-bold text-slate-800 dark:text-[#F8FAFC] truncate">{act.title}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-[#94A3B8] font-medium truncate mt-0.5">{act.details}</p>
                   </div>
                 </div>
 
                 <div className="text-right flex-shrink-0 pl-4">
-                  <span className={`font-black block text-[11px] ${
-                    act.valueType === 'positive' ? 'text-slate-800' :
-                    act.valueType === 'highlight' ? 'text-emerald-600 font-extrabold' :
-                    act.valueType === 'negative' ? 'text-red-500' :
-                    'text-slate-500'
+                  <span className={`font-black block text-[12px] ${
+                    act.valueType === 'positive' ? 'text-slate-800 dark:text-[#F8FAFC]' :
+                    act.valueType === 'highlight' ? 'text-emerald-600 dark:text-[#10B981] font-extrabold' :
+                    act.valueType === 'negative' ? 'text-red-500 dark:text-[#EF4444]' :
+                    'text-slate-500 dark:text-[#CBD5E1]'
                   }`}>
                     {act.valueText}
                   </span>
-                  <span className="text-[8px] text-slate-400 font-semibold block mt-0.5">{formatActivityTime(act.timestamp)}</span>
+                  <span className="text-[8px] text-slate-400 dark:text-slate-500 font-semibold block mt-0.5">{formatActivityTime(act.timestamp)}</span>
                 </div>
               </div>
             ))}

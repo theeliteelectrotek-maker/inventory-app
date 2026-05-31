@@ -86,7 +86,7 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-[#0F172A]">
+    <div className="flex h-screen overflow-hidden bg-[#F8FAFC] dark:bg-[#0F172A]">
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:w-64 lg:flex-shrink-0 flex-col">{sidebar}</div>
 
@@ -108,7 +108,7 @@ export default function Layout() {
           <span className="font-semibold text-slate-800 dark:text-[#F8FAFC]">StockTrack</span>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-slate-100 dark:bg-[#0F172A]">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-[#F8FAFC] dark:bg-[#0F172A]">
           <Outlet />
         </main>
       </div>
