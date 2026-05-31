@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -11,6 +12,7 @@ import Shops from './pages/Shops';
 import Returns from './pages/Returns';
 import Analytics from './pages/Analytics';
 import AdminPanel from './pages/AdminPanel';
+import Settings from './pages/Settings';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -77,23 +79,26 @@ function PublicRoute({ children }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route index element={<Dashboard />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route path="products" element={<Products />} />
-            <Route path="online-sales" element={<OnlineSales />} />
-            <Route path="offline-sales" element={<OfflineSales />} />
-            <Route path="shops" element={<Shops />} />
-            <Route path="returns" element={<Returns />} />
-            <Route path="admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+              <Route index element={<Dashboard />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="products" element={<Products />} />
+              <Route path="online-sales" element={<OnlineSales />} />
+              <Route path="offline-sales" element={<OfflineSales />} />
+              <Route path="shops" element={<Shops />} />
+              <Route path="returns" element={<Returns />} />
+              <Route path="admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+              <Route path="settings" element={<AdminRoute><Settings /></AdminRoute>} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

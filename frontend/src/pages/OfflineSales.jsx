@@ -811,160 +811,134 @@ export default function OfflineSales() {
   }
 
   return (
-    <div className="space-y-6 pb-12">
-      <style>{`
-        .premium-card {
-          border-radius: 20px;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .premium-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 12px 24px -10px rgba(15, 23, 42, 0.08);
-        }
-        .expand-transition {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: scale(0.97); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-      `}</style>
-
+    <div className="space-y-6">
       {/* Main Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             Offline Sales Dashboard
           </h1>
-          <p className="text-slate-400 text-xs mt-0.5">Manage customer billing, invoices, payment history, and collection metrics.</p>
+          <p className="text-slate-500 text-sm mt-1 font-medium">Manage customer billing, invoices, payment history, and collection metrics.</p>
         </div>
         <button onClick={openLogInvoiceModal}
-          className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-sm font-semibold px-5 py-3 rounded-2xl transition-all shadow-md shadow-red-500/10 hover:shadow-lg hover:-translate-y-0.5 whitespace-nowrap">
+          className="flex items-center justify-center gap-2 bg-[#EF4444] hover:bg-red-600 text-white text-sm font-bold px-5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg hover:shadow-red-500/10 self-start">
           <Plus size={16} /> Log New Invoice
         </button>
       </div>
 
       {/* Business Insights Strip */}
-      <div className="bg-slate-50 border border-slate-100 rounded-3xl p-3.5 grid grid-cols-2 md:grid-cols-5 gap-3 text-xs shadow-inner">
-        <div className="bg-white/90 p-3 rounded-2xl border border-slate-200/50 flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <CalendarDays size={12} className="text-indigo-500" /> Today's Sales
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 grid grid-cols-2 md:grid-cols-5 gap-4 text-xs shadow-sm">
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <CalendarDays size={14} className="text-indigo-500" /> Today's Sales
           </span>
-          <span className="font-extrabold text-slate-800 text-sm mt-1">{fmt(todaySalesVal)}</span>
+          <span className="font-extrabold text-slate-900 text-base mt-2">{fmt(todaySalesVal)}</span>
         </div>
-        <div className="bg-white/90 p-3 rounded-2xl border border-slate-200/50 flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <TrendingUp size={12} className="text-emerald-500" /> This Month
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <TrendingUp size={14} className="text-emerald-500" /> This Month
           </span>
-          <span className="font-extrabold text-slate-800 text-sm mt-1">{fmt(thisMonthSalesVal)}</span>
+          <span className="font-extrabold text-slate-900 text-base mt-2">{fmt(thisMonthSalesVal)}</span>
         </div>
-        <div className="bg-white/90 p-3 rounded-2xl border border-slate-200/50 flex flex-col justify-between">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <AlertTriangle size={12} className="text-rose-500" /> Total Outstanding
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all flex flex-col justify-between">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <AlertTriangle size={14} className="text-red-500" /> Total Outstanding
           </span>
-          <span className="font-extrabold text-rose-600 text-sm mt-1">{fmt(totalOutstandingDues)}</span>
+          <span className="font-extrabold text-red-600 text-base mt-2">{fmt(totalOutstandingDues)}</span>
         </div>
-        <div className="bg-white/90 p-3 rounded-2xl border border-slate-200/50 flex flex-col justify-between truncate">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 truncate">
-            <UserCheck size={12} className="text-sky-500" /> Top Customer
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all flex flex-col justify-between truncate">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+            <UserCheck size={14} className="text-sky-500" /> Top Customer
           </span>
-          <span className="font-extrabold text-slate-800 text-sm mt-1 truncate" title={topCustomerName}>{topCustomerName}</span>
+          <span className="font-extrabold text-slate-900 text-base mt-2 truncate" title={topCustomerName}>{topCustomerName}</span>
         </div>
-        <div className="bg-white/90 p-3 rounded-2xl border border-slate-200/50 flex flex-col justify-between col-span-2 md:col-span-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <Percent size={12} className="text-violet-500" /> Avg Order Value
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 hover:shadow-sm transition-all flex flex-col justify-between col-span-2 md:col-span-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Percent size={14} className="text-violet-500" /> Avg Order Value
           </span>
-          <span className="font-extrabold text-slate-800 text-sm mt-1">{fmt(avgOrderValue)}</span>
+          <span className="font-extrabold text-slate-900 text-base mt-2">{fmt(avgOrderValue)}</span>
         </div>
       </div>
 
       {/* KPI Header Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Revenue */}
-        <div className="premium-card bg-gradient-to-br from-indigo-50 to-blue-50/20 p-5 border border-indigo-100/60 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute right-0 bottom-0 translate-y-1/3 translate-x-1/6 text-indigo-500/5 group-hover:scale-110 transition-transform duration-300">
-            <IndianRupee size={120} />
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-indigo-500 hover:shadow-md transition-all flex flex-col justify-between h-36 relative overflow-hidden group">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Sales</span>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 truncate" title={fmt(summaryRevenue)}>{fmt(summaryRevenue)}</p>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-indigo-500 uppercase tracking-wider">Total Sales</span>
-            <div className="p-2 bg-indigo-500/10 text-indigo-600 rounded-xl"><TrendingUp size={16} /></div>
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-black text-indigo-950 tracking-tight">{fmt(summaryRevenue)}</p>
-            <p className="text-[10px] text-indigo-400 font-semibold mt-0.5 flex items-center gap-0.5">
-              <ArrowUpRight size={10} /> Active sales aggregate
-            </p>
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-[11px] font-semibold text-indigo-650 bg-indigo-50 px-2 py-0.5 rounded-lg inline-block">
+              Sales aggregate
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+              <TrendingUp size={16} />
+            </div>
           </div>
         </div>
 
         {/* Amount Received */}
-        <div className="premium-card bg-gradient-to-br from-emerald-50 to-teal-50/20 p-5 border border-emerald-100/60 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute right-0 bottom-0 translate-y-1/3 translate-x-1/6 text-emerald-500/5 group-hover:scale-110 transition-transform duration-300">
-            <CheckCircle2 size={120} />
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-emerald-500 hover:shadow-md transition-all flex flex-col justify-between h-36 relative overflow-hidden group">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Received</span>
+            <p className="text-3xl font-extrabold text-emerald-600 tracking-tight mt-1 truncate" title={fmt(summaryReceived)}>{fmt(summaryReceived)}</p>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-500 uppercase tracking-wider">Total Received</span>
-            <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl"><CheckCircle2 size={16} /></div>
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-black text-emerald-950 tracking-tight">{fmt(summaryReceived)}</p>
-            <p className="text-[10px] text-emerald-400 font-semibold mt-0.5 flex items-center gap-0.5">
-              <CheckCircle2 size={10} /> Cleared customer bills
-            </p>
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg inline-block">
+              Cleared collections
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 size={16} />
+            </div>
           </div>
         </div>
 
         {/* Pending Amount */}
-        <div className="premium-card bg-gradient-to-br from-rose-50 to-orange-50/20 p-5 border border-rose-100/60 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute right-0 bottom-0 translate-y-1/3 translate-x-1/6 text-rose-500/5 group-hover:scale-110 transition-transform duration-300">
-            <AlertTriangle size={120} />
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-red-500 hover:shadow-md transition-all flex flex-col justify-between h-36 relative overflow-hidden group">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Pending Dues</span>
+            <p className="text-3xl font-extrabold text-red-600 tracking-tight mt-1 truncate" title={fmt(summaryPending)}>{fmt(summaryPending)}</p>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-rose-500 uppercase tracking-wider">Pending Dues</span>
-            <div className="p-2 bg-rose-500/10 text-rose-600 rounded-xl"><Clock size={16} /></div>
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-black text-rose-950 tracking-tight">{fmt(summaryPending)}</p>
-            <p className="text-[10px] text-rose-400 font-semibold mt-0.5 flex items-center gap-0.5">
-              <Clock size={10} /> Awaiting collection
-            </p>
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg inline-block">
+              Awaiting collection
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-red-50 border border-red-100 text-red-500 flex items-center justify-center flex-shrink-0">
+              <Clock size={16} />
+            </div>
           </div>
         </div>
 
         {/* UPI Collection */}
-        <div className="premium-card bg-gradient-to-br from-sky-50 to-indigo-50/20 p-5 border border-sky-100/60 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute right-0 bottom-0 translate-y-1/3 translate-x-1/6 text-sky-500/5 group-hover:scale-110 transition-transform duration-300">
-            <CreditCard size={120} />
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-blue-500 hover:shadow-md transition-all flex flex-col justify-between h-36 relative overflow-hidden group">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">UPI Payments</span>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 truncate" title={fmt(summaryUpi)}>{fmt(summaryUpi)}</p>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-sky-500 uppercase tracking-wider">UPI Payments</span>
-            <div className="p-2 bg-sky-500/10 text-sky-600 rounded-xl"><CreditCard size={16} /></div>
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-black text-sky-950 tracking-tight">{fmt(summaryUpi)}</p>
-            <p className="text-[10px] text-sky-400 font-semibold mt-0.5 flex items-center gap-0.5">
-              ⚡ Instant digital transfers
-            </p>
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg inline-block">
+              ⚡ Digital receipts
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+              <CreditCard size={16} />
+            </div>
           </div>
         </div>
 
         {/* Cash Collection */}
-        <div className="premium-card bg-gradient-to-br from-violet-50 to-purple-50/20 p-5 border border-violet-100/60 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-          <div className="absolute right-0 bottom-0 translate-y-1/3 translate-x-1/6 text-violet-500/5 group-hover:scale-110 transition-transform duration-300">
-            <Wallet size={120} />
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-violet-500 hover:shadow-md transition-all flex flex-col justify-between h-36 relative overflow-hidden group">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Cash Payments</span>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 truncate" title={fmt(summaryCash)}>{fmt(summaryCash)}</p>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-violet-500 uppercase tracking-wider">Cash Payments</span>
-            <div className="p-2 bg-violet-500/10 text-violet-600 rounded-xl"><Wallet size={16} /></div>
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-black text-violet-950 tracking-tight">{fmt(summaryCash)}</p>
-            <p className="text-[10px] text-violet-400 font-semibold mt-0.5 flex items-center gap-0.5">
-              💵 Store registers cash
-            </p>
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-[11px] font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-lg inline-block">
+              💵 Store cash registers
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-100 text-violet-650 flex items-center justify-center flex-shrink-0">
+              <Wallet size={16} />
+            </div>
           </div>
         </div>
       </div>
@@ -1324,7 +1298,7 @@ export default function OfflineSales() {
                     }}
                     className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
                       customerCategory === 'existing_shop'
-                        ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                        ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-sm'
                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                     }`}
                   >
@@ -1338,7 +1312,7 @@ export default function OfflineSales() {
                     }}
                     className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
                       customerCategory === 'existing_individual'
-                        ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                        ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-sm'
                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                     }`}
                   >
@@ -1352,7 +1326,7 @@ export default function OfflineSales() {
                     }}
                     className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
                       customerCategory === 'walk-in'
-                        ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                        ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-sm'
                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                     }`}
                   >
@@ -1366,7 +1340,7 @@ export default function OfflineSales() {
                     }}
                     className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
                       customerCategory === 'new_shop'
-                        ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                        ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-sm'
                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                     }`}
                   >
@@ -1380,7 +1354,7 @@ export default function OfflineSales() {
                     }}
                     className={`py-2 px-1.5 rounded-xl border text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
                       customerCategory === 'new_individual'
-                        ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                        ? 'bg-[#EF4444] text-white border-[#EF4444] shadow-sm'
                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                     }`}
                   >
@@ -1644,7 +1618,7 @@ export default function OfflineSales() {
 
             <div className="flex gap-4 pt-3 border-t border-slate-100">
               <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-slate-200 rounded-2xl text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors">Cancel</button>
-              <button type="submit" disabled={saving} className="flex-1 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 disabled:opacity-60 text-white text-sm font-semibold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md shadow-red-500/10">
+              <button type="submit" disabled={saving} className="flex-1 py-3 bg-[#EF4444] hover:bg-red-600 disabled:opacity-60 text-white text-sm font-semibold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md shadow-red-500/10">
                 {saving && <Loader2 size={16} className="animate-spin" />} Submit Invoice
               </button>
             </div>

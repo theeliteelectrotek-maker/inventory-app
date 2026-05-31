@@ -70,5 +70,15 @@ export const api = {
 
   // Admin Logs
   logAdminAction: (action) => request('POST', '/admin/log-action', { action }),
+
+  // Settings & Company Profile
+  getCompanySettings: () => request('GET', '/settings/company'),
+  updateCompanySettings: (profile) => request('PUT', '/settings/company', profile),
+
+  // Employee Accounts & Management (Admin Only)
+  getEmployees: () => request('GET', '/admin/employees'),
+  addEmployee: (emp) => request('POST', '/admin/employees', emp),
+  updateEmployee: (id, emp) => request('PUT', `/admin/employees/${id}`, emp),
+  getAuditLogs: () => request('GET', '/admin/audit-logs'),
 };
 

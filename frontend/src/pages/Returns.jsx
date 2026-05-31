@@ -512,26 +512,25 @@ export default function Returns() {
       `}</style>
 
       {/* Header Panel */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-            <span className="w-2.5 h-6 bg-red-600 rounded-full"></span>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             Return Management
           </h1>
-          <p className="text-slate-400 text-xs mt-1">Track returned products, damaged inventory, and stock recovery</p>
+          <p className="text-slate-500 text-sm mt-1 font-medium">Track returned products, damaged inventory, and stock recovery</p>
         </div>
         
         {/* Quick Actions Panel */}
         <div className="flex flex-wrap items-center gap-2.5">
           <button 
             onClick={() => { setForm(emptyForm()); setEditingReturn(null); setError(''); setShowModal(true); }}
-            className="flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4.5 py-3 rounded-2xl transition-all shadow-md shadow-red-600/10 hover:shadow-lg hover:-translate-y-0.5"
+            className="flex items-center justify-center gap-1.5 bg-[#EF4444] hover:bg-red-600 text-white text-xs font-bold px-4.5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg hover:shadow-red-500/10"
           >
             <Plus size={14} /> Log Return
           </button>
           <button 
             onClick={() => { setBulkRows([emptyBulkRow()]); setBulkError(''); setShowBulkModal(true); }}
-            className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-4.5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+            className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-4.5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg"
           >
             <PlusCircle size={14} /> Bulk Return
           </button>
@@ -549,74 +548,74 @@ export default function Returns() {
       {/* KPI Cards Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         {/* Total Returns */}
-        <div className="glass-card p-4.5 flex flex-col justify-between min-h-[110px] relative overflow-hidden group">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-slate-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="flex justify-between items-center text-slate-400">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Total Returns</span>
+            <span className="text-xs font-bold uppercase tracking-wider block">Total Returns</span>
             <div className="p-1.5 bg-slate-50 border border-slate-100 rounded-lg text-slate-500"><Undo2 size={13} /></div>
           </div>
           <div>
-            <p className="text-2xl font-black text-slate-800">{totalReturnsCount}</p>
-            <p className="text-[9px] text-slate-400 font-semibold mt-0.5">Logs registered</p>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{totalReturnsCount}</p>
+            <p className="text-[11px] text-slate-400 font-semibold mt-1">Logs registered</p>
           </div>
         </div>
 
         {/* Returned Units */}
-        <div className="glass-card p-4.5 flex flex-col justify-between min-h-[110px] relative overflow-hidden group">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-indigo-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="flex justify-between items-center text-slate-400">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Returned Units</span>
+            <span className="text-xs font-bold uppercase tracking-wider block">Returned Units</span>
             <div className="p-1.5 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-500"><Layers size={13} /></div>
           </div>
           <div>
-            <p className="text-2xl font-black text-indigo-950">{totalReturnedUnits}</p>
-            <p className="text-[9px] text-indigo-400 font-semibold mt-0.5">Cumulative product count</p>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{totalReturnedUnits}</p>
+            <p className="text-[11px] text-indigo-400 font-semibold mt-1">Cumulative units</p>
           </div>
         </div>
 
         {/* Stock Recovered Value */}
-        <div className="glass-card p-4.5 flex flex-col justify-between min-h-[110px] relative overflow-hidden group">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-emerald-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="flex justify-between items-center text-slate-400">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Stock Recovered</span>
+            <span className="text-xs font-bold uppercase tracking-wider block text-emerald-600">Stock Recovered</span>
             <div className="p-1.5 bg-emerald-50 border border-emerald-100 rounded-lg text-emerald-500"><CheckCircle2 size={13} /></div>
           </div>
           <div>
-            <p className="text-xl font-black text-emerald-700">{fmt(totalStockRecoveredVal)}</p>
-            <p className="text-[9px] text-emerald-500 font-semibold mt-0.5">🟢 Restored sellable value</p>
+            <p className="text-2xl font-extrabold text-emerald-600 tracking-tight truncate" title={fmt(totalStockRecoveredVal)}>{fmt(totalStockRecoveredVal)}</p>
+            <p className="text-[11px] text-emerald-500 font-semibold mt-1">Sellable value</p>
           </div>
         </div>
 
         {/* Damaged Loss Value */}
-        <div className="glass-card p-4.5 flex flex-col justify-between min-h-[110px] relative overflow-hidden group">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-rose-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="flex justify-between items-center text-slate-400">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600">Damaged Loss</span>
+            <span className="text-xs font-bold uppercase tracking-wider block text-rose-600">Damaged Loss</span>
             <div className="p-1.5 bg-rose-50 border border-rose-100 rounded-lg text-rose-500"><AlertTriangle size={13} /></div>
           </div>
           <div>
-            <p className="text-xl font-black text-rose-700">{fmt(totalDamagedLossVal)}</p>
-            <p className="text-[9px] text-rose-500 font-semibold mt-0.5">🔴 Cost valuation loss</p>
+            <p className="text-2xl font-extrabold text-red-600 tracking-tight truncate" title={fmt(totalDamagedLossVal)}>{fmt(totalDamagedLossVal)}</p>
+            <p className="text-[11px] text-red-500 font-semibold mt-1">Cost valuation loss</p>
           </div>
         </div>
 
         {/* Good Condition returns count */}
-        <div className="glass-card p-4.5 flex flex-col justify-between min-h-[110px] relative overflow-hidden group">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-teal-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="flex justify-between items-center text-slate-400">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-teal-600">Good returns</span>
+            <span className="text-xs font-bold uppercase tracking-wider block text-teal-600">Good returns</span>
             <div className="p-1.5 bg-teal-50 border border-teal-100 rounded-lg text-teal-500"><TrendingUp size={13} /></div>
           </div>
           <div>
-            <p className="text-2xl font-black text-teal-800">{goodReturnsCount}</p>
-            <p className="text-[9px] text-teal-500 font-semibold mt-0.5">Restocked immediately</p>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{goodReturnsCount}</p>
+            <p className="text-[11px] text-teal-500 font-semibold mt-1">Restocked immediately</p>
           </div>
         </div>
 
         {/* Damaged Returns Count */}
-        <div className="glass-card p-4.5 flex flex-col justify-between min-h-[110px] relative overflow-hidden group">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-amber-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="flex justify-between items-center text-slate-400">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Damaged returns</span>
+            <span className="text-xs font-bold uppercase tracking-wider block text-amber-600">Damaged returns</span>
             <div className="p-1.5 bg-amber-50 border border-amber-100 rounded-lg text-amber-500"><TrendingDown size={13} /></div>
           </div>
           <div>
-            <p className="text-2xl font-black text-amber-800">{damagedReturnsCount}</p>
-            <p className="text-[9px] text-amber-500 font-semibold mt-0.5">Unusable / Scrapped items</p>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{damagedReturnsCount}</p>
+            <p className="text-[11px] text-amber-500 font-semibold mt-1">Unusable/Scrapped</p>
           </div>
         </div>
       </div>
@@ -624,33 +623,33 @@ export default function Returns() {
       {/* Analytics Visualization Strip */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Trend Area Chart */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between h-[230px]">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-[230px]">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Returns Trend</h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">Returned units timeline (Last 15 Days)</p>
+              <h3 className="font-bold text-slate-800 text-xl tracking-tight">Returns Trend</h3>
+              <p className="text-xs text-slate-500 mt-1 font-medium">Returned units timeline (Last 15 Days)</p>
             </div>
-            <Activity size={14} className="text-red-500 animate-pulse" />
+            <Activity size={16} className="text-red-500 animate-pulse" />
           </div>
 
           <div className="relative mt-2 flex-1 flex items-end">
             <svg viewBox="0 0 500 120" className="w-full h-[110px] overflow-visible">
               <defs>
                 <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#dc2626" stopOpacity="0.25"/>
-                  <stop offset="100%" stopColor="#dc2626" stopOpacity="0.0"/>
+                  <stop offset="0%" stopColor="#EF4444" stopOpacity="0.25"/>
+                  <stop offset="100%" stopColor="#EF4444" stopOpacity="0.0"/>
                 </linearGradient>
               </defs>
               {/* Fill Area */}
               <polygon points={fillPoints} fill="url(#areaGrad)" />
               {/* Stroke line */}
-              <polyline points={trendPoints} fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              <polyline points={trendPoints} fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               {/* Grid line guideline */}
               <line x1="0" y1="110" x2="500" y2="110" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3" />
             </svg>
           </div>
           
-          <div className="flex justify-between text-[9px] font-bold text-slate-400 px-1 pt-1.5 border-t border-slate-50">
+          <div className="flex justify-between text-[11px] font-bold text-slate-400 px-1 pt-1.5 border-t border-slate-100">
             <span>{trendList[0]?.label}</span>
             <span>{trendList[Math.floor(trendList.length/2)]?.label}</span>
             <span>{trendList[trendList.length - 1]?.label}</span>
@@ -658,18 +657,18 @@ export default function Returns() {
         </div>
 
         {/* Source breakdown chart */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between h-[230px]">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-[230px]">
           <div>
-            <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Return Source Share</h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">Breakdown of return origins by quantity</p>
+            <h3 className="font-bold text-slate-800 text-xl tracking-tight">Return Source Share</h3>
+            <p className="text-xs text-slate-500 mt-1 font-medium">Breakdown of return origins by quantity</p>
           </div>
 
           <div className="space-y-3.5 my-auto">
             {/* Shops */}
             <div className="space-y-1">
               <div className="flex justify-between text-xs font-bold text-slate-600">
-                <span className="flex items-center gap-1">🏪 Registered Shops</span>
-                <span>{sourceShopsCount} units ({Math.round(sourceShopsCount/totalSourceUnits * 100)}%)</span>
+                <span className="flex items-center gap-1 font-semibold">🏪 Registered Shops</span>
+                <span className="font-bold text-slate-700">{sourceShopsCount} units ({Math.round(sourceShopsCount/totalSourceUnits * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div style={{ width: `${(sourceShopsCount/totalSourceUnits)*100}%` }} className="h-full bg-indigo-600 rounded-full" />
@@ -678,8 +677,8 @@ export default function Returns() {
             {/* Walk-in */}
             <div className="space-y-1">
               <div className="flex justify-between text-xs font-bold text-slate-600">
-                <span className="flex items-center gap-1">👤 Walk-in Customers</span>
-                <span>{sourceWalkInCount} units ({Math.round(sourceWalkInCount/totalSourceUnits * 100)}%)</span>
+                <span className="flex items-center gap-1 font-semibold">👤 Walk-in Customers</span>
+                <span className="font-bold text-slate-700">{sourceWalkInCount} units ({Math.round(sourceWalkInCount/totalSourceUnits * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div style={{ width: `${(sourceWalkInCount/totalSourceUnits)*100}%` }} className="h-full bg-amber-500 rounded-full" />
@@ -688,21 +687,21 @@ export default function Returns() {
             {/* Online orders */}
             <div className="space-y-1">
               <div className="flex justify-between text-xs font-bold text-slate-600">
-                <span className="flex items-center gap-1">📦 Online Platforms</span>
-                <span>{sourceOnlineCount} units ({Math.round(sourceOnlineCount/totalSourceUnits * 100)}%)</span>
+                <span className="flex items-center gap-1 font-semibold">📦 Online Platforms</span>
+                <span className="font-bold text-slate-700">{sourceOnlineCount} units ({Math.round(sourceOnlineCount/totalSourceUnits * 100)}%)</span>
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div style={{ width: `${(sourceOnlineCount/totalSourceUnits)*100}%` }} className="h-full bg-rose-600 rounded-full" />
+                <div style={{ width: `${(sourceOnlineCount/totalSourceUnits)*100}%` }} className="h-full bg-[#EF4444] rounded-full" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Condition Pie chart */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between h-[230px]">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between h-[230px]">
           <div>
-            <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Quality Breakdown</h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">Return log condition segments</p>
+            <h3 className="font-bold text-slate-800 text-xl tracking-tight">Quality Breakdown</h3>
+            <p className="text-xs text-slate-500 mt-1 font-medium">Return log condition segments</p>
           </div>
 
           <div className="flex items-center justify-between gap-5 my-auto">
@@ -1251,7 +1250,7 @@ export default function Returns() {
               <button type="button" onClick={() => setShowModal(false)}
                 className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
               <button type="submit" disabled={saving}
-                className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-red-600/10">
+                className="flex-1 py-3 bg-[#EF4444] hover:bg-red-600 disabled:opacity-60 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-md">
                 {saving && <Loader2 size={14} className="animate-spin" />} {editingReturn ? 'Save Changes' : 'Submit Return Log'}
               </button>
             </div>

@@ -3,24 +3,37 @@ import { api } from '../api';
 import { 
   Plus, Trash2, ShoppingCart, X, Loader2, Search, PlusCircle, 
   TrendingUp, TrendingDown, ArrowUpRight, Percent, Award, 
-  ShoppingBag, Layers, IndianRupee 
+  ShoppingBag, Layers, IndianRupee, RotateCcw, Calendar, Download 
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useIsDarkMode } from '../context/ThemeContext';
 import SearchableSelect from '../components/SearchableSelect';
 
 const PLATFORMS = [
-  { id: 'amazon', label: 'Amazon', color: 'bg-orange-500', light: 'bg-orange-100 text-orange-700', border: 'border-orange-200 text-orange-600 bg-orange-50/50' },
-  { id: 'flipkart', label: 'Flipkart', color: 'bg-blue-500', light: 'bg-blue-100 text-blue-700', border: 'border-blue-200 text-blue-600 bg-blue-50/50' },
-  { id: 'meesho', label: 'Meesho', color: 'bg-pink-500', light: 'bg-pink-100 text-pink-700', border: 'border-pink-200 text-pink-600 bg-pink-50/50' },
+  { id: 'amazon', label: 'Amazon', color: 'bg-orange-500', light: 'bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-450', border: 'border-orange-200 text-orange-600 bg-orange-50/50 dark:border-orange-900/50 dark:text-orange-400 dark:bg-orange-950/20' },
+  { id: 'flipkart', label: 'Flipkart', color: 'bg-blue-500', light: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-450', border: 'border-blue-200 text-blue-600 bg-blue-50/50 dark:border-blue-900/50 dark:text-blue-400 dark:bg-blue-950/20' },
+  { id: 'meesho', label: 'Meesho', color: 'bg-pink-500', light: 'bg-pink-100 text-pink-700 dark:bg-pink-950/30 dark:text-pink-450', border: 'border-pink-200 text-pink-600 bg-pink-50/50 dark:border-pink-900/50 dark:text-pink-400 dark:bg-pink-950/20' },
 ];
 
-const today = () => {
-  const d = new Date();
+const formatDateYYYYMMDD = (d) => {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const date = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${date}`;
 };
+
+const formatFriendlyDate = (dateStr) => {
+  if (!dateStr || dateStr === 'N/A') return 'N/A';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const year = parts[0];
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  const date = parseInt(parts[2], 10);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${String(date).padStart(2, '0')}-${months[monthIdx]}-${year}`;
+};
+
+const today = () => formatDateYYYYMMDD(new Date());
 
 const emptyItem = { productId: '', qty: 1, amount: '' };
 const emptyForm = () => ({ items: [{ ...emptyItem }], platform: '', orderId: '', date: today(), notes: '' });
@@ -28,10 +41,10 @@ const emptyForm = () => ({ items: [{ ...emptyItem }], platform: '', orderId: '',
 function Modal({ onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 !m-0">
-      <div className="bg-white rounded-2xl shadow-2xl w-[95%] sm:w-full max-w-[800px]">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h3 className="font-semibold text-slate-800">Log Online Sale</h3>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"><X size={18} /></button>
+      <div className="bg-white dark:bg-[#111827] border border-transparent dark:border-[#1E293B] rounded-2xl shadow-2xl w-[95%] sm:w-full max-w-[800px]">
+        <div className="flex items-center justify-between px-6 py-4 border-b dark:border-[#1E293B]">
+          <h3 className="font-semibold text-slate-800 dark:text-[#F8FAFC]">Log Online Sale</h3>
+          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#1E293B]"><X size={18} /></button>
         </div>
         <div className="px-6 py-5 overflow-auto max-h-[80vh]">{children}</div>
       </div>
@@ -48,12 +61,12 @@ function ProductThumbnail({ productName }) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   const colors = [
-    'from-pink-500 to-rose-500 text-rose-50 border-pink-100',
-    'from-purple-500 to-indigo-500 text-indigo-50 border-purple-100',
-    'from-blue-500 to-cyan-500 text-cyan-50 border-blue-100',
-    'from-teal-500 to-emerald-500 text-emerald-50 border-teal-100',
-    'from-amber-500 to-orange-500 text-orange-50 border-amber-100',
-    'from-red-500 to-rose-500 text-rose-50 border-red-100'
+    'from-pink-500 to-rose-500 text-rose-50 border-pink-100 dark:border-transparent',
+    'from-purple-500 to-indigo-500 text-indigo-50 border-purple-100 dark:border-transparent',
+    'from-blue-500 to-cyan-505 text-cyan-50 border-blue-100 dark:border-transparent',
+    'from-teal-500 to-emerald-500 text-emerald-50 border-teal-100 dark:border-transparent',
+    'from-amber-500 to-orange-500 text-orange-50 border-amber-100 dark:border-transparent',
+    'from-red-500 to-rose-500 text-rose-50 border-red-100 dark:border-transparent'
   ];
   const colorClass = colors[Math.abs(hash) % colors.length];
 
@@ -68,10 +81,11 @@ function ProductThumbnail({ productName }) {
 function PlatformDonutChart({ data, centerValue, centerLabel }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
   const total = data.reduce((sum, item) => sum + item.value, 0);
+  const isDark = useIsDarkMode();
 
   if (total === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 text-slate-400 text-sm">
+      <div className="flex flex-col items-center justify-center h-48 text-slate-700 dark:text-[#94A3B8] text-sm font-semibold">
         No sales data available.
       </div>
     );
@@ -92,7 +106,7 @@ function PlatformDonutChart({ data, centerValue, centerLabel }) {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-around gap-4 py-2">
+    <div className="flex flex-col sm:flex-row items-center justify-around gap-4 py-2 w-full">
       <div className="relative w-36 h-36 flex-shrink-0">
         <svg viewBox="-1.2 -1.2 2.4 2.4" className="w-full h-full -rotate-90">
           {sectors.map((s) => {
@@ -109,7 +123,7 @@ function PlatformDonutChart({ data, centerValue, centerLabel }) {
                 key={s.idx}
                 d={pathData}
                 fill={s.color}
-                opacity={hoveredIdx === null || isHovered ? 1 : 0.65}
+                opacity={hoveredIdx === null || isHovered ? 1 : 0.75}
                 className="transition-all duration-300 cursor-pointer origin-center"
                 style={{
                   transform: isHovered ? 'scale(1.05)' : 'scale(1)',
@@ -119,24 +133,24 @@ function PlatformDonutChart({ data, centerValue, centerLabel }) {
               />
             );
           })}
-          <circle cx="0" cy="0" r="0.65" fill="#ffffff" />
+          <circle cx="0" cy="0" r="0.65" fill={isDark ? '#111827' : '#ffffff'} />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
           {hoveredIdx !== null ? (
             <>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-full">
+              <span className="text-[11px] font-black text-slate-800 dark:text-[#94A3B8] uppercase tracking-wider truncate max-w-full">
                 {sectors[hoveredIdx].label}
               </span>
-              <span className="text-sm font-extrabold text-slate-800">
+              <span className="text-base font-black text-slate-905 dark:text-[#F8FAFC]">
                 {((sectors[hoveredIdx].percent) * 100).toFixed(1)}%
               </span>
             </>
           ) : (
             <>
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-full">
+              <span className="text-[11px] font-black text-slate-700 dark:text-[#94A3B8] uppercase tracking-wider truncate max-w-full">
                 {centerLabel}
               </span>
-              <span className="text-xs font-black text-slate-800 truncate max-w-full mt-0.5">
+              <span className="text-base font-black text-slate-900 dark:text-[#F8FAFC] truncate max-w-full mt-0.5">
                 {centerValue}
               </span>
             </>
@@ -149,16 +163,16 @@ function PlatformDonutChart({ data, centerValue, centerLabel }) {
           <div
             key={s.idx}
             className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl transition-colors cursor-pointer ${
-              hoveredIdx === s.idx ? 'bg-slate-50' : ''
+              hoveredIdx === s.idx ? 'bg-slate-100 dark:bg-[#172554]' : ''
             }`}
             onMouseEnter={() => setHoveredIdx(s.idx)}
             onMouseLeave={() => setHoveredIdx(null)}
           >
             <div className="flex items-center gap-2 truncate mr-2">
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-              <span className="font-bold text-slate-700 truncate">{s.label}</span>
+              <span className="font-extrabold text-slate-900 dark:text-[#CBD5E1] truncate">{s.label}</span>
             </div>
-            <span className="font-black text-slate-500 text-[11px] whitespace-nowrap">
+            <span className="font-black text-slate-900 dark:text-[#F8FAFC] text-xs whitespace-nowrap">
               ₹{Math.round(s.value).toLocaleString('en-IN')}
             </span>
           </div>
@@ -171,10 +185,11 @@ function PlatformDonutChart({ data, centerValue, centerLabel }) {
 // --- Custom Responsive Line Chart ---
 function SalesTrendChart({ data }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
+  const isDark = useIsDarkMode();
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-slate-400 text-sm">
+      <div className="flex items-center justify-center h-48 text-slate-700 dark:text-[#94A3B8] text-sm font-semibold">
         No sales trend data available.
       </div>
     );
@@ -221,8 +236,8 @@ function SalesTrendChart({ data }) {
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible select-none">
         <defs>
           <linearGradient id="salesChartGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ec4899" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#ec4899" stopOpacity="0" />
+            <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -230,9 +245,9 @@ function SalesTrendChart({ data }) {
         {gridLinesY.map((val, i) => {
           const y = getY(val);
           return (
-            <g key={i} className="opacity-40">
-              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke="#f1f5f9" strokeWidth="1" />
-              <text x={paddingLeft - 8} y={y + 3} textAnchor="end" className="text-[9px] font-bold fill-slate-400">
+            <g key={i} className="opacity-100">
+              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke={isDark ? '#1E293B' : '#cbd5e1'} strokeWidth="1.2" />
+              <text x={paddingLeft - 8} y={y + 3} textAnchor="end" className="text-[10px] font-extrabold fill-slate-800 dark:fill-[#94A3B8]">
                 ₹{val >= 100000 ? `${(val / 100000).toFixed(1)}L` : val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
               </text>
             </g>
@@ -245,7 +260,7 @@ function SalesTrendChart({ data }) {
         {/* Line */}
         <polyline
           fill="none"
-          stroke="#ec4899"
+          stroke="#4f46e5"
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -258,10 +273,10 @@ function SalesTrendChart({ data }) {
             key={i}
             cx={getX(i)}
             cy={getY(d.revenue || 0)}
-            r={hoveredIdx === i ? "4.5" : "2"}
-            fill="#ffffff"
-            stroke="#ec4899"
-            strokeWidth={hoveredIdx === i ? "2.5" : "1.5"}
+            r={hoveredIdx === i ? "5" : "2.5"}
+            fill={isDark ? '#111827' : '#ffffff'}
+            stroke="#4f46e5"
+            strokeWidth={hoveredIdx === i ? "3" : "2"}
             className="cursor-pointer transition-all duration-150"
             onMouseEnter={() => setHoveredIdx(i)}
             onMouseLeave={() => setHoveredIdx(null)}
@@ -274,8 +289,8 @@ function SalesTrendChart({ data }) {
             y1={paddingTop}
             x2={getX(hoveredIdx)}
             y2={paddingTop + chartHeight}
-            stroke="#ec4899"
-            strokeWidth="1"
+            stroke="#4f46e5"
+            strokeWidth="1.5"
             strokeDasharray="2,2"
             className="pointer-events-none"
           />
@@ -300,7 +315,7 @@ function SalesTrendChart({ data }) {
               x={x}
               y={height - paddingBottom + 18}
               textAnchor="middle"
-              className="text-[9px] font-bold fill-slate-400"
+              className="text-[10px] font-extrabold fill-slate-800 dark:fill-[#CBD5E1]"
             >
               {displayLabel}
             </text>
@@ -310,22 +325,22 @@ function SalesTrendChart({ data }) {
 
       {hoveredIdx !== null && (
         <div 
-          className="absolute z-20 bg-slate-950 text-white rounded-xl shadow-xl p-2.5 border border-slate-800 text-[10px] flex flex-col gap-0.5 pointer-events-none transition-all duration-100"
+          className="absolute z-20 bg-slate-950 dark:bg-[#020617] text-white rounded-xl shadow-xl p-2.5 border border-slate-850 dark:border-[#1E293B] text-[10px] flex flex-col gap-0.5 pointer-events-none transition-all duration-100"
           style={{
             left: `${Math.min(85, Math.max(15, (getX(hoveredIdx) / width) * 100))}%`,
             top: '5%',
             transform: 'translateX(-50%)',
           }}
         >
-          <div className="font-bold border-b border-slate-800 pb-1 mb-1 text-slate-400">
+          <div className="font-bold border-b border-slate-800 dark:border-[#1E293B] pb-1 mb-1 text-slate-300 dark:text-[#CBD5E1]">
             {data[hoveredIdx].date}
           </div>
           <div className="flex justify-between gap-4">
-            <span className="text-slate-400">Revenue:</span>
+            <span className="text-slate-400 dark:text-[#94A3B8] font-semibold">Revenue:</span>
             <span className="font-bold text-white">₹{data[hoveredIdx].revenue.toLocaleString('en-IN')}</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span className="text-slate-400">Orders:</span>
+            <span className="text-slate-400 dark:text-[#94A3B8] font-semibold">Orders:</span>
             <span className="font-bold text-white">{data[hoveredIdx].orders}</span>
           </div>
         </div>
@@ -345,6 +360,17 @@ export default function OnlineSales() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+
+  // --- Dynamic Date Filtering State ---
+  const [dateMode, setDateMode] = useState('thisMonth'); // 'today', 'yesterday', 'thisWeek', 'thisMonth', 'thisYear', 'custom'
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const [appliedRange, setAppliedRange] = useState(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { start: formatDateYYYYMMDD(start), end: formatDateYYYYMMDD(end) };
+  });
 
   function load() {
     Promise.all([api.getOnlineSales(), api.getProducts()])
@@ -464,38 +490,196 @@ export default function OnlineSales() {
     if (sale) setProducts((ps) => ps.map((p) => p.id === sale.productId ? { ...p, availableQty: p.availableQty + sale.qty } : p));
   }
 
-  // --- Calculations for metrics and widgets ---
-  const totalRevenue = sales.reduce((sum, s) => sum + (s.amount || 0), 0);
-  const totalOrders = sales.length;
-  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-  const platformRevenue = { amazon: 0, flipkart: 0, meesho: 0 };
-  const platformOrders = { amazon: 0, flipkart: 0, meesho: 0 };
-  sales.forEach(s => {
-    const p = s.platform ? s.platform.toLowerCase() : '';
-    if (platformRevenue[p] !== undefined) {
-      platformRevenue[p] += s.amount || 0;
-      platformOrders[p] += 1;
+  // --- Date presets handler ---
+  const handlePresetClick = (preset) => {
+    setDateMode(preset);
+    if (preset === 'custom') {
+      return;
     }
+    const now = new Date();
+    let startStr = '';
+    let endStr = '';
+    if (preset === 'today') {
+      startStr = formatDateYYYYMMDD(now);
+      endStr = formatDateYYYYMMDD(now);
+    } else if (preset === 'yesterday') {
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      startStr = formatDateYYYYMMDD(yesterday);
+      endStr = formatDateYYYYMMDD(yesterday);
+    } else if (preset === 'thisWeek') {
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(now.setDate(diff));
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      startStr = formatDateYYYYMMDD(monday);
+      endStr = formatDateYYYYMMDD(sunday);
+    } else if (preset === 'thisMonth') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      startStr = formatDateYYYYMMDD(start);
+      endStr = formatDateYYYYMMDD(end);
+    } else if (preset === 'thisYear') {
+      const start = new Date(now.getFullYear(), 0, 1);
+      const end = new Date(now.getFullYear(), 11, 31);
+      startStr = formatDateYYYYMMDD(start);
+      endStr = formatDateYYYYMMDD(end);
+    }
+    setAppliedRange({ start: startStr, end: endStr });
+  };
+
+  const handleApplyCustom = () => {
+    if (customStart && customEnd) {
+      if (customStart > customEnd) {
+        alert("Start Date cannot be after End Date.");
+        return;
+      }
+      setAppliedRange({ start: customStart, end: customEnd });
+    } else {
+      alert("Please select both Start and End Dates.");
+    }
+  };
+
+  const handleResetCustom = () => {
+    setCustomStart('');
+    setCustomEnd('');
+    handlePresetClick('thisMonth');
+  };
+
+  // --- Filtered Sales for current range ---
+  const filteredSales = sales.filter(s => {
+    return s.date >= appliedRange.start && s.date <= appliedRange.end;
   });
 
-  const bestPlat = Object.entries(platformRevenue).sort((a,b) => b[1] - a[1])[0];
-  const bestPerformingPlatform = bestPlat && bestPlat[1] > 0 ? bestPlat[0] : 'None';
+  // --- Marketplace KPIs Calculations ---
+  const currentKPIs = {
+    amazon: { orders: 0, units: 0, revenue: 0 },
+    flipkart: { orders: 0, units: 0, revenue: 0 },
+    meesho: { orders: 0, units: 0, revenue: 0 },
+    total: { orders: 0, units: 0, revenue: 0 }
+  };
 
-  // 30 Days Trend Calculations
-  const trendData = {};
-  const now = new Date();
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(now.getDate() - i);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const dateVal = String(d.getDate()).padStart(2, '0');
-    const dStr = `${year}-${month}-${dateVal}`;
-    trendData[dStr] = { date: dStr, revenue: 0, orders: 0 };
+  filteredSales.forEach(s => {
+    const p = s.platform ? s.platform.toLowerCase() : '';
+    if (currentKPIs[p]) {
+      currentKPIs[p].orders += 1;
+      currentKPIs[p].units += s.qty;
+      currentKPIs[p].revenue += s.amount || 0;
+    }
+    currentKPIs.total.orders += 1;
+    currentKPIs.total.units += s.qty;
+    currentKPIs.total.revenue += s.amount || 0;
+  });
+
+  // --- Product Insights Calculations ---
+  const currentProdSales = {};
+  filteredSales.forEach(s => {
+    if (!currentProdSales[s.productId]) {
+      currentProdSales[s.productId] = { id: s.productId, name: s.productName, qty: 0, revenue: 0 };
+    }
+    currentProdSales[s.productId].qty += s.qty;
+    currentProdSales[s.productId].revenue += s.amount || 0;
+  });
+
+  const sortedByQty = Object.values(currentProdSales).sort((a, b) => b.qty - a.qty);
+  const bestSellingProduct = sortedByQty[0] || null;
+
+  const sortedByRev = Object.values(currentProdSales).sort((a, b) => b.revenue - a.revenue);
+  const mostRevenueProduct = sortedByRev[0] || null;
+
+  // Fastest Growing Product Logic
+  const sDate = new Date(appliedRange.start);
+  const eDate = new Date(appliedRange.end);
+  const diffTime = Math.abs(eDate - sDate);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+  const prevStart = new Date(sDate);
+  prevStart.setDate(sDate.getDate() - diffDays);
+  const prevEnd = new Date(sDate);
+  prevEnd.setDate(sDate.getDate() - 1);
+
+  const prevStartStr = formatDateYYYYMMDD(prevStart);
+  const prevEndStr = formatDateYYYYMMDD(prevEnd);
+
+  const prevSales = sales.filter(s => s.date >= prevStartStr && s.date <= prevEndStr);
+
+  const prevProdSales = {};
+  prevSales.forEach(s => {
+    if (!prevProdSales[s.productId]) {
+      prevProdSales[s.productId] = { qty: 0 };
+    }
+    prevProdSales[s.productId].qty += s.qty;
+  });
+
+  const productGrowth = [];
+  Object.keys(currentProdSales).forEach(pid => {
+    const currentQty = currentProdSales[pid].qty;
+    const prevQty = prevProdSales[pid]?.qty || 0;
+    const growthQty = currentQty - prevQty;
+    const growthPercent = prevQty > 0 ? ((currentQty - prevQty) / prevQty) * 100 : null;
+
+    productGrowth.push({
+      id: pid,
+      name: currentProdSales[pid].name,
+      currentQty,
+      prevQty,
+      growthQty,
+      growthPercent
+    });
+  });
+
+  const sortedByGrowth = [...productGrowth].sort((a, b) => b.growthQty - a.growthQty);
+  const fastestGrowingProduct = sortedByGrowth[0] || null;
+
+  // --- Leaderboard Calculations ---
+  const platformRankings = [
+    { id: 'amazon', label: 'Amazon', color: '#f97316' },
+    { id: 'flipkart', label: 'Flipkart', color: '#3b82f6' },
+    { id: 'meesho', label: 'Meesho', color: '#ec4899' }
+  ].map(p => {
+    const rev = currentKPIs[p.id]?.revenue || 0;
+    const share = currentKPIs.total.revenue > 0 ? (rev / currentKPIs.total.revenue) * 100 : 0;
+    return { ...p, revenue: rev, share };
+  }).sort((a, b) => b.revenue - a.revenue);
+
+  // --- Quick Insights Calculations ---
+  const dailyRevenue = {};
+  filteredSales.forEach(s => {
+    dailyRevenue[s.date] = (dailyRevenue[s.date] || 0) + (s.amount || 0);
+  });
+  const activeDates = Object.keys(dailyRevenue);
+  let highestSaleDay = { date: 'N/A', revenue: 0 };
+  let lowestSaleDay = { date: 'N/A', revenue: 0 };
+
+  if (activeDates.length > 0) {
+    let maxRev = -1;
+    let minRev = Infinity;
+    activeDates.forEach(d => {
+      const rev = dailyRevenue[d];
+      if (rev > maxRev) {
+        maxRev = rev;
+        highestSaleDay = { date: d, revenue: rev };
+      }
+      if (rev < minRev) {
+        minRev = rev;
+        lowestSaleDay = { date: d, revenue: rev };
+      }
+    });
   }
 
-  sales.forEach(s => {
+  // --- Dynamic Charts Data ---
+  const trendData = {};
+  const currentDraw = new Date(sDate);
+  let count = 0;
+  while (currentDraw <= eDate && count < 730) {
+    const dStr = formatDateYYYYMMDD(currentDraw);
+    trendData[dStr] = { date: dStr, revenue: 0, orders: 0 };
+    currentDraw.setDate(currentDraw.getDate() + 1);
+    count++;
+  }
+
+  filteredSales.forEach(s => {
     if (trendData[s.date]) {
       trendData[s.date].revenue += s.amount || 0;
       trendData[s.date].orders += 1;
@@ -503,39 +687,22 @@ export default function OnlineSales() {
   });
   const dailyTrend = Object.values(trendData).sort((a,b) => a.date.localeCompare(b.date));
 
-  // Platform Donut Data
   const donutData = [
-    { label: 'Amazon', value: platformRevenue.amazon, color: '#f97316' },
-    { label: 'Flipkart', value: platformRevenue.flipkart, color: '#3b82f6' },
-    { label: 'Meesho', value: platformRevenue.meesho, color: '#ec4899' }
+    { label: 'Amazon', value: currentKPIs.amazon.revenue, color: '#f97316' },
+    { label: 'Flipkart', value: currentKPIs.flipkart.revenue, color: '#3b82f6' },
+    { label: 'Meesho', value: currentKPIs.meesho.revenue, color: '#ec4899' }
   ];
 
-  const platformStats = {
-    amazon: { revenue: platformRevenue.amazon, orders: platformOrders.amazon, share: totalRevenue > 0 ? (platformRevenue.amazon / totalRevenue) * 100 : 0 },
-    flipkart: { revenue: platformRevenue.flipkart, orders: platformOrders.flipkart, share: totalRevenue > 0 ? (platformRevenue.flipkart / totalRevenue) * 100 : 0 },
-    meesho: { revenue: platformRevenue.meesho, orders: platformOrders.meesho, share: totalRevenue > 0 ? (platformRevenue.meesho / totalRevenue) * 100 : 0 }
-  };
-
-  // Top Selling Products
-  const productSales = {};
-  sales.forEach(s => {
-    if (!productSales[s.productId]) {
-      productSales[s.productId] = { name: s.productName, qty: 0, revenue: 0 };
-    }
-    productSales[s.productId].qty += s.qty;
-    productSales[s.productId].revenue += s.amount || 0;
-  });
-  const topProducts = Object.values(productSales)
+  const topProducts = Object.values(currentProdSales)
     .sort((a,b) => b.qty - a.qty)
     .slice(0, 5);
 
   const maxQty = topProducts[0]?.qty || 1;
 
-  // Recent Orders (last 5)
-  const recentOrders = [...sales].slice(0, 5);
+  const recentOrders = [...filteredSales].slice(0, 5);
 
-  // Full History Filter & Search
-  const filtered = sales.filter((s) => {
+  // --- Full History Filter & Search for the Ledger table ---
+  const filtered = filteredSales.filter((s) => {
     const matchPlatform = filter === 'all' || s.platform === filter;
     const matchSearch = !search || s.productName.toLowerCase().includes(search.toLowerCase()) || s.orderId.toLowerCase().includes(search.toLowerCase());
     return matchPlatform && matchSearch;
@@ -543,117 +710,476 @@ export default function OnlineSales() {
 
   const fmt = (val) => `₹${Math.round(val || 0).toLocaleString('en-IN')}`;
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center py-32 text-slate-400 gap-3">
-      <Loader2 size={36} className="animate-spin text-red-600" />
-      <p className="text-sm font-semibold">Loading Marketplace intelligence stats…</p>
-    </div>
-  );
+  // --- EXPORTS ---
+  const exportToCSV = () => {
+    if (filteredSales.length === 0) {
+      alert("No data available to export in the selected range.");
+      return;
+    }
+    const headers = ['Date', 'Product Name', 'Marketplace', 'Order ID', 'Qty', 'Amount (INR)'];
+    const rows = filteredSales.map(s => [
+      s.date,
+      `"${s.productName.replace(/"/g, '""')}"`,
+      s.platform,
+      s.orderId || '',
+      s.qty,
+      s.amount
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Marketplace_Sales_${appliedRange.start}_to_${appliedRange.end}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportToPDF = () => {
+    if (filteredSales.length === 0) {
+      alert("No data available to export in the selected range.");
+      return;
+    }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to export PDF');
+      return;
+    }
+
+    const title = `Marketplace Sales Report (${formatFriendlyDate(appliedRange.start)} to ${formatFriendlyDate(appliedRange.end)})`;
+
+    const tableRowsHTML = filteredSales.map(s => `
+      <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+        <td style="padding: 8px 12px; color: #475569;">${formatFriendlyDate(s.date)}</td>
+        <td style="padding: 8px 12px; font-weight: 600; color: #1e293b;">${s.productName}</td>
+        <td style="padding: 8px 12px; text-transform: capitalize; font-weight: bold; color: #4f46e5;">${s.platform}</td>
+        <td style="padding: 8px 12px; font-family: monospace; color: #475569;">${s.orderId || '—'}</td>
+        <td style="padding: 8px 12px; font-weight: bold; color: #1e293b;">${s.qty}</td>
+        <td style="padding: 8px 12px; font-weight: bold; text-align: right; color: #1e293b;">₹${s.amount.toLocaleString('en-IN')}</td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+            body {
+              font-family: 'Inter', sans-serif;
+              color: #1e293b;
+              margin: 0;
+              padding: 30px;
+              background: #ffffff;
+            }
+            .header {
+              border-bottom: 2px solid #f1f5f9;
+              padding-bottom: 20px;
+              margin-bottom: 25px;
+            }
+            .title {
+              font-size: 20px;
+              font-weight: 900;
+              margin: 0;
+              color: #0f172a;
+              text-transform: uppercase;
+              letter-spacing: -0.025em;
+            }
+            .subtitle {
+              font-size: 12px;
+              color: #64748b;
+              font-weight: 500;
+              margin-top: 4px;
+            }
+            .grid {
+              display: grid;
+              grid-template-cols: repeat(4, 1fr);
+              gap: 15px;
+              margin-bottom: 25px;
+            }
+            .card {
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              border-radius: 12px;
+              padding: 12px 16px;
+            }
+            .card-label {
+              font-size: 9px;
+              font-weight: 700;
+              text-transform: uppercase;
+              color: #64748b;
+              letter-spacing: 0.05em;
+              margin-bottom: 4px;
+            }
+            .card-val {
+              font-size: 16px;
+              font-weight: 800;
+              color: #0f172a;
+            }
+            .card-sub {
+              font-size: 10px;
+              color: #64748b;
+              margin-top: 4px;
+              font-weight: 500;
+            }
+            .section-title {
+              font-size: 13px;
+              font-weight: 800;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              margin-bottom: 12px;
+              color: #0f172a;
+              border-bottom: 1px solid #cbd5e1;
+              padding-bottom: 4px;
+            }
+            .table-container {
+              margin-top: 15px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              text-align: left;
+            }
+            th {
+              background: #f1f5f9;
+              color: #475569;
+              font-weight: 800;
+              text-transform: uppercase;
+              font-size: 10px;
+              padding: 8px 12px;
+              letter-spacing: 0.025em;
+            }
+            .insights-grid {
+              display: grid;
+              grid-template-cols: repeat(3, 1fr);
+              gap: 15px;
+              margin-bottom: 25px;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              .no-print {
+                display: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <h1 class="title">Marketplace Sales Intelligence Report</h1>
+                <div class="subtitle">Filter Period: <strong>${formatFriendlyDate(appliedRange.start)}</strong> to <strong>${formatFriendlyDate(appliedRange.end)}</strong></div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Generated On</div>
+                <div style="font-size: 11px; font-weight: 600; color: #0f172a;">${formatFriendlyDate(formatDateYYYYMMDD(new Date()))}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-title">Key Performance Indicators</div>
+          <div class="grid">
+            <div class="card" style="border-left: 4px solid #6366f1;">
+              <div class="card-label">Total Online Revenue</div>
+              <div class="card-val">₹${currentKPIs.total.revenue.toLocaleString('en-IN')}</div>
+              <div class="card-sub">${currentKPIs.total.orders} orders • ${currentKPIs.total.units} units</div>
+            </div>
+            <div class="card" style="border-left: 4px solid #f97316;">
+              <div class="card-label">Amazon Sales</div>
+              <div class="card-val">₹${currentKPIs.amazon.revenue.toLocaleString('en-IN')}</div>
+              <div class="card-sub">${currentKPIs.amazon.orders} orders • ${currentKPIs.amazon.units} units</div>
+            </div>
+            <div class="card" style="border-left: 4px solid #3b82f6;">
+              <div class="card-label">Flipkart Sales</div>
+              <div class="card-val">₹${currentKPIs.flipkart.revenue.toLocaleString('en-IN')}</div>
+              <div class="card-sub">${currentKPIs.flipkart.orders} orders • ${currentKPIs.flipkart.units} units</div>
+            </div>
+            <div class="card" style="border-left: 4px solid #ec4899;">
+              <div class="card-label">Meesho Sales</div>
+              <div class="card-val">₹${currentKPIs.meesho.revenue.toLocaleString('en-IN')}</div>
+              <div class="card-sub">${currentKPIs.meesho.orders} orders • ${currentKPIs.meesho.units} units</div>
+            </div>
+          </div>
+
+          <div class="section-title">Product & Unit Economics</div>
+          <div class="insights-grid">
+            <div class="card">
+              <div class="card-label">Best Selling Product</div>
+              <div style="font-size: 11px; font-weight: 700; color: #1e293b; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">
+                ${bestSellingProduct ? bestSellingProduct.name : 'N/A'}
+              </div>
+              <div style="font-size: 11px; font-weight: 800; color: #475569;">
+                ${bestSellingProduct ? `${bestSellingProduct.qty} units sold` : '—'}
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-label">Most Revenue Product</div>
+              <div style="font-size: 11px; font-weight: 700; color: #1e293b; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">
+                ${mostRevenueProduct ? mostRevenueProduct.name : 'N/A'}
+              </div>
+              <div style="font-size: 11px; font-weight: 800; color: #475569;">
+                ${mostRevenueProduct ? `₹${mostRevenueProduct.revenue.toLocaleString('en-IN')}` : '—'}
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-label">Avg Order Value (AOV)</div>
+              <div class="card-val">
+                ₹${(currentKPIs.total.orders > 0 ? Math.round(currentKPIs.total.revenue / currentKPIs.total.orders) : 0).toLocaleString('en-IN')}
+              </div>
+              <div class="card-sub">
+                Revenue Per Unit: ₹${(currentKPIs.total.units > 0 ? Math.round(currentKPIs.total.revenue / currentKPIs.total.units) : 0).toLocaleString('en-IN')}
+              </div>
+            </div>
+          </div>
+
+          <div class="section-title">Transaction Audit Log</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th style="border-radius: 6px 0 0 6px;">Date</th>
+                  <th>Product Name</th>
+                  <th>Marketplace</th>
+                  <th>Order ID</th>
+                  <th>Qty</th>
+                  <th style="text-align: right; border-radius: 0 6px 6px 0;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRowsHTML || `<tr><td colspan="6" style="padding: 20px; text-align: center; color: #64748b;">No data in selected date range.</td></tr>`}
+              </tbody>
+            </table>
+          </div>
+
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                window.close();
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
 
   return (
     <div className="space-y-6">
       {/* 1. Header Page Title Block */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Marketplace Analytics & Online Sales</h1>
-          <p className="text-slate-500 text-sm mt-1">Configure line item orders and audit cross-platform sales trends</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-[#F8FAFC] tracking-tight">Marketplace Analytics & Online Sales</h1>
+          <p className="text-slate-600 dark:text-[#94A3B8] text-sm mt-1">Configure line item orders and audit cross-platform sales trends</p>
         </div>
         <button onClick={() => { setForm(emptyForm()); setError(''); setShowModal(true); }}
-          className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg self-start">
+          className="flex items-center justify-center gap-2 bg-[#EF4444] hover:bg-red-600 text-white text-sm font-bold px-5 py-3 rounded-2xl transition-all shadow-md dark:shadow-none hover:shadow-lg self-start">
           <Plus size={16} /> Log Online Sale
         </button>
       </div>
 
-      {/* 2. Top KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Revenue */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Revenue</span>
-            <p className="text-2xl font-black text-slate-800">{fmt(totalRevenue)}</p>
-            <span className="text-[9px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full inline-block">
-              Combined platforms receipts
-            </span>
+      {/* 2. ONLINE MARKETPLACE PERFORMANCE & FILTER BAR */}
+      <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 shadow-md border border-slate-200/80 dark:border-[#1E293B] dark:shadow-none space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC] uppercase">Online Marketplace Performance</h2>
+            <p className="text-slate-600 dark:text-[#94A3B8] text-xs mt-1">Real-time marketplace analytics and revenue intelligence across channels</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-pink-50 border border-pink-100 text-pink-600 flex items-center justify-center">
-            <IndianRupee size={22} />
-          </div>
-        </div>
-
-        {/* Total Orders */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Orders</span>
-            <p className="text-2xl font-black text-slate-800">{totalOrders} orders</p>
-            <span className="text-[9px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full inline-block">
-              Lifetime online logs
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center">
-            <ShoppingBag size={22} />
-          </div>
-        </div>
-
-        {/* Average Order Value */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Average Order Value</span>
-            <p className="text-2xl font-black text-slate-800">{fmt(avgOrderValue)}</p>
-            <span className="text-[9px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full inline-block">
-              Revenue per ticket order
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center">
-            <Layers size={22} />
+          
+          {/* Preset select buttons */}
+          <div className="flex flex-wrap gap-1 bg-slate-105 dark:bg-[#1E293B] p-1 rounded-2xl border border-slate-200 dark:border-[#1E293B]">
+            {[
+              { id: 'today', label: 'Today' },
+              { id: 'yesterday', label: 'Yesterday' },
+              { id: 'thisWeek', label: 'This Week' },
+              { id: 'thisMonth', label: 'This Month' },
+              { id: 'thisYear', label: 'This Year' },
+              { id: 'custom', label: 'Custom Range' }
+            ].map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handlePresetClick(p.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  dateMode === p.id 
+                    ? 'bg-indigo-600 text-white shadow-sm' 
+                    : 'text-slate-700 dark:text-[#CBD5E1] hover:text-slate-950 dark:hover:text-[#F8FAFC] hover:bg-slate-200 dark:hover:bg-[#1E293B]'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Best Performing Platform */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Best Performing Platform</span>
-            <p className="text-2xl font-black text-slate-800 capitalize">{bestPerformingPlatform}</p>
-            <span className="text-[9px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full inline-block">
-              Leader by sales volume
-            </span>
+        {/* Custom Date Range Panel */}
+        {dateMode === 'custom' && (
+          <div className="grid grid-cols-1 sm:grid-cols-4 items-end gap-4 p-4 bg-slate-50 dark:bg-[#0F172A] rounded-2xl border border-slate-202 dark:border-[#1E293B] animate-fadeIn">
+            <div className="space-y-1.5 col-span-1">
+              <label className="block text-[10px] font-bold text-slate-700 dark:text-[#CBD5E1] uppercase tracking-wider">Start Date</label>
+              <input 
+                type="date" 
+                value={customStart} 
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-[#1E293B] rounded-xl text-xs bg-white dark:bg-[#111827] text-slate-900 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+              />
+            </div>
+            <div className="space-y-1.5 col-span-1">
+              <label className="block text-[10px] font-bold text-slate-700 dark:text-[#CBD5E1] uppercase tracking-wider">End Date</label>
+              <input 
+                type="date" 
+                value={customEnd} 
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-305 dark:border-[#1E293B] rounded-xl text-xs bg-white dark:bg-[#111827] text-slate-900 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+              />
+            </div>
+            <div className="flex gap-2 col-span-2">
+              <button 
+                type="button" 
+                onClick={handleApplyCustom}
+                className="flex-1 py-2 px-4 bg-indigo-650 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all"
+              >
+                Apply Range
+              </button>
+              <button 
+                type="button" 
+                onClick={handleResetCustom}
+                className="py-2 px-4 bg-white dark:bg-[#1E293B] hover:bg-slate-100 dark:hover:bg-[#1E293B] text-slate-700 dark:text-[#CBD5E1] text-xs font-bold rounded-xl border border-slate-300 dark:border-[#1E293B] transition-all flex items-center justify-center gap-1.5"
+              >
+                <RotateCcw size={13} /> Reset
+              </button>
+            </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center">
-            <Award size={22} />
-          </div>
+        )}
+        
+        <div className="text-[11px] text-slate-700 dark:text-[#CBD5E1] font-bold flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block mr-1"></span>
+          Active Filter: <span className="text-slate-900 dark:text-[#F8FAFC] font-extrabold">{formatFriendlyDate(appliedRange.start)}</span> to <span className="text-slate-900 dark:text-[#F8FAFC] font-extrabold">{formatFriendlyDate(appliedRange.end)}</span>
         </div>
       </div>
 
-      {/* 3. Platform Breakdown Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {PLATFORMS.map((p) => {
-          const stats = platformStats[p.id] || { revenue: 0, orders: 0, share: 0 };
-          return (
-            <div key={p.id} className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between relative overflow-hidden">
-              <div className="flex items-center justify-between border-b border-slate-50 pb-3 mb-3">
-                <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-xl border ${p.border}`}>
-                  {p.label}
-                </span>
-                <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2.5 py-1 rounded-xl">
-                  {stats.share.toFixed(0)}% Share
-                </span>
+      {/* 3. Marketplace KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Online Card */}
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border-t-4 border-t-indigo-600 border-x border-b border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between min-h-[150px]">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1E293B] pb-2.5">
+            <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50 px-2.5 py-0.5 rounded-xl">
+              Total Online
+            </span>
+            <span className="text-[9px] font-extrabold text-slate-805 dark:text-[#F8FAFC]">All Platforms</span>
+          </div>
+          <div className="mt-3.5 space-y-2.5">
+            <div>
+              <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue</span>
+              <p className="text-2xl font-bold text-[#111827] dark:text-[#F8FAFC]">{fmt(currentKPIs.total.revenue)}</p>
+            </div>
+            <div className="grid grid-cols-2 border-t border-slate-100 dark:border-[#1E293B] pt-2 text-xs">
+              <div>
+                <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Orders</span>
+                <span className="font-extrabold text-slate-900 dark:text-[#CBD5E1]">{currentKPIs.total.orders}</span>
               </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Platform Revenue</span>
-                <p className="text-2xl font-black text-slate-800">{fmt(stats.revenue)}</p>
-                <p className="text-xs text-slate-500 font-semibold">{stats.orders} orders processed</p>
+              <div>
+                <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Units Sold</span>
+                <span className="font-extrabold text-slate-900 dark:text-[#CBD5E1]">{currentKPIs.total.units}</span>
               </div>
             </div>
-          );
-        })}
+          </div>
+        </div>
+
+        {/* Amazon Card */}
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border-t-4 border-t-orange-500 border-x border-b border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between min-h-[150px]">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1E293B] pb-2.5">
+            <span className="text-[10px] font-black uppercase tracking-wider bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-900/50 px-2.5 py-0.5 rounded-xl">
+              Amazon
+            </span>
+            <span className="text-[9px] font-extrabold text-slate-805 dark:text-[#F8FAFC]">Marketplace</span>
+          </div>
+          <div className="mt-3.5 space-y-2.5">
+            <div>
+              <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue</span>
+              <p className="text-2xl font-bold text-[#111827] dark:text-[#F8FAFC]">{fmt(currentKPIs.amazon.revenue)}</p>
+            </div>
+            <div className="grid grid-cols-2 border-t border-slate-100 dark:border-[#1E293B] pt-2 text-xs">
+              <div>
+                <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Orders</span>
+                <span className="font-extrabold text-slate-900 dark:text-[#CBD5E1]">{currentKPIs.amazon.orders}</span>
+              </div>
+              <div>
+                <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Units Sold</span>
+                <span className="font-extrabold text-slate-900 dark:text-[#CBD5E1]">{currentKPIs.amazon.units}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Flipkart Card */}
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border-t-4 border-t-blue-500 border-x border-b border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between min-h-[150px]">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1E293B] pb-2.5">
+            <span className="text-[10px] font-black uppercase tracking-wider bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 px-2.5 py-0.5 rounded-xl">
+              Flipkart
+            </span>
+            <span className="text-[9px] font-extrabold text-slate-805 dark:text-[#F8FAFC]">Marketplace</span>
+          </div>
+          <div className="mt-3.5 space-y-2.5">
+            <div>
+              <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue</span>
+              <p className="text-2xl font-bold text-[#111827] dark:text-[#F8FAFC]">{fmt(currentKPIs.flipkart.revenue)}</p>
+            </div>
+            <div className="grid grid-cols-2 border-t border-slate-100 dark:border-[#1E293B] pt-2 text-xs">
+              <div>
+                <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Orders</span>
+                <span className="font-extrabold text-slate-900 dark:text-[#CBD5E1]">{currentKPIs.flipkart.orders}</span>
+              </div>
+              <div>
+                <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Units Sold</span>
+                <span className="font-extrabold text-slate-900 dark:text-[#CBD5E1]">{currentKPIs.flipkart.units}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Meesho Card */}
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border-t-4 border-t-pink-500 border-x border-b border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between min-h-[150px]">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1E293B] pb-2.5">
+            <span className="text-[10px] font-black uppercase tracking-wider bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-400 border border-pink-200 dark:border-pink-900/50 px-2.5 py-0.5 rounded-xl">
+              Meesho
+            </span>
+            <span className="text-[9px] font-extrabold text-slate-805 dark:text-[#F8FAFC]">Marketplace</span>
+          </div>
+          <div className="mt-3.5 space-y-2.5">
+            <div>
+              <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue</span>
+              <p className="text-2xl font-bold text-[#111827] dark:text-[#F8FAFC]">{fmt(currentKPIs.meesho.revenue)}</p>
+            </div>
+            <div className="grid grid-cols-2 border-t border-slate-100 dark:border-[#1E293B] pt-2 text-xs">
+              <div>
+                <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Orders</span>
+                <span className="font-extrabold text-slate-900 dark:text-[#CBD5E1]">{currentKPIs.meesho.orders}</span>
+              </div>
+              <div>
+                <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Units Sold</span>
+                <span className="font-extrabold text-slate-900 dark:text-[#CBD5E1]">{currentKPIs.meesho.units}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 4. Sales Trends & Platform Distribution Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sales Trend Line Chart */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 lg:col-span-2 flex flex-col justify-between min-h-[300px]">
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 shadow-md border border-slate-200 dark:border-[#1E293B] dark:shadow-none min-h-[300px] lg:col-span-2 flex flex-col justify-between">
           <div>
-            <h3 className="font-extrabold text-slate-800 text-base">30-Day Sales Trend</h3>
-            <p className="text-slate-400 text-xs mt-0.5">Telemetry log detailing daily receipts from marketplace sales</p>
+            <h3 className="font-bold text-slate-900 dark:text-[#F8FAFC] text-base">Sales Trend</h3>
+            <p className="text-slate-600 dark:text-[#94A3B8] text-xs mt-0.5">Telemetry log detailing daily receipts from marketplace sales in active period</p>
           </div>
           <div className="flex-1 flex items-center mt-4">
             <SalesTrendChart data={dailyTrend} />
@@ -661,125 +1187,241 @@ export default function OnlineSales() {
         </div>
 
         {/* Platform Share Donut Chart */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 shadow-md border border-slate-200 dark:border-[#1E293B] dark:shadow-none flex flex-col justify-between">
           <div>
-            <h3 className="font-extrabold text-slate-800 text-base">Platform Distribution</h3>
-            <p className="text-slate-400 text-xs mt-0.5">Contribution percentages of revenue across channels</p>
+            <h3 className="font-bold text-slate-900 dark:text-[#F8FAFC] text-base">Platform Distribution</h3>
+            <p className="text-slate-600 dark:text-[#94A3B8] text-xs mt-0.5">Contribution percentages of revenue across channels in active period</p>
           </div>
           <div className="flex-1 flex items-center mt-6">
             <PlatformDonutChart 
               data={donutData} 
               centerLabel="Online Sales" 
-              centerValue={fmt(totalRevenue)}
+              centerValue={fmt(currentKPIs.total.revenue)}
             />
           </div>
         </div>
       </div>
 
-      {/* 5. Top Selling Products & Recent Orders Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Selling Products */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between">
+      {/* 5. Product Insights, Leaderboard, & Quick Insights Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Product Insights */}
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between">
           <div>
-            <h3 className="font-extrabold text-slate-800 text-base">Top Selling Products</h3>
-            <p className="text-slate-400 text-xs mt-0.5">Marketplace products sorted by cumulative quantities sold</p>
+            <h3 className="font-bold text-slate-900 dark:text-[#F8FAFC] text-base flex items-center gap-1.5">
+              <TrendingUp size={16} className="text-indigo-650 dark:text-[#3B82F6]" />
+              Product Insights
+            </h3>
+            <p className="text-slate-600 dark:text-[#94A3B8] text-xs mt-0.5">Top products and growth trends vs preceding identical duration</p>
           </div>
 
           <div className="space-y-4 mt-5 flex-1 flex flex-col justify-around">
-            {topProducts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-                <ShoppingCart size={32} className="opacity-30 mb-2" />
-                <span className="text-xs font-semibold">No sales logged</span>
-              </div>
-            ) : (
-              topProducts.map((p, idx) => (
-                <div key={idx} className="space-y-2">
-                  <div className="flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2 truncate">
-                      <ProductThumbnail productName={p.name} />
-                      <span className="font-bold text-slate-700 truncate">{p.name}</span>
-                    </div>
-                    <span className="font-black text-slate-500">{p.qty} sold</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <div style={{ width: `${(p.qty / maxQty) * 100}%` }} className="h-full bg-pink-500 rounded-full" />
-                  </div>
+            {/* Best Selling */}
+            <div className="p-3 bg-slate-50 dark:bg-[#1E293B]/40 border border-slate-200 dark:border-[#1E293B] rounded-2xl flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 truncate min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-950/30 text-orange-850 dark:text-orange-400 border border-orange-200 dark:border-orange-900/50 flex items-center justify-center flex-shrink-0 font-extrabold text-base">
+                  🏆
                 </div>
-              ))
-            )}
+                <div className="truncate min-w-0">
+                  <span className="text-[9px] font-bold text-slate-700 dark:text-[#CBD5E1] uppercase tracking-wider block">Best Selling Product</span>
+                  <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-xs truncate block">
+                    {bestSellingProduct ? bestSellingProduct.name : 'No Sales'}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <span className="text-xs font-black text-slate-950 dark:text-[#F8FAFC] block">
+                  {bestSellingProduct ? `${bestSellingProduct.qty} units` : '—'}
+                </span>
+                <span className="text-[9px] font-bold text-slate-700 dark:text-[#94A3B8] uppercase tracking-wider">By Volume</span>
+              </div>
+            </div>
+
+            {/* Most Revenue */}
+            <div className="p-3 bg-slate-50 dark:bg-[#1E293B]/40 border border-slate-200 dark:border-[#1E293B] rounded-2xl flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 truncate min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/30 text-indigo-805 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50 flex items-center justify-center flex-shrink-0 font-extrabold text-base">
+                  💎
+                </div>
+                <div className="truncate min-w-0">
+                  <span className="text-[9px] font-bold text-slate-700 dark:text-[#CBD5E1] uppercase tracking-wider block">Most Revenue Product</span>
+                  <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-xs truncate block">
+                    {mostRevenueProduct ? mostRevenueProduct.name : 'No Sales'}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <span className="text-xs font-black text-slate-955 dark:text-[#F8FAFC] block">
+                  {mostRevenueProduct ? fmt(mostRevenueProduct.revenue) : '—'}
+                </span>
+                <span className="text-[9px] font-bold text-slate-700 dark:text-[#94A3B8] uppercase tracking-wider">By Revenue</span>
+              </div>
+            </div>
+
+            {/* Fastest Growing */}
+            <div className="p-3 bg-slate-50 dark:bg-[#1E293B]/40 border border-slate-205 dark:border-[#1E293B] rounded-2xl flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 truncate min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/30 text-emerald-805 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 flex items-center justify-center flex-shrink-0 font-extrabold text-base">
+                  ⚡
+                </div>
+                <div className="truncate min-w-0">
+                  <span className="text-[9px] font-bold text-slate-700 dark:text-[#CBD5E1] uppercase tracking-wider block">Fastest Growing Product</span>
+                  <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-xs truncate block">
+                    {fastestGrowingProduct ? fastestGrowingProduct.name : 'No Sales'}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <span className="text-xs font-black text-emerald-750 dark:text-[#10B981] block">
+                  {fastestGrowingProduct 
+                    ? `${fastestGrowingProduct.growthQty >= 0 ? '+' : ''}${fastestGrowingProduct.growthQty} units` 
+                    : '—'}
+                </span>
+                <span className="text-[9px] font-bold text-emerald-900 dark:text-[#10B981] bg-emerald-100 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 px-1.5 py-0.5 rounded-full inline-block mt-0.5">
+                  {fastestGrowingProduct && fastestGrowingProduct.growthPercent !== null 
+                    ? `${fastestGrowingProduct.growthQty >= 0 ? '+' : ''}${fastestGrowingProduct.growthPercent.toFixed(0)}%` 
+                    : 'New Product'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Recent Orders (Latest 5) */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 lg:col-span-2 flex flex-col justify-between">
+        {/* Marketplace Leaderboard */}
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between">
           <div>
-            <h3 className="font-extrabold text-slate-800 text-base">Recent Orders</h3>
-            <p className="text-slate-400 text-xs mt-0.5">The last 5 online orders logged in the system</p>
+            <h3 className="font-bold text-slate-900 dark:text-[#F8FAFC] text-base flex items-center gap-1.5">
+              <Award size={16} className="text-indigo-600 dark:text-indigo-400" />
+              Marketplace Leaderboard
+            </h3>
+            <p className="text-slate-600 dark:text-[#94A3B8] text-xs mt-0.5">Ranking channels by revenue generated in active range</p>
           </div>
 
-          <div className="overflow-x-auto mt-4 flex-1">
-            {recentOrders.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-                <ShoppingBag size={32} className="opacity-30 mb-2" />
-                <span className="text-xs font-semibold">No orders logged</span>
-              </div>
-            ) : (
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 uppercase font-extrabold">
-                    <th className="py-2.5">Date</th>
-                    <th className="py-2.5">Product</th>
-                    <th className="py-2.5">Platform</th>
-                    <th className="py-2.5">Order ID</th>
-                    <th className="py-2.5 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {recentOrders.map((o) => {
-                    const pl = PLATFORMS.find(p => p.id === o.platform);
-                    return (
-                      <tr key={o.id} className="hover:bg-slate-50/50">
-                        <td className="py-3 text-slate-500">{o.date}</td>
-                        <td className="py-3 font-semibold text-slate-700">
-                          <div className="flex items-center gap-2 truncate">
-                            <ProductThumbnail productName={o.productName} />
-                            <span className="truncate">{o.productName}</span>
-                          </div>
-                        </td>
-                        <td className="py-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${pl?.light || 'bg-slate-100 text-slate-600'}`}>
-                            {o.platform}
-                          </span>
-                        </td>
-                        <td className="py-3 text-slate-500 font-mono">{o.orderId || '—'}</td>
-                        <td className="py-3 font-bold text-slate-800 text-right">₹{o.amount}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+          <div className="space-y-4 mt-5 flex-1 flex flex-col justify-around">
+            {platformRankings.map((plat, index) => {
+              const rankStyles = [
+                'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/30 dark:text-[#F59E0B] dark:border-amber-900/50 font-extrabold',
+                'bg-slate-100 text-slate-900 border-slate-300 dark:bg-[#1E293B] dark:text-[#CBD5E1] dark:border-[#1E293B] font-extrabold',
+                'bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-900/50 font-extrabold'
+              ];
+              const rankLabels = ['🥇 1st', '🥈 2nd', '🥉 3rd'];
+              return (
+                <div key={plat.id} className="flex flex-col gap-1.5 text-xs">
+                  <div className="flex items-center justify-between font-bold text-slate-800 dark:text-[#CBD5E1]">
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-lg border text-[9px] ${rankStyles[index] || 'bg-slate-100 text-slate-900'}`}>
+                        {rankLabels[index] || `${index + 1}th`}
+                      </span>
+                      <span className="capitalize text-slate-900 dark:text-[#F8FAFC] font-extrabold">{plat.label}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-black text-slate-900 dark:text-[#F8FAFC]">{fmt(plat.revenue)}</span>
+                      <span className="text-[9px] text-slate-700 dark:text-[#94A3B8] font-bold block">{plat.share.toFixed(1)}% share</span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-slate-100 dark:bg-[#0F172A] border border-slate-200 dark:border-[#1E293B] h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${plat.share}%`, backgroundColor: plat.color }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Quick Insights & Export Options */}
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between md:col-span-2 lg:col-span-1">
+          <div>
+            <h3 className="font-bold text-slate-900 dark:text-[#F8FAFC] text-base flex items-center gap-1.5">
+              <Layers size={16} className="text-indigo-650 dark:text-[#3B82F6]" />
+              Quick Insights
+            </h3>
+            <p className="text-slate-600 dark:text-[#94A3B8] text-xs mt-0.5">Critical unit economics and sales outliers</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 mt-5">
+            <div>
+              <span className="text-[9px] font-bold text-slate-700 dark:text-[#94A3B8] uppercase tracking-wider block">Total Orders</span>
+              <span className="text-xs font-black text-slate-900 dark:text-[#F8FAFC]">{currentKPIs.total.orders} orders</span>
+            </div>
+            
+            <div>
+              <span className="text-[9px] font-bold text-slate-700 dark:text-[#94A3B8] uppercase tracking-wider block">Total Units Sold</span>
+              <span className="text-xs font-black text-slate-900 dark:text-[#F8FAFC]">{currentKPIs.total.units} units</span>
+            </div>
+
+            <div>
+              <span className="text-[9px] font-bold text-slate-700 dark:text-[#94A3B8] uppercase tracking-wider block">Avg Order Value (AOV)</span>
+              <span className="text-xs font-black text-slate-900 dark:text-[#F8FAFC]">
+                {fmt(currentKPIs.total.orders > 0 ? currentKPIs.total.revenue / currentKPIs.total.orders : 0)}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-[9px] font-bold text-slate-700 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue Per Unit</span>
+              <span className="text-xs font-black text-slate-900 dark:text-[#F8FAFC]">
+                {fmt(currentKPIs.total.units > 0 ? currentKPIs.total.revenue / currentKPIs.total.units : 0)}
+              </span>
+            </div>
+
+            <div className="col-span-2 border-t border-slate-200 dark:border-[#1E293B] pt-2.5">
+              <span className="text-[9px] font-bold text-slate-700 dark:text-[#94A3B8] uppercase tracking-wider block">Highest Sale Day</span>
+              <span className="text-xs font-bold text-slate-900 dark:text-[#F8FAFC] flex items-center justify-between">
+                <span>{formatFriendlyDate(highestSaleDay.date)}</span>
+                <span className="text-emerald-700 dark:text-[#10B981] font-extrabold">{fmt(highestSaleDay.revenue)}</span>
+              </span>
+            </div>
+
+            <div className="col-span-2">
+              <span className="text-[9px] font-bold text-slate-700 dark:text-[#94A3B8] uppercase tracking-wider block">Lowest Sale Day</span>
+              <span className="text-xs font-bold text-slate-900 dark:text-[#F8FAFC] flex items-center justify-between">
+                <span>{formatFriendlyDate(lowestSaleDay.date)}</span>
+                <span className="text-red-750 dark:text-[#EF4444] font-extrabold">{fmt(lowestSaleDay.revenue)}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Export Options */}
+          <div className="border-t border-slate-200 dark:border-[#1E293B] pt-3 mt-4">
+            <span className="text-[9px] font-bold text-slate-700 dark:text-[#94A3B8] uppercase tracking-wider block mb-2">Export Data</span>
+            <div className="grid grid-cols-2 gap-2">
+              <button 
+                type="button" 
+                onClick={exportToCSV}
+                className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-sm dark:shadow-none"
+              >
+                <Download size={12} /> Excel
+              </button>
+              <button 
+                type="button" 
+                onClick={exportToPDF}
+                className="flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-sm dark:shadow-none"
+              >
+                <Download size={12} /> PDF
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* 6. Historical Ledger Section (Scrollable Table) */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+      <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-[#1E293B] space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-[#1E293B] pb-4">
           <div>
-            <h3 className="font-extrabold text-slate-800 text-base">All Orders Audit Ledger</h3>
-            <p className="text-slate-400 text-xs mt-0.5">Search and audit the complete marketplace transaction logs</p>
+            <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-base">All Orders Audit Ledger</h3>
+            <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Search and audit the complete marketplace transaction logs</p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             {/* Platform pills filters */}
-            <div className="flex gap-1 bg-slate-100 rounded-xl p-1 overflow-x-auto scrollbar-none max-w-full">
+            <div className="flex gap-1 bg-slate-100 dark:bg-[#1E293B] rounded-xl p-1 overflow-x-auto scrollbar-none max-w-full">
               {['all', ...PLATFORMS.map((p) => p.id)].map((f) => (
                 <button 
                   key={f} 
                   onClick={() => setFilter(f)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize shrink-0 ${
-                    filter === f ? 'bg-red-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 bg-transparent'
+                    filter === f ? 'bg-red-600 text-white shadow-sm' : 'text-slate-505 dark:text-[#CBD5E1] hover:text-slate-800 dark:hover:text-[#F8FAFC] bg-transparent'
                   }`}
                 >
                   {f === 'all' ? 'All Channels' : PLATFORMS.find((p) => p.id === f)?.label}
@@ -794,22 +1436,22 @@ export default function OnlineSales() {
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
                 placeholder="Search orders, SKU..."
-                className="w-full sm:w-[220px] pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-500" 
+                className="w-full sm:w-[220px] pl-8 pr-3 py-2 border border-slate-202 dark:border-[#1E293B] rounded-xl text-xs bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500" 
               />
             </div>
           </div>
         </div>
 
         {/* Scrollable table container */}
-        <div className="max-h-[400px] overflow-y-auto border border-slate-100 rounded-2xl">
+        <div className="max-h-[400px] overflow-y-auto border border-slate-100 dark:border-[#1E293B] rounded-2xl">
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-[#94A3B8]">
               <ShoppingCart size={36} className="mb-2 opacity-30" />
               <p className="text-xs font-semibold">No sales match the selected filters</p>
             </div>
           ) : (
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 uppercase font-extrabold sticky top-0 z-10">
+              <thead className="bg-slate-50/70 dark:bg-[#1E293B] border-b border-slate-100 dark:border-[#1E293B] text-slate-500 dark:text-[#94A3B8] uppercase font-extrabold sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Product Name</th>
@@ -820,13 +1462,13 @@ export default function OnlineSales() {
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-slate-100 dark:divide-[#1E293B] bg-white dark:bg-[#111827]">
                 {filtered.map((s) => {
                   const pl = PLATFORMS.find((p) => p.id === s.platform);
                   return (
-                    <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{s.date}</td>
-                      <td className="px-4 py-3 font-semibold text-slate-700">
+                    <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-[#172554] transition-colors">
+                      <td className="px-4 py-3 text-slate-550 dark:text-[#94A3B8] whitespace-nowrap">{s.date}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-700 dark:text-[#F8FAFC]">
                         <div className="flex items-center gap-2 truncate">
                           <ProductThumbnail productName={s.productName} />
                           <span className="truncate">{s.productName}</span>
@@ -837,14 +1479,14 @@ export default function OnlineSales() {
                           {s.platform}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-500 font-mono">{s.orderId || '—'}</td>
-                      <td className="px-4 py-3 text-slate-700 font-bold">{s.qty}</td>
-                      <td className="px-4 py-3 font-black text-slate-800">₹{s.amount}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-[#94A3B8] font-mono">{s.orderId || '—'}</td>
+                      <td className="px-4 py-3 text-slate-707 dark:text-[#CBD5E1] font-bold">{s.qty}</td>
+                      <td className="px-4 py-3 font-black text-slate-800 dark:text-[#F8FAFC]">₹{s.amount}</td>
                       <td className="px-4 py-3 text-right">
                         <button 
                           onClick={() => handleDelete(s.id)} 
                           disabled={user?.role === 'EMPLOYEE'} 
-                          className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="p-1.5 rounded-lg text-slate-400 dark:text-[#CBD5E1] hover:bg-red-55 dark:hover:bg-red-950/30 hover:text-red-500 dark:hover:text-[#EF4444] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -864,12 +1506,14 @@ export default function OnlineSales() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Platform selector */}
             <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Platform *</label>
+              <label className="block text-xs font-semibold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider">Platform *</label>
               <div className="grid grid-cols-3 gap-3">
                 {PLATFORMS.map((p) => (
                   <button key={p.id} type="button" onClick={() => handlePlatformChange(p.id)}
                     className={`py-3 px-4 rounded-xl text-sm font-semibold border-2 transition-all ${
-                      form.platform === p.id ? `${p.color} text-white border-transparent shadow-sm` : 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'
+                      form.platform === p.id 
+                        ? `${p.color} text-white border-transparent shadow-sm` 
+                        : 'border-slate-202 dark:border-[#1E293B] text-slate-600 dark:text-[#CBD5E1] hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-[#0F172A]'
                     }`}
                   >
                     {p.label}
@@ -880,18 +1524,18 @@ export default function OnlineSales() {
 
             {/* Line Items */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Products *</label>
+              <div className="flex items-center justify-between border-b border-slate-101 dark:border-[#1E293B] pb-2">
+                <label className="block text-xs font-semibold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider">Products *</label>
                 {form.platform && (
-                  <span className="text-xs text-slate-400 font-medium">
-                    Pricing using <span className="font-semibold capitalize text-red-600">{form.platform}</span>
+                  <span className="text-xs text-slate-400 dark:text-[#94A3B8] font-medium">
+                    Pricing using <span className="font-semibold capitalize text-red-600 dark:text-[#EF4444]">{form.platform}</span>
                   </span>
                 )}
               </div>
 
               {/* Desktop Headers */}
               {form.items.length > 0 && (
-                <div className="hidden md:grid md:grid-cols-[61%_15%_24%] gap-4 pr-12 pl-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <div className="hidden md:grid md:grid-cols-[61%_15%_24%] gap-4 pr-12 pl-4 text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider">
                   <div>Product *</div>
                   <div>Qty *</div>
                   <div>Amount (₹) *</div>
@@ -902,49 +1546,49 @@ export default function OnlineSales() {
                 {form.items.map((item, idx) => {
                   const selProd = products.find((p) => p.id === item.productId);
                   return (
-                    <div key={idx} className="p-4 border border-slate-200 rounded-2xl bg-slate-50/30 space-y-3 animate-fadeIn">
+                    <div key={idx} className="p-4 border border-slate-200 dark:border-[#1E293B] rounded-2xl bg-slate-50/30 dark:bg-[#0F172A]/30 space-y-3 animate-fadeIn">
                       <div className="flex items-center gap-3">
                         <div className="grid grid-cols-1 md:grid-cols-[61%_15%_24%] gap-4 flex-1 items-start">
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:hidden">Product *</label>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1.5 md:hidden">Product *</label>
                             <SearchableSelect
                               required
                               value={item.productId}
                               onChange={(val) => handleItemProductChange(idx, val)}
                               placeholder="Select product…"
                               options={products.filter((p) => p.availableQty > 0 || p.id === item.productId).map((p) => ({ value: p.id, label: `${p.name} (Stock: ${p.availableQty})` }))}
-                              className="w-full"
+                              className="w-full text-slate-900"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:hidden">Qty *</label>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1.5 md:hidden">Qty *</label>
                             <input required type="number" min="1" max={selProd?.availableQty || 9999} value={item.qty}
                               onChange={(e) => handleItemQtyChange(idx, e.target.value)}
-                              className="w-full h-[42px] px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="1" />
+                              className="w-full h-[42px] px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm text-center bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="1" />
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:hidden">Amount (₹) *</label>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1.5 md:hidden">Amount (₹) *</label>
                             <input required type="number" min="0" value={item.amount}
                               onChange={(e) => handleItemAmountChange(idx, e.target.value)}
-                              className="w-full h-[42px] px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white" placeholder="Amount (₹)" />
+                              className="w-full h-[42px] px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Amount (₹)" />
                           </div>
                         </div>
 
                         {form.items.length > 1 && (
                           <button type="button" onClick={() => removeItem(idx)}
-                            className="p-2.5 mt-0 md:mt-1.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0">
+                            className="p-2.5 mt-0 md:mt-1.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors flex-shrink-0">
                             <Trash2 size={16} />
                           </button>
                         )}
                       </div>
 
                       {selProd && (
-                        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 bg-slate-100/40 px-3 py-2.5 rounded-xl border border-slate-200/40">
+                        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-550 dark:text-[#CBD5E1] bg-slate-100/40 dark:bg-[#1E293B]/40 px-3 py-2.5 rounded-xl border border-slate-200/40 dark:border-[#1E293B]">
                           <div className="flex items-center gap-1.5">
                             <span className="font-medium text-slate-400">Stock Available:</span>
-                            <span className={`font-semibold ${selProd.availableQty < 20 ? 'text-yellow-600' : 'text-slate-700'}`}>
+                            <span className={`font-semibold ${selProd.availableQty < 20 ? 'text-yellow-600 dark:text-[#F59E0B]' : 'text-slate-700 dark:text-[#F8FAFC]'}`}>
                               {selProd.availableQty} units
                             </span>
                           </div>
@@ -952,7 +1596,7 @@ export default function OnlineSales() {
                             <span className="font-medium text-slate-400">
                               {form.platform ? `${PLATFORMS.find(p => p.id === form.platform)?.label} Price:` : 'Platform Price:'}
                             </span>
-                            <span className="font-bold text-red-600">
+                            <span className="font-bold text-red-650 dark:text-[#EF4444]">
                               ₹{getPlatformPrice(selProd, form.platform)}
                             </span>
                           </div>
@@ -964,7 +1608,7 @@ export default function OnlineSales() {
               </div>
 
               <button type="button" onClick={addItem}
-                className="flex items-center gap-1.5 text-red-600 hover:text-red-700 text-sm font-semibold transition-colors mt-2">
+                className="flex items-center gap-1.5 text-red-600 dark:text-[#EF4444] hover:text-red-700 text-sm font-semibold transition-colors mt-2">
                 <PlusCircle size={16} /> Add another product
               </button>
             </div>
@@ -972,30 +1616,30 @@ export default function OnlineSales() {
             {/* Order ID and Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Order ID</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider">Order ID</label>
                 <input value={form.orderId} onChange={(e) => setForm((f) => ({ ...f, orderId: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. ORD-123" />
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. ORD-123" />
               </div>
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Date *</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider">Date *</label>
                 <input required type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500" />
               </div>
             </div>
 
             {/* Notes */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Notes</label>
+              <label className="block text-xs font-semibold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider">Notes</label>
               <textarea rows={2.5} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" placeholder="Optional notes…" />
+                className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-550 resize-none" placeholder="Optional notes…" />
             </div>
 
-            {error && <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-xl">{error}</p>}
+            {error && <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950/20 px-3 py-2 rounded-xl border border-red-100 dark:border-red-900/50">{error}</p>}
 
             {/* Action buttons */}
-            <div className="flex gap-4 pt-3 border-t border-slate-100">
-              <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
-              <button type="submit" disabled={saving} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm">
+            <div className="flex gap-4 pt-3 border-t border-slate-100 dark:border-[#1E293B]">
+              <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm font-semibold text-slate-600 dark:text-[#CBD5E1] hover:bg-slate-55 dark:hover:bg-[#1E293B] transition-colors">Cancel</button>
+              <button type="submit" disabled={saving} className="flex-1 py-3 bg-[#EF4444] hover:bg-red-600 disabled:opacity-60 text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm dark:shadow-none">
                 {saving && <Loader2 size={16} className="animate-spin" />} Log Sale
               </button>
             </div>

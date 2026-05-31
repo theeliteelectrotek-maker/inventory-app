@@ -7,6 +7,7 @@ import {
   Boxes, Package2, DollarSign
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useIsDarkMode } from '../context/ThemeContext';
 
 // --- Date Range Presets Helper ---
 const getTodayStr = (offsetDays = 0) => {
@@ -47,15 +48,16 @@ const PRESETS = [
 ];
 
 const PLATFORM_INFO = {
-  amazon: { label: 'Amazon', color: '#f97316', bg: 'bg-orange-50 border-orange-200', text: 'text-orange-700' },
-  flipkart: { label: 'Flipkart', color: '#3b82f6', bg: 'bg-blue-50 border-blue-200', text: 'text-blue-700' },
-  meesho: { label: 'Meesho', color: '#ec4899', bg: 'bg-pink-50 border-pink-200', text: 'text-pink-700' },
-  offline: { label: 'Offline Sales', color: '#64748b', bg: 'bg-slate-50 border-slate-200', text: 'text-slate-700' },
+  amazon: { label: 'Amazon', color: '#f97316', bg: 'bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-900/50', text: 'text-orange-700 dark:text-orange-400' },
+  flipkart: { label: 'Flipkart', color: '#3b82f6', bg: 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900/50', text: 'text-blue-700 dark:text-blue-400' },
+  meesho: { label: 'Meesho', color: '#ec4899', bg: 'bg-pink-50 border-pink-200 dark:bg-pink-950/30 dark:border-pink-900/50', text: 'text-pink-700 dark:text-pink-400' },
+  offline: { label: 'Offline Sales', color: '#EF4444', bg: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/50', text: 'text-red-700 dark:text-[#EF4444]' },
 };
 
 // --- Custom Responsive SVG Donut Chart ---
 function DonutChart({ data, title, centerValueLabel, centerValue }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
+  const isDark = useIsDarkMode();
   
   const total = data.reduce((sum, item) => sum + item.value, 0);
   if (total === 0) {
@@ -81,9 +83,9 @@ function DonutChart({ data, title, centerValueLabel, centerValue }) {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-around gap-4 py-2">
+    <div className="flex flex-col sm:flex-row items-center justify-around gap-4 py-2 w-full">
       {/* SVG Container */}
-      <div className="relative w-36 h-36 flex-shrink-0">
+      <div className="relative w-44 h-44 flex-shrink-0">
         <svg viewBox="-1.2 -1.2 2.4 2.4" className="w-full h-full -rotate-90">
           {sectors.map((s) => {
             const [startX, startY] = getCoordinatesForPercent(s.startPercent);
@@ -110,25 +112,25 @@ function DonutChart({ data, title, centerValueLabel, centerValue }) {
             );
           })}
           {/* Inner cutout for Donut */}
-          <circle cx="0" cy="0" r="0.65" fill="#ffffff" />
+          <circle cx="0" cy="0" r="0.65" fill={isDark ? '#111827' : '#ffffff'} />
         </svg>
         {/* Absolute Center Content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
           {hoveredIdx !== null ? (
             <>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-full">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider truncate max-w-full">
                 {sectors[hoveredIdx].label}
               </span>
-              <span className="text-sm font-extrabold text-slate-800">
+              <span className="text-sm font-extrabold text-slate-800 dark:text-[#F8FAFC]">
                 {((sectors[hoveredIdx].percent) * 100).toFixed(1)}%
               </span>
             </>
           ) : (
             <>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate max-w-full">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider truncate max-w-full">
                 {centerValueLabel}
               </span>
-              <span className="text-xs font-extrabold text-slate-800 truncate max-w-full">
+              <span className="text-xs font-extrabold text-slate-800 dark:text-[#F8FAFC] truncate max-w-full">
                 {centerValue}
               </span>
             </>
@@ -138,22 +140,22 @@ function DonutChart({ data, title, centerValueLabel, centerValue }) {
 
       {/* Legends */}
       <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 hidden sm:block">{title}</h4>
+        <h4 className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1 hidden sm:block">{title}</h4>
         {sectors.map((s) => (
           <div
             key={s.idx}
             className={`flex items-center justify-between text-xs px-2 py-1 rounded-lg transition-colors cursor-pointer ${
-              hoveredIdx === s.idx ? 'bg-slate-50' : ''
+              hoveredIdx === s.idx ? 'bg-slate-50 dark:bg-[#172554]' : ''
             }`}
             onMouseEnter={() => setHoveredIdx(s.idx)}
             onMouseLeave={() => setHoveredIdx(null)}
           >
             <div className="flex items-center gap-2 truncate mr-2">
               <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-              <span className="font-semibold text-slate-700 truncate">{s.label}</span>
+              <span className="font-semibold text-slate-700 dark:text-[#CBD5E1] truncate">{s.label}</span>
             </div>
-            <span className="font-bold text-slate-500 text-[11px] whitespace-nowrap">
-              ₹{s.value.toLocaleString('en-IN')} ({((s.percent) * 100).toFixed(0)}%)
+            <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-xs whitespace-nowrap">
+              ₹{s.value.toLocaleString('en-IN')} <span className="text-[#EF4444] font-black ml-1.5">{((s.percent) * 100).toFixed(0)}%</span>
             </span>
           </div>
         ))}
@@ -165,6 +167,7 @@ function DonutChart({ data, title, centerValueLabel, centerValue }) {
 // --- Custom Responsive SVG Line Chart ---
 function LineChart({ data, dataKeys, colors, labels }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
+  const isDark = useIsDarkMode();
 
   if (!data || data.length === 0) {
     return (
@@ -213,9 +216,9 @@ function LineChart({ data, dataKeys, colors, labels }) {
         {gridLinesY.map((val, i) => {
           const y = getY(val);
           return (
-            <g key={i} className="opacity-40">
-              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke="#e2e8f0" strokeDasharray="3,3" />
-              <text x={paddingLeft - 8} y={y + 4} textAnchor="end" className="text-[10px] font-bold fill-slate-400">
+            <g key={i} className="opacity-70">
+              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke={isDark ? '#1E293B' : '#cbd5e1'} strokeDasharray="3,3" />
+              <text x={paddingLeft - 8} y={y + 4} textAnchor="end" className="text-[10px] font-extrabold fill-slate-700 dark:fill-[#94A3B8]">
                 ₹{val >= 100000 ? `${(val / 100000).toFixed(1)}L` : val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
               </text>
             </g>
@@ -242,7 +245,7 @@ function LineChart({ data, dataKeys, colors, labels }) {
                   cx={getX(i)}
                   cy={getY(d[key] || 0)}
                   r={hoveredIdx === i ? "5" : "3"}
-                  fill="#ffffff"
+                  fill={isDark ? '#111827' : '#ffffff'}
                   stroke={colors[kIdx]}
                   strokeWidth={hoveredIdx === i ? "3" : "2"}
                   className="cursor-pointer transition-all duration-150"
@@ -260,7 +263,7 @@ function LineChart({ data, dataKeys, colors, labels }) {
             y1={paddingTop}
             x2={getX(hoveredIdx)}
             y2={paddingTop + chartHeight}
-            stroke="#94a3b8"
+            stroke={isDark ? '#cbd5e1' : '#94a3b8'}
             strokeWidth="1.5"
             strokeDasharray="2,2"
             className="pointer-events-none"
@@ -289,7 +292,7 @@ function LineChart({ data, dataKeys, colors, labels }) {
               x={x}
               y={height - paddingBottom + 18}
               textAnchor="middle"
-              className="text-[9px] sm:text-[10px] font-bold fill-slate-400"
+              className="text-[9px] sm:text-[10px] font-extrabold fill-slate-700 dark:fill-[#94A3B8]"
             >
               {displayLabel}
             </text>
@@ -299,19 +302,19 @@ function LineChart({ data, dataKeys, colors, labels }) {
 
       {hoveredIdx !== null && (
         <div 
-          className="absolute z-20 bg-slate-950 text-white rounded-xl shadow-xl p-3 border border-slate-800 text-xs flex flex-col gap-1 pointer-events-none transition-all duration-100"
+          className="absolute z-20 bg-slate-950 dark:bg-[#020617] text-white rounded-xl shadow-xl p-3 border border-slate-800 dark:border-[#1E293B] text-xs flex flex-col gap-1 pointer-events-none transition-all duration-100"
           style={{
             left: `${Math.min(chartWidth + 30, Math.max(30, (getX(hoveredIdx) / width) * 100))}%`,
             top: '5%',
             transform: 'translateX(-50%)',
           }}
         >
-          <div className="font-bold border-b border-slate-800 pb-1 mb-1 text-slate-300">
+          <div className="font-bold border-b border-slate-800 dark:border-[#1E293B] pb-1 mb-1 text-slate-300 dark:text-[#CBD5E1]">
             {data[hoveredIdx].date || data[hoveredIdx].week || data[hoveredIdx].month}
           </div>
           {dataKeys.map((key, kIdx) => (
             <div key={key} className="flex justify-between gap-6">
-              <span className="font-semibold text-slate-400 flex items-center gap-1.5">
+              <span className="font-semibold text-slate-400 dark:text-[#94A3B8] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: colors[kIdx] }} />
                 {labels[kIdx]}:
               </span>
@@ -327,6 +330,7 @@ function LineChart({ data, dataKeys, colors, labels }) {
 // --- Custom Responsive SVG Bar Chart ---
 function BarChart({ data, dataKey, color, label }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
+  const isDark = useIsDarkMode();
 
   if (!data || data.length === 0) {
     return (
@@ -373,8 +377,8 @@ function BarChart({ data, dataKey, color, label }) {
           const y = getY(val);
           return (
             <g key={i} className="opacity-45">
-              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke="#f1f5f9" strokeWidth="1" />
-              <text x={paddingLeft - 8} y={y + 4} textAnchor="end" className="text-[9px] font-bold fill-slate-400">
+              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke={isDark ? '#1E293B' : '#f1f5f9'} strokeWidth="1" />
+              <text x={paddingLeft - 8} y={y + 4} textAnchor="end" className="text-[9px] font-bold fill-slate-400 dark:fill-[#94A3B8]">
                 {val >= 100000 ? `${(val / 100000).toFixed(1)}L` : val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
               </text>
             </g>
@@ -419,7 +423,7 @@ function BarChart({ data, dataKey, color, label }) {
               x={x}
               y={height - paddingBottom + 16}
               textAnchor="middle"
-              className="text-[9px] font-bold fill-slate-400"
+              className="text-[9px] font-bold fill-slate-400 dark:fill-[#94A3B8]"
             >
               {displayLabel}
             </text>
@@ -430,14 +434,14 @@ function BarChart({ data, dataKey, color, label }) {
       {/* Tooltip */}
       {hoveredIdx !== null && (
         <div
-          className="absolute z-20 bg-slate-950 text-white rounded-lg shadow-lg px-2.5 py-1.5 text-[10px] pointer-events-none text-center max-w-[150px]"
+          className="absolute z-20 bg-slate-950 dark:bg-[#020617] text-white rounded-lg shadow-lg px-2.5 py-1.5 text-[10px] pointer-events-none text-center max-w-[150px] border dark:border-[#1E293B]"
           style={{
             left: `${(getX(hoveredIdx) / width) * 100}%`,
             top: '5%',
             transform: 'translateX(-50%)',
           }}
         >
-          <div className="font-bold text-slate-300 truncate">{data[hoveredIdx].date || data[hoveredIdx].week || data[hoveredIdx].month || data[hoveredIdx].label}</div>
+          <div className="font-bold text-slate-300 dark:text-[#CBD5E1] truncate">{data[hoveredIdx].date || data[hoveredIdx].week || data[hoveredIdx].month || data[hoveredIdx].label}</div>
           <div className="font-extrabold mt-0.5">₹{data[hoveredIdx][dataKey].toLocaleString('en-IN')}</div>
         </div>
       )}
@@ -501,6 +505,37 @@ export default function Analytics() {
   const platforms = analytics?.platforms || {};
   const productsList = analytics?.products || {};
   const trends = analytics?.trends || {};
+
+  // Calculate Peak and Avg Revenue for selected trend timeline
+  const trendData = trends[trendTab] || [];
+  let peakRevVal = 0;
+  let peakRevDay = 'N/A';
+  let totalRev = 0;
+  
+  trendData.forEach((d) => {
+    const rev = d.revenue || 0;
+    totalRev += rev;
+    if (rev > peakRevVal) {
+      peakRevVal = rev;
+      peakRevDay = d.date || d.week || d.month || 'N/A';
+    }
+  });
+  
+  const avgDailyRev = trendData.length > 0 ? (totalRev / trendData.length) : 0;
+  
+  // Helper to format peak date label nicely
+  let peakLabel = peakRevDay;
+  if (peakLabel.includes('-')) {
+    const parts = peakLabel.split('-');
+    if (parts.length === 3) {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      peakLabel = `${parts[2]} ${months[parseInt(parts[1], 10) - 1]}`;
+    } else if (parts.length === 2) {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      peakLabel = `${months[parseInt(parts[1], 10) - 1]} ${parts[0].substring(2)}`;
+    }
+  }
+
   const inv = analytics?.inventory || {
     summary: { totalProducts: 0, totalUnits: 0, totalValue: 0 },
     lowStock: [],
@@ -540,18 +575,18 @@ export default function Analytics() {
       {/* 1. Header Page Title Block */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Business Analytics & Profit Dashboard</h1>
-          <p className="text-slate-500 text-sm mt-1">Real-time overview of business profitability, marketplaces, and current inventory assets</p>
+          <h1 className="text-2xl font-extrabold text-slate-800 dark:text-[#F8FAFC] tracking-tight">Business Analytics & Profit Dashboard</h1>
+          <p className="text-slate-500 dark:text-[#94A3B8] text-sm mt-1">Real-time overview of business profitability, marketplaces, and current inventory assets</p>
         </div>
 
         {/* Section View Tabs Switched Navigation */}
-        <div className="flex p-1 bg-slate-200/80 rounded-2xl self-start w-full sm:w-auto">
+        <div className="flex p-1 bg-slate-250/85 dark:bg-[#1E293B] rounded-2xl self-start w-full sm:w-auto">
           <button
             onClick={() => setActiveTab('profitability')}
             className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'profitability'
-                ? 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-white dark:bg-[#111827] text-slate-800 dark:text-[#F8FAFC] shadow-sm'
+                : 'text-slate-500 dark:text-[#94A3B8] hover:text-slate-700 dark:hover:text-[#F8FAFC]'
             }`}
           >
             <DollarSign size={14} />
@@ -561,8 +596,8 @@ export default function Analytics() {
             onClick={() => setActiveTab('inventory')}
             className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'inventory'
-                ? 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-white dark:bg-[#111827] text-slate-800 dark:text-[#F8FAFC] shadow-sm'
+                : 'text-slate-500 dark:text-[#94A3B8] hover:text-slate-700 dark:hover:text-[#F8FAFC]'
             }`}
           >
             <Boxes size={14} />
@@ -578,8 +613,8 @@ export default function Analytics() {
           <p className="text-sm font-semibold">Recalculating analytics ledger indices…</p>
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl flex items-center gap-3">
-          <AlertTriangle className="text-red-500 flex-shrink-0" />
+        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 text-red-750 dark:text-red-300 p-6 rounded-2xl flex items-center gap-3">
+          <AlertTriangle className="text-red-505 flex-shrink-0" />
           <div>
             <h4 className="font-bold">Error Loading Data</h4>
             <p className="text-sm">{error}</p>
@@ -591,9 +626,9 @@ export default function Analytics() {
           {activeTab === 'profitability' && (
             <div className="space-y-6 animate-fadeIn">
               {/* Date Filters Header bar */}
-              <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 border border-slate-100 p-3 rounded-2xl">
+              <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 dark:bg-[#111827] border border-slate-100 dark:border-[#1E293B] p-3 rounded-2xl">
                 <div className="flex items-center gap-4 flex-wrap">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider flex items-center gap-1.5">
                     <Calendar size={14} /> Period filters:
                   </span>
                   <div className="flex flex-wrap gap-2">
@@ -601,10 +636,10 @@ export default function Analytics() {
                       <button
                         key={p.id}
                         onClick={() => setPreset(p.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
                           preset === p.id 
-                            ? 'bg-red-600 text-white shadow-sm' 
-                            : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800'
+                            ? 'bg-[#EF4444] text-white shadow-md shadow-red-500/20' 
+                            : 'text-slate-650 dark:text-[#CBD5E1] bg-white dark:bg-[#1E293B] hover:bg-slate-100 dark:hover:bg-[#172554] border border-slate-205 dark:border-[#1E293B] shadow-sm'
                         }`}
                       >
                         {p.label}
@@ -615,11 +650,11 @@ export default function Analytics() {
 
                 {/* Customer Type Dropdown Filter */}
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Customer Type:</span>
+                  <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Customer Type:</span>
                   <select
                     value={customerType}
                     onChange={(e) => setCustomerType(e.target.value)}
-                    className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-500 font-bold text-slate-700"
+                    className="px-3 py-1.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-xs bg-white dark:bg-[#111827] focus:outline-none focus:ring-2 focus:ring-red-500 font-bold text-slate-700 dark:text-[#CBD5E1]"
                   >
                     <option value="all">👥 All Customers</option>
                     <option value="shop">🏪 Shops Only</option>
@@ -629,29 +664,29 @@ export default function Analytics() {
               </div>
 
               {preset === 'custom' && (
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-wrap items-center gap-4 animate-fadeIn">
+                <div className="bg-white dark:bg-[#111827] border border-slate-250 dark:border-[#1E293B] rounded-2xl p-4 shadow-sm flex flex-wrap items-center gap-4 animate-fadeIn">
                   <div className="flex items-center gap-2">
                     <Calendar size={16} className="text-slate-400" />
-                    <span className="text-xs font-bold text-slate-500 uppercase">Custom Dates</span>
+                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase">Custom Dates</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <input
                       type="date"
                       value={customStart}
                       onChange={(e) => setCustomStart(e.target.value)}
-                      className="py-1.5 px-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="py-1.5 px-3 border border-slate-200 dark:border-[#1E293B] rounded-xl text-xs bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
-                    <span className="text-slate-400 text-xs font-bold uppercase">to</span>
+                    <span className="text-slate-400 dark:text-[#94A3B8] text-xs font-bold uppercase">to</span>
                     <input
                       type="date"
                       value={customEnd}
                       onChange={(e) => setCustomEnd(e.target.value)}
-                      className="py-1.5 px-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="py-1.5 px-3 border border-slate-200 dark:border-[#1E293B] rounded-xl text-xs bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
                   </div>
                   <button
                     onClick={fetchAnalytics}
-                    className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                    className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 dark:bg-[#1E293B] dark:hover:bg-[#172554] text-white text-xs font-bold rounded-xl transition-all shadow-sm"
                   >
                     Apply Range
                   </button>
@@ -660,111 +695,134 @@ export default function Analytics() {
 
               {/* Profitability Overview Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
+                {/* Total Revenue */}
+                <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-[20px] p-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 text-white flex flex-col justify-between min-h-[140px]">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Revenue</span>
-                    <p className="text-xl font-black text-slate-800 mt-1">{fmt(overview.revenue)}</p>
+                    <span className="text-[10px] font-bold text-indigo-100 uppercase tracking-wider block">Total Revenue</span>
+                    <p className="text-3xl font-black mt-1 leading-none">{fmt(overview.revenue)}</p>
                   </div>
-                  <div className="mt-3 text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg self-start">
+                  <div className="mt-3 text-[10px] font-bold text-indigo-100 bg-indigo-700/50 px-2.5 py-1 rounded-lg self-start">
                     Gross sales receipts
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
+                {/* Gross Profit */}
+                <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-[20px] p-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 text-white flex flex-col justify-between min-h-[140px]">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Product Cost (COGS)</span>
-                    <p className="text-xl font-black text-slate-800 mt-1">{fmt(overview.productCost)}</p>
+                    <span className="text-[10px] font-bold text-emerald-100 uppercase tracking-wider block">Gross Profit</span>
+                    <p className="text-3xl font-black mt-1 leading-none">{fmt(overview.grossProfit)}</p>
                   </div>
-                  <div className="mt-3 text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg self-start">
-                    Cost of materials sold
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Gross Profit</span>
-                    <p className="text-xl font-black text-slate-800 mt-1">{fmt(overview.grossProfit)}</p>
-                  </div>
-                  <div className="mt-3 flex items-center gap-1 text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-lg self-start">
+                  <div className="mt-3 flex items-center gap-1 text-[10px] font-bold text-emerald-100 bg-emerald-600/50 px-2.5 py-1 rounded-lg self-start">
                     <TrendingUp size={11} /> {overview.revenue > 0 ? ((overview.grossProfit / overview.revenue) * 100).toFixed(0) : 0}% margin
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Returns Cost</span>
-                    <p className="text-xl font-black text-red-500 mt-1">{fmt(overview.returnsValue)}</p>
+                {/* Net Profit */}
+                <div className="bg-gradient-to-br from-teal-950 via-[#064e3b] to-emerald-950 rounded-[20px] p-5 shadow-md hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 text-white flex flex-col justify-between min-h-[140px] ring-4 ring-emerald-500/20 dark:ring-emerald-500/10 ring-offset-2 ring-offset-white dark:ring-offset-[#0F172A] relative overflow-hidden">
+                  <div className="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-5 pointer-events-none">
+                    <TrendingUp size={120} />
                   </div>
-                  <div className="mt-3 text-[10px] font-semibold text-red-500 bg-red-50 px-2 py-1 rounded-lg self-start">
-                    Lost returned sales value
+                  <div className="relative z-10">
+                    <span className="text-[10px] font-bold text-emerald-200 uppercase tracking-wider block">Net Profit</span>
+                    <p className="text-3xl font-black text-emerald-300 mt-1 leading-none">{fmt(overview.netProfit)}</p>
                   </div>
-                </div>
-
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden ring-2 ring-emerald-500 ring-offset-2">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Net Profit</span>
-                    <p className="text-2xl font-black text-emerald-600 mt-1">{fmt(overview.netProfit)}</p>
-                  </div>
-                  <div className={`mt-3 flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg self-start ${
-                    overview.netProfit >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                  <div className={`relative z-10 mt-3 flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg self-start ${
+                    overview.netProfit >= 0 ? 'bg-emerald-900/50 text-emerald-200' : 'bg-red-950/50 text-red-200'
                   }`}>
                     {overview.netProfit >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
                     {overview.revenue > 0 ? ((overview.netProfit / overview.revenue) * 100).toFixed(0) : 0}% net margin
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
+                {/* Units Sold */}
+                <div className="bg-white dark:bg-[#111827] rounded-[20px] p-5 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-blue-600 dark:border-t-blue-650 hover:shadow-md dark:hover:shadow-none hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between min-h-[140px]">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Units Sold</span>
-                    <p className="text-xl font-black text-slate-800 mt-1">{overview.unitsSold || 0} pcs</p>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Units Sold</span>
+                    <p className="text-2xl font-black text-slate-800 dark:text-[#F8FAFC] mt-1 leading-none">{overview.unitsSold || 0} pcs</p>
                   </div>
-                  <div className="mt-3 flex items-center gap-1 text-[10px] font-semibold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg self-start">
-                    <Percent size={11} className="text-orange-500" /> {overview.returnPercentage ? overview.returnPercentage.toFixed(1) : 0}% returns
+                  <div className="mt-3 flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1 rounded-lg self-start">
+                    <Percent size={11} className="text-blue-500" /> {overview.returnPercentage ? overview.returnPercentage.toFixed(1) : 0}% returns
+                  </div>
+                </div>
+
+                {/* Product Cost */}
+                <div className="bg-white dark:bg-[#111827] rounded-[20px] p-5 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-amber-500 dark:border-t-amber-600 hover:shadow-md dark:hover:shadow-none hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between min-h-[140px]">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Product Cost (COGS)</span>
+                    <p className="text-2xl font-black text-slate-800 dark:text-[#F8FAFC] mt-1 leading-none">{fmt(overview.productCost)}</p>
+                  </div>
+                  <div className="mt-3 text-[10px] font-bold text-amber-600 dark:text-[#F59E0B] bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 rounded-lg self-start">
+                    Cost of materials sold
+                  </div>
+                </div>
+
+                {/* Returns Cost */}
+                <div className="bg-white dark:bg-[#111827] rounded-[20px] p-5 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-red-500 dark:border-t-[#EF4444] hover:shadow-md dark:hover:shadow-none hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between min-h-[140px]">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Returns Cost</span>
+                    <p className="text-2xl font-black text-red-600 dark:text-[#EF4444] mt-1 leading-none">{fmt(overview.returnsValue)}</p>
+                  </div>
+                  <div className="mt-3 text-[10px] font-bold text-red-650 dark:text-[#EF4444] bg-red-50 dark:bg-red-950/30 px-2.5 py-1 rounded-lg self-start">
+                    Lost returned sales value
                   </div>
                 </div>
               </div>
 
               {/* Profit Trends and Platform Share charts */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 lg:col-span-2 flex flex-col">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
+                <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-[#1E293B] lg:col-span-2 flex flex-col">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-[#1E293B] pb-4 mb-4">
                     <div>
-                      <h3 className="font-extrabold text-slate-800 text-base">Monthly Profit Trend</h3>
-                      <p className="text-slate-400 text-xs mt-0.5">Tracking revenue vs net profit over time</p>
+                      <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-base">Monthly Profit Trend</h3>
+                      <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Tracking revenue vs net profit over time</p>
                     </div>
-                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl self-start">
-                      {['daily', 'weekly', 'monthly'].map((t) => (
-                        <button
-                          key={t}
-                          onClick={() => setTrendTab(t)}
-                          className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all ${
-                            trendTab === t 
-                              ? 'bg-white text-slate-800 shadow-sm' 
-                              : 'text-slate-400 hover:text-slate-700'
-                          }`}
-                        >
-                          {t}
-                        </button>
-                      ))}
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div className="flex gap-2.5 text-xs">
+                        <div className="bg-slate-50 dark:bg-[#1E293B] border border-slate-200/60 dark:border-[#1E293B] rounded-xl px-3 py-1 flex flex-col justify-center">
+                          <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase block leading-none">Peak Revenue</span>
+                          <span className="font-extrabold text-slate-700 dark:text-[#F8FAFC] text-[11px] mt-1 whitespace-nowrap">
+                            {fmt(peakRevVal)} <span className="text-[10px] text-slate-400 dark:text-[#94A3B8] font-semibold">({peakLabel})</span>
+                          </span>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-[#1E293B] border border-slate-200/60 dark:border-[#1E293B] rounded-xl px-3 py-1 flex flex-col justify-center">
+                          <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase block leading-none">Avg Revenue</span>
+                          <span className="font-extrabold text-slate-700 dark:text-[#F8FAFC] text-[11px] mt-1">{fmt(avgDailyRev)}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 bg-slate-100 dark:bg-[#1E293B] p-1 rounded-xl self-start">
+                        {['daily', 'weekly', 'monthly'].map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => setTrendTab(t)}
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition-all ${
+                              trendTab === t 
+                                ? 'bg-white dark:bg-[#111827] text-slate-800 dark:text-[#F8FAFC] shadow-sm' 
+                                : 'text-slate-400 dark:text-[#94A3B8] hover:text-slate-700 dark:hover:text-[#F8FAFC]'
+                            }`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   <div className="flex-1 flex items-center">
                     <LineChart
-                      data={trends[trendTab] || []}
+                      data={trendData}
                       dataKeys={['revenue', 'profit']}
-                      colors={['#e11d48', '#10b981']}
+                      colors={['#EF4444', '#10B981']}
                       labels={['Revenue', 'Net Profit']}
                     />
                   </div>
                 </div>
 
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col gap-6">
+                <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-[#1E293B] flex flex-col gap-6">
                   <div>
-                    <h3 className="font-extrabold text-slate-800 text-base">Platform Distribution</h3>
-                    <p className="text-slate-400 text-xs mt-0.5">Distribution of revenue and profits per marketplace</p>
+                    <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-base">Platform Distribution</h3>
+                    <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Distribution of revenue and profits per marketplace</p>
                   </div>
                   
-                  <div className="divide-y divide-slate-100 flex-1 flex flex-col justify-around">
+                  <div className="divide-y divide-slate-100 dark:divide-[#1E293B] flex-1 flex flex-col justify-around">
                     <div className="pb-4">
                       <DonutChart
                         data={getDonutData('revenue')}
@@ -787,7 +845,7 @@ export default function Analytics() {
 
               {/* Platform performance breakdown */}
               <div className="space-y-4">
-                <h3 className="font-extrabold text-slate-800 text-base">Marketplace & Offline Performance</h3>
+                <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-base">Marketplace & Offline Performance</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {Object.keys(PLATFORM_INFO).map((key) => {
                     const p = platforms[key] || { revenue: 0, productCost: 0, grossProfit: 0, returnsValue: 0, netProfit: 0, unitsSold: 0, unitsReturned: 0 };
@@ -795,10 +853,10 @@ export default function Analytics() {
                     const rPercent = p.unitsSold > 0 ? ((p.unitsReturned / p.unitsSold) * 100) : 0;
                     
                     return (
-                      <div key={key} className={`bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col`}>
-                        <div className={`px-4 py-3 flex items-center justify-between border-b ${info.bg}`}>
+                      <div key={key} className={`bg-white dark:bg-[#111827] rounded-3xl border border-slate-100 dark:border-[#1E293B] shadow-sm overflow-hidden flex flex-col`}>
+                        <div className={`px-4 py-3 flex items-center justify-between border-b dark:border-[#1E293B] ${info.bg}`}>
                           <span className={`text-sm font-bold uppercase tracking-wider ${info.text}`}>{info.label}</span>
-                          <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-full shadow-sm">
+                          <span className="text-[10px] font-bold text-slate-400 dark:text-[#CBD5E1] bg-white dark:bg-[#1E293B] px-2 py-0.5 rounded-full shadow-sm">
                             {p.unitsSold} sold
                           </span>
                         </div>
@@ -806,33 +864,33 @@ export default function Analytics() {
                         <div className="p-4 flex-1 flex flex-col justify-between gap-3 text-xs">
                           <div className="space-y-2">
                             <div className="flex justify-between">
-                              <span className="text-slate-400 font-semibold">Revenue</span>
-                              <span className="font-bold text-slate-800">{fmt(p.revenue)}</span>
+                              <span className="text-slate-400 dark:text-[#94A3B8] font-semibold">Revenue</span>
+                              <span className="font-bold text-slate-800 dark:text-[#F8FAFC]">{fmt(p.revenue)}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-400 font-semibold">Product Cost</span>
-                              <span className="font-bold text-slate-600">{fmt(p.productCost)}</span>
+                              <span className="text-slate-400 dark:text-[#94A3B8] font-semibold">Product Cost</span>
+                              <span className="font-bold text-slate-650 dark:text-[#CBD5E1]">{fmt(p.productCost)}</span>
                             </div>
-                            <div className="flex justify-between border-t border-slate-50 pt-1.5">
-                              <span className="text-slate-400 font-semibold">Gross Profit</span>
-                              <span className="font-bold text-slate-800">{fmt(p.grossProfit)}</span>
+                            <div className="flex justify-between border-t border-slate-50 dark:border-[#1E293B] pt-1.5">
+                              <span className="text-slate-400 dark:text-[#94A3B8] font-semibold">Gross Profit</span>
+                              <span className="font-bold text-slate-800 dark:text-[#F8FAFC]">{fmt(p.grossProfit)}</span>
                             </div>
-                            <div className="flex justify-between text-red-500">
+                            <div className="flex justify-between text-red-500 dark:text-[#EF4444]">
                               <span className="font-semibold">Returns Loss</span>
                               <span className="font-bold">-{fmt(p.returnsValue)}</span>
                             </div>
                           </div>
 
-                          <div className="border-t pt-3 flex justify-between items-center">
+                          <div className="border-t dark:border-t-[#1E293B] pt-3 flex justify-between items-center">
                             <div>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase block">Net Profit</span>
-                              <span className={`text-base font-extrabold ${p.netProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                              <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase block">Net Profit</span>
+                              <span className={`text-base font-extrabold ${p.netProfit >= 0 ? 'text-emerald-600 dark:text-[#10B981]' : 'text-red-500 dark:text-[#EF4444]'}`}>
                                 {fmt(p.netProfit)}
                               </span>
                             </div>
                             <div className="text-right">
-                              <span className="text-[10px] font-bold text-slate-400 block">Returns %</span>
-                              <span className="font-bold text-slate-600">{rPercent.toFixed(0)}%</span>
+                              <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] block">Returns %</span>
+                              <span className="font-bold text-slate-600 dark:text-[#CBD5E1]">{rPercent.toFixed(0)}%</span>
                             </div>
                           </div>
                         </div>
@@ -844,19 +902,19 @@ export default function Analytics() {
 
               {/* Product rankings lists & returns cost */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 lg:col-span-2 flex flex-col">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-[#1E293B] lg:col-span-2 flex flex-col">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1E293B] pb-4 mb-4">
                     <div>
-                      <h3 className="font-extrabold text-slate-800 text-base">Product Contribution Profit</h3>
-                      <p className="text-slate-400 text-xs mt-0.5">Rankings of product profit performance</p>
+                      <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-base">Product Contribution Profit</h3>
+                      <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Rankings of product profit performance</p>
                     </div>
-                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                    <div className="flex gap-1 bg-slate-100 dark:bg-[#1E293B] p-1 rounded-xl">
                       <button
                         onClick={() => setProductTab('profitable')}
                         className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                           productTab === 'profitable' 
-                            ? 'bg-white text-slate-800 shadow-sm' 
-                            : 'text-slate-400 hover:text-slate-700'
+                            ? 'bg-white dark:bg-[#111827] text-slate-800 dark:text-[#F8FAFC] shadow-sm' 
+                            : 'text-slate-400 dark:text-[#94A3B8] hover:text-slate-700 dark:hover:text-[#F8FAFC]'
                         }`}
                       >
                         Top Profitable
@@ -865,8 +923,8 @@ export default function Analytics() {
                         onClick={() => setProductTab('leastProfitable')}
                         className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                           productTab === 'leastProfitable' 
-                            ? 'bg-white text-slate-800 shadow-sm' 
-                            : 'text-slate-400 hover:text-slate-700'
+                            ? 'bg-white dark:bg-[#111827] text-slate-800 dark:text-[#F8FAFC] shadow-sm' 
+                            : 'text-slate-400 dark:text-[#94A3B8] hover:text-slate-700 dark:hover:text-[#F8FAFC]'
                         }`}
                       >
                         Least Profitable
@@ -877,7 +935,7 @@ export default function Analytics() {
                   <div className="flex-1 overflow-x-auto">
                     <table className="w-full text-xs text-left">
                       <thead>
-                        <tr className="text-[10px] font-bold uppercase text-slate-400 tracking-wider border-b pb-2">
+                        <tr className="text-[10px] font-bold uppercase text-slate-450 dark:text-[#94A3B8] tracking-wider border-b dark:border-[#1E293B] pb-2">
                           <th className="py-2">Rank / Product</th>
                           <th className="py-2 text-center">Qty Sold</th>
                           <th className="py-2 text-right">Revenue</th>
@@ -885,27 +943,27 @@ export default function Analytics() {
                           <th className="py-2 text-right">Net Profit</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-slate-100 dark:divide-[#1E293B]">
                         {(productTab === 'profitable' ? productsList.top10 : productsList.least10 || []).map((p, idx) => (
-                          <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                          <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-[#172554] dark:bg-[#111827] transition-colors">
                             <td className="py-2.5">
                               <div className="flex items-center gap-2">
                                 <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] flex-shrink-0 ${
                                   productTab === 'profitable' 
-                                    ? idx < 3 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                                    : idx < 3 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
+                                    ? idx < 3 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-450' : 'bg-slate-100 text-slate-600 dark:bg-[#1E293B] dark:text-[#CBD5E1]'
+                                    : idx < 3 ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' : 'bg-slate-100 text-slate-600 dark:bg-[#1E293B] dark:text-[#CBD5E1]'
                                 }`}>
                                   {idx + 1}
                                 </span>
-                                <span className="font-semibold text-slate-800 max-w-[150px] sm:max-w-[200px] truncate block" title={p.name}>
+                                <span className="font-semibold text-slate-800 dark:text-[#F8FAFC] max-w-[150px] sm:max-w-[200px] truncate block" title={p.name}>
                                   {p.name}
                                 </span>
                               </div>
                             </td>
-                            <td className="py-2.5 text-center font-medium text-slate-600">{p.soldQty}</td>
-                            <td className="py-2.5 text-right font-medium text-slate-700">{fmt(p.revenue)}</td>
-                            <td className="py-2.5 text-right font-medium text-slate-600">{fmt(p.productCost)}</td>
-                            <td className={`py-2.5 text-right font-bold ${p.netProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            <td className="py-2.5 text-center font-medium text-slate-600 dark:text-[#CBD5E1]">{p.soldQty}</td>
+                            <td className="py-2.5 text-right font-medium text-slate-700 dark:text-[#CBD5E1]">{fmt(p.revenue)}</td>
+                            <td className="py-2.5 text-right font-medium text-slate-650 dark:text-[#CBD5E1]">{fmt(p.productCost)}</td>
+                            <td className={`py-2.5 text-right font-bold ${p.netProfit >= 0 ? 'text-emerald-600 dark:text-[#10B981]' : 'text-red-505 dark:text-[#EF4444]'}`}>
                               {fmt(p.netProfit)}
                             </td>
                           </tr>
@@ -915,26 +973,26 @@ export default function Analytics() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col gap-4">
+                <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-[#1E293B] flex flex-col gap-4">
                   <div>
-                    <h3 className="font-extrabold text-slate-800 text-base">Return Trends & Metrics</h3>
-                    <p className="text-slate-400 text-xs mt-0.5">Analysis of items returned and refunds per channel</p>
+                    <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-base">Return Trends & Metrics</h3>
+                    <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Analysis of items returned and refunds per channel</p>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-2.5 text-center">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Returns</span>
-                      <span className="text-sm font-black text-slate-700 block mt-0.5">{overview.unitsReturned || 0} pcs</span>
+                    <div className="bg-slate-50 dark:bg-[#1E293B] border border-slate-100 dark:border-[#1E293B] rounded-2xl p-2.5 text-center">
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Returns</span>
+                      <span className="text-sm font-black text-slate-700 dark:text-[#F8FAFC] block mt-0.5">{overview.unitsReturned || 0} pcs</span>
                     </div>
-                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-2.5 text-center">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Return Rate</span>
-                      <span className="text-sm font-black text-orange-600 block mt-0.5">
+                    <div className="bg-slate-50 dark:bg-[#1E293B] border border-slate-100 dark:border-[#1E293B] rounded-2xl p-2.5 text-center">
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Return Rate</span>
+                      <span className="text-sm font-black text-orange-600 dark:text-[#F59E0B] block mt-0.5">
                         {overview.returnPercentage ? overview.returnPercentage.toFixed(1) : 0}%
                       </span>
                     </div>
-                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-2.5 text-center">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Refund Cost</span>
-                      <span className="text-sm font-black text-red-500 block mt-0.5">{fmt(overview.returnsValue)}</span>
+                    <div className="bg-slate-50 dark:bg-[#1E293B] border border-slate-100 dark:border-[#1E293B] rounded-2xl p-2.5 text-center">
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Refund Cost</span>
+                      <span className="text-sm font-black text-red-500 dark:text-[#EF4444] block mt-0.5">{fmt(overview.returnsValue)}</span>
                     </div>
                   </div>
 
@@ -945,18 +1003,18 @@ export default function Analytics() {
                       const count = p.unitsReturned || 0;
                       const val = p.returnsValue || 0;
                       return (
-                        <div key={key} className="flex justify-between items-center bg-slate-50/50 p-2 rounded-xl border border-slate-100">
-                          <span className="font-semibold text-slate-600">{label} Returns</span>
-                          <span className="font-bold text-slate-800 text-[11px]">
-                            {count} items <span className="text-slate-400 font-normal">({fmt(val)})</span>
+                        <div key={key} className="flex justify-between items-center bg-slate-50/50 dark:bg-[#1E293B]/40 p-2 rounded-xl border border-slate-100 dark:border-[#1E293B]">
+                          <span className="font-semibold text-slate-600 dark:text-[#CBD5E1]">{label} Returns</span>
+                          <span className="font-bold text-slate-800 dark:text-[#F8FAFC] text-[11px]">
+                            {count} items <span className="text-slate-400 dark:text-[#94A3B8] font-normal">({fmt(val)})</span>
                           </span>
                         </div>
                       );
                     })}
                   </div>
 
-                  <div className="mt-2 pt-2 border-t border-slate-100 flex-1 flex flex-col justify-end">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Returns Trend Timeline</span>
+                  <div className="mt-2 pt-2 border-t border-slate-100 dark:border-[#1E293B] flex-1 flex flex-col justify-end">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider mb-2 block">Returns Trend Timeline</span>
                     <BarChart
                       data={trends[trendTab] || []}
                       dataKey="returns"
@@ -985,23 +1043,23 @@ export default function Analytics() {
                 </div>
 
                 {/* Total Products */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-[#1E293B] flex flex-col justify-between">
                   <div>
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Products</span>
-                    <p className="text-3xl font-black text-slate-800 mt-2">{inv.summary.totalProducts || 0}</p>
+                    <span className="text-[11px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Products</span>
+                    <p className="text-3xl font-black text-slate-800 dark:text-[#F8FAFC] mt-2">{inv.summary.totalProducts || 0}</p>
                   </div>
-                  <div className="mt-4 text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl self-start">
+                  <div className="mt-4 text-xs font-semibold text-slate-400 dark:text-[#CBD5E1] bg-slate-50 dark:bg-[#1E293B] px-3 py-1.5 rounded-xl self-start">
                     Unique active SKUs in collection
                   </div>
                 </div>
 
                 {/* Total Units In Stock */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-[#1E293B] flex flex-col justify-between">
                   <div>
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Units in Stock</span>
-                    <p className="text-3xl font-black text-slate-800 mt-2">{(inv.summary.totalUnits || 0).toLocaleString()}</p>
+                    <span className="text-[11px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Units in Stock</span>
+                    <p className="text-3xl font-black text-slate-800 dark:text-[#F8FAFC] mt-2">{(inv.summary.totalUnits || 0).toLocaleString()}</p>
                   </div>
-                  <div className="mt-4 text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl self-start">
+                  <div className="mt-4 text-xs font-semibold text-slate-400 dark:text-[#CBD5E1] bg-slate-50 dark:bg-[#1E293B] px-3 py-1.5 rounded-xl self-start">
                     Aggregate pieces in warehouses
                   </div>
                 </div>
@@ -1010,10 +1068,10 @@ export default function Analytics() {
               {/* 2. Charts Section */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Category Donut Share Chart */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col">
+                <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-[#1E293B] flex flex-col">
                   <div>
-                    <h3 className="font-extrabold text-slate-800 text-base">Value share by Category</h3>
-                    <p className="text-slate-400 text-xs mt-0.5">Asset investment share per product category</p>
+                    <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-base">Value share by Category</h3>
+                    <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Asset investment share per product category</p>
                   </div>
                   <div className="flex-1 flex items-center">
                     <DonutChart
@@ -1026,10 +1084,10 @@ export default function Analytics() {
                 </div>
 
                 {/* Highest Investment Products Bar Chart */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 lg:col-span-2 flex flex-col">
+                <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-[#1E293B] lg:col-span-2 flex flex-col">
                   <div>
-                    <h3 className="font-extrabold text-slate-800 text-base">Top Product Investments</h3>
-                    <p className="text-slate-400 text-xs mt-0.5">Highest value concentrations in stock</p>
+                    <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-base">Top Product Investments</h3>
+                    <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-0.5">Highest value concentrations in stock</p>
                   </div>
                   <div className="flex-1 flex items-center">
                     <BarChart
@@ -1045,12 +1103,12 @@ export default function Analytics() {
               {/* 3. Alerts: Low stock / Out of stock lists */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Low Stock Alerts */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-red-100 flex flex-col max-h-[380px]">
-                  <div className="flex items-center gap-2 pb-3 border-b border-slate-100 mb-3 flex-shrink-0">
+                <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 shadow-sm border border-red-100 dark:border-[#1E293B] flex flex-col max-h-[380px]">
+                  <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-[#1E293B] mb-3 flex-shrink-0">
                     <AlertTriangle className="text-red-500" size={18} />
                     <div>
-                      <h3 className="font-extrabold text-slate-800 text-sm">Low Stock Alerts (Stock &le; 10)</h3>
-                      <p className="text-slate-400 text-[11px] mt-0.5">Products running low and needing restock</p>
+                      <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-sm">Low Stock Alerts (Stock &le; 10)</h3>
+                      <p className="text-slate-400 dark:text-[#94A3B8] text-[11px] mt-0.5">Products running low and needing restock</p>
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto pr-1">
@@ -1062,16 +1120,16 @@ export default function Analytics() {
                     ) : (
                       <table className="w-full text-xs text-left">
                         <thead>
-                          <tr className="text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b pb-1.5">
+                          <tr className="text-[10px] text-slate-400 dark:text-[#94A3B8] uppercase font-bold tracking-wider border-b dark:border-[#1E293B] pb-1.5">
                             <th className="py-1">Product</th>
                             <th className="py-1 text-right">Available Qty</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="divide-y divide-slate-50 dark:divide-[#1E293B]">
                           {inv.lowStock.map((p) => (
-                            <tr key={p.id} className="hover:bg-slate-50">
-                              <td className="py-2 font-medium text-slate-700">{p.name}</td>
-                              <td className="py-2 text-right font-black text-red-600">{p.availableQty} units</td>
+                            <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-[#172554] dark:bg-[#111827] transition-colors">
+                              <td className="py-2 font-medium text-slate-700 dark:text-[#F8FAFC]">{p.name}</td>
+                              <td className="py-2 text-right font-black text-red-650 dark:text-[#EF4444]">{p.availableQty} units</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1081,12 +1139,12 @@ export default function Analytics() {
                 </div>
 
                 {/* Out of Stock Products */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 flex flex-col max-h-[380px]">
-                  <div className="flex items-center gap-2 pb-3 border-b border-slate-100 mb-3 flex-shrink-0">
-                    <AlertOctagon className="text-slate-400" size={18} />
+                <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 shadow-sm border border-slate-200 dark:border-[#1E293B] flex flex-col max-h-[380px]">
+                  <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-[#1E293B] mb-3 flex-shrink-0">
+                    <AlertOctagon className="text-slate-400 dark:text-[#CBD5E1]" size={18} />
                     <div>
-                      <h3 className="font-extrabold text-slate-800 text-sm">Out of Stock Products</h3>
-                      <p className="text-slate-400 text-[11px] mt-0.5">Products with zero units in stock</p>
+                      <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-sm">Out of Stock Products</h3>
+                      <p className="text-slate-400 dark:text-[#94A3B8] text-[11px] mt-0.5">Products with zero units in stock</p>
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto pr-1">
@@ -1098,16 +1156,16 @@ export default function Analytics() {
                     ) : (
                       <table className="w-full text-xs text-left">
                         <thead>
-                          <tr className="text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b pb-1.5">
+                          <tr className="text-[10px] text-slate-400 dark:text-[#94A3B8] uppercase font-bold tracking-wider border-b dark:border-[#1E293B] pb-1.5">
                             <th className="py-1">Product</th>
                             <th className="py-1 text-right">Stock</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="divide-y divide-slate-50 dark:divide-[#1E293B]">
                           {inv.outOfStock.map((p) => (
-                            <tr key={p.id} className="hover:bg-slate-50">
-                              <td className="py-2 font-medium text-slate-700">{p.name}</td>
-                              <td className="py-2 text-right font-bold text-slate-400">0 units</td>
+                            <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-[#172554] dark:bg-[#111827] transition-colors">
+                              <td className="py-2 font-medium text-slate-700 dark:text-[#CBD5E1]">{p.name}</td>
+                              <td className="py-2 text-right font-bold text-slate-400 dark:text-[#94A3B8]">0 units</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1120,33 +1178,33 @@ export default function Analytics() {
               {/* 4. Investment Rankings listings */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Highest Value Products */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col">
-                  <div className="pb-3 border-b border-slate-100 mb-3">
-                    <h3 className="font-extrabold text-slate-800 text-sm">Highest Inventory Value (Top 10)</h3>
-                    <p className="text-slate-400 text-[11px] mt-0.5">Top products carrying maximum investment capital</p>
+                <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-[#1E293B] flex flex-col">
+                  <div className="pb-3 border-b border-slate-100 dark:border-[#1E293B] mb-3">
+                    <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-sm">Highest Inventory Value (Top 10)</h3>
+                    <p className="text-slate-400 dark:text-[#94A3B8] text-[11px] mt-0.5">Top products carrying maximum investment capital</p>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs text-left">
                       <thead>
-                        <tr className="text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b pb-2">
+                        <tr className="text-[10px] text-slate-400 dark:text-[#94A3B8] uppercase font-bold tracking-wider border-b dark:border-[#1E293B] pb-2">
                           <th className="py-2">Product</th>
                           <th className="py-2 text-center">Stock Qty</th>
                           <th className="py-2 text-right">Cost Price</th>
                           <th className="py-2 text-right">Inventory Value</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50">
+                      <tbody className="divide-y divide-slate-50 dark:divide-[#1E293B]">
                         {inv.rankings.highest.map((p) => (
-                          <tr key={p.id} className="hover:bg-slate-50/50">
-                            <td className="py-2.5 font-semibold text-slate-800">{p.name}</td>
-                            <td className="py-2.5 text-center font-medium text-slate-600">{p.qty}</td>
-                            <td className="py-2.5 text-right font-medium text-slate-600">{fmt(p.costPrice)}</td>
-                            <td className="py-2.5 text-right font-extrabold text-slate-800">{fmt(p.value)}</td>
+                          <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-[#172554] dark:bg-[#111827]">
+                            <td className="py-2.5 font-semibold text-slate-800 dark:text-[#F8FAFC]">{p.name}</td>
+                            <td className="py-2.5 text-center font-medium text-slate-600 dark:text-[#CBD5E1]">{p.qty}</td>
+                            <td className="py-2.5 text-right font-medium text-slate-600 dark:text-[#CBD5E1]">{fmt(p.costPrice)}</td>
+                            <td className="py-2.5 text-right font-extrabold text-slate-800 dark:text-[#F8FAFC]">{fmt(p.value)}</td>
                           </tr>
                         ))}
                         {inv.rankings.highest.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="py-6 text-center text-slate-400 font-semibold">No stock values to list.</td>
+                            <td colSpan={4} className="py-6 text-center text-slate-400 dark:text-[#94A3B8] font-semibold">No stock values to list.</td>
                           </tr>
                         )}
                       </tbody>
@@ -1155,33 +1213,33 @@ export default function Analytics() {
                 </div>
 
                 {/* Lowest Value Products */}
-                <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col">
-                  <div className="pb-3 border-b border-slate-100 mb-3">
-                    <h3 className="font-extrabold text-slate-800 text-sm">Lowest Inventory Value (Top 10 Active)</h3>
+                <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 shadow-sm border border-slate-100 dark:border-[#1E293B] flex flex-col">
+                  <div className="pb-3 border-b border-slate-100 dark:border-[#1E293B] mb-3">
+                    <h3 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-sm">Lowest Inventory Value (Top 10 Active)</h3>
                     <p className="text-slate-400 text-[11px] mt-0.5">Active products holding minimal stock asset values</p>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs text-left">
                       <thead>
-                        <tr className="text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b pb-2">
+                        <tr className="text-[10px] text-slate-400 dark:text-[#94A3B8] uppercase font-bold tracking-wider border-b dark:border-[#1E293B] pb-2">
                           <th className="py-2">Product</th>
                           <th className="py-2 text-center">Stock Qty</th>
                           <th className="py-2 text-right">Cost Price</th>
                           <th className="py-2 text-right">Inventory Value</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50">
+                      <tbody className="divide-y divide-slate-50 dark:divide-[#1E293B]">
                         {inv.rankings.lowest.map((p) => (
-                          <tr key={p.id} className="hover:bg-slate-50/50">
-                            <td className="py-2.5 font-semibold text-slate-700">{p.name}</td>
-                            <td className="py-2.5 text-center font-medium text-slate-600">{p.qty}</td>
-                            <td className="py-2.5 text-right font-medium text-slate-600">{fmt(p.costPrice)}</td>
-                            <td className="py-2.5 text-right font-bold text-slate-600">{fmt(p.value)}</td>
+                          <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-[#172554] dark:bg-[#111827]">
+                            <td className="py-2.5 font-semibold text-slate-705 dark:text-[#CBD5E1]">{p.name}</td>
+                            <td className="py-2.5 text-center font-medium text-slate-600 dark:text-[#CBD5E1]">{p.qty}</td>
+                            <td className="py-2.5 text-right font-medium text-slate-600 dark:text-[#CBD5E1]">{fmt(p.costPrice)}</td>
+                            <td className="py-2.5 text-right font-bold text-slate-600 dark:text-[#CBD5E1]">{fmt(p.value)}</td>
                           </tr>
                         ))}
                         {inv.rankings.lowest.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="py-6 text-center text-slate-400 font-semibold">No stock values to list.</td>
+                            <td colSpan={4} className="py-6 text-center text-slate-400 dark:text-[#94A3B8] font-semibold">No stock values to list.</td>
                           </tr>
                         )}
                       </tbody>
@@ -1193,6 +1251,9 @@ export default function Analytics() {
           )}
         </>
       )}
+    </div>
+  );
+}     )}
     </div>
   );
 }

@@ -246,8 +246,8 @@ export default function Shops() {
   // Compile calculations with stats
   const shopsWithStats = shops.map(s => {
     const stats = shopStats(s.name, offlineSales);
-    let health = 'Good'; // Good (0 dues), Watch (<= 5k), High Risk (> 5k)
-    if (stats.amountPending > 5000) health = 'High Risk';
+    let health = 'Safe'; // Safe (0 dues), Watch (<= 5k), Recovery Required (> 5k or overdue)
+    if (stats.amountPending > 5000 || hasLongPendingDues(s.name)) health = 'Recovery Required';
     else if (stats.amountPending > 0) health = 'Watch';
     return { ...s, stats, health };
   });
@@ -289,7 +289,7 @@ export default function Shops() {
     } else if (stockFilter === 'individual') {
       matchFilter = s.type === 'individual' || s.type === 'walk-in';
     } else if (stockFilter === 'highRisk') {
-      matchFilter = s.health === 'High Risk';
+      matchFilter = s.health === 'Recovery Required';
     } else if (stockFilter === 'top10') {
       const top10Ids = [...shopsWithStats]
         .sort((a, b) => b.stats.totalAmount - a.stats.totalAmount)
@@ -306,9 +306,9 @@ export default function Shops() {
   const fmt = (val) => `₹${Math.round(val || 0).toLocaleString('en-IN')}`;
 
   function healthBadge(health) {
-    if (health === 'High Risk') return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-red-50 text-red-600 border border-red-100">High Risk</span>;
+    if (health === 'Recovery Required') return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-red-50 text-red-600 border border-red-100">Recovery Required</span>;
     if (health === 'Watch') return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100">Watch</span>;
-    return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Good</span>;
+    return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Safe</span>;
   }
 
   // Format mobile numbers for Call/WhatsApp
@@ -363,14 +363,14 @@ export default function Shops() {
   const monthlyTrendList = getDrawerMonthlyTrend();
 
   return (
-    <div className="space-y-6 relative min-h-screen pb-10">
+    <div className="space-y-6 relative min-h-screen pb-10 bg-[#F8FAFC]">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Customer Management</h1>
-          <p className="text-slate-500 text-sm mt-1">Audit customer accounts, lifetime revenues, invoice recoveries, and customer health status</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Customer Management</h1>
+          <p className="text-slate-500 text-sm mt-1 font-medium">Audit customer accounts, lifetime revenues, invoice recoveries, and customer health status</p>
         </div>
-        <button onClick={openAdd} className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg self-start">
+        <button onClick={openAdd} className="flex items-center justify-center gap-2 bg-[#EF4444] hover:bg-red-600 text-white text-sm font-bold px-5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg hover:shadow-red-500/10 self-start">
           <Plus size={16} /> Add New Customer
         </button>
       </div>
@@ -378,86 +378,98 @@ export default function Shops() {
       {/* Top CRM KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         {/* Total Shops */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-slate-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Shops</span>
-            <p className="text-2xl font-black text-slate-800">{totalShops}</p>
-            <span className="text-[9px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full inline-block">
-              Shops Registered
-            </span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Customers</span>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">{totalShops}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 text-slate-500 flex items-center justify-center">
-            <Building2 size={18} />
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg inline-block">
+              Accounts Registered
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 flex items-center justify-center flex-shrink-0">
+              <Building2 size={16} />
+            </div>
           </div>
         </div>
 
         {/* Active Shops */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-emerald-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Active Shops</span>
-            <p className="text-2xl font-black text-slate-800">{activeShops}</p>
-            <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full inline-block">
-              With logged billing
-            </span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Active Customers</span>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">{activeShops}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center">
-            <CheckCircle2 size={18} />
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg inline-block">
+              With billing logs
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 size={16} />
+            </div>
           </div>
         </div>
 
         {/* Total Sales */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-indigo-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Lifetime Sales</span>
-            <p className="text-2xl font-black text-slate-800">{fmt(totalSalesVal)}</p>
-            <span className="text-[9px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full inline-block">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Lifetime Sales</span>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 truncate" title={fmt(totalSalesVal)}>{fmt(totalSalesVal)}</p>
+          </div>
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg inline-block">
               Gross billed amount
             </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center">
-            <TrendingUp size={18} />
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+              <TrendingUp size={16} />
+            </div>
           </div>
         </div>
 
         {/* Amount Collected */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-teal-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Collected</span>
-            <p className="text-2xl font-black text-slate-800">{fmt(totalCollectedVal)}</p>
-            <span className="text-[9px] font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full inline-block">
-              Billed payments settled
-            </span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Collected</span>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 truncate" title={fmt(totalCollectedVal)}>{fmt(totalCollectedVal)}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100 text-teal-600 flex items-center justify-center">
-            <Landmark size={18} />
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-[11px] font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-lg inline-block">
+              Payments settled
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-100 text-teal-600 flex items-center justify-center flex-shrink-0">
+              <Landmark size={16} />
+            </div>
           </div>
         </div>
 
         {/* Outstanding Dues */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-red-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Pending</span>
-            <p className="text-2xl font-black text-slate-800">{fmt(totalOutstandingVal)}</p>
-            <span className="text-[9px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full inline-block">
-              Accounts receivable
-            </span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Pending</span>
+            <p className="text-3xl font-extrabold text-red-600 tracking-tight mt-1 truncate" title={fmt(totalOutstandingVal)}>{fmt(totalOutstandingVal)}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 text-red-600 flex items-center justify-center">
-            <AlertTriangle size={18} />
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg inline-block">
+              Outstanding dues
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-red-50 border border-red-100 text-red-500 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={16} />
+            </div>
           </div>
         </div>
 
         {/* Avg customer value */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-blue-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Average Shop Value</span>
-            <p className="text-2xl font-black text-slate-800">{fmt(avgCustomerLtv)}</p>
-            <span className="text-[9px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block">
-              Billed value per shop
-            </span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Average Shop LTV</span>
+            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 truncate" title={fmt(avgCustomerLtv)}>{fmt(avgCustomerLtv)}</p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center">
-            <IndianRupee size={18} />
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg inline-block">
+              Sales per customer
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+              <IndianRupee size={16} />
+            </div>
           </div>
         </div>
       </div>
@@ -465,12 +477,12 @@ export default function Shops() {
       {/* CRM Insight Leaderboards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Customer Leaderboard */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
           <div>
-            <h3 className="font-extrabold text-slate-800 text-base flex items-center gap-2">
-              <Award className="text-amber-500" size={18} /> Customer Leaderboard
+            <h3 className="font-bold text-slate-800 text-xl flex items-center gap-2">
+              <Award className="text-amber-500" size={20} /> Customer Leaderboard
             </h3>
-            <p className="text-slate-400 text-xs mt-0.5">Top performing shops based on lifetime sales volume</p>
+            <p className="text-slate-400 text-xs mt-1 font-medium">Top performing shops based on lifetime sales volume</p>
           </div>
           <div className="space-y-3.5 mt-5 max-h-[360px] overflow-y-auto pr-1">
             {leaderboardList.length === 0 ? (
@@ -504,12 +516,12 @@ export default function Shops() {
         </div>
 
         {/* Outstanding Recovery Dashboard */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
           <div>
-            <h3 className="font-extrabold text-slate-800 text-base flex items-center gap-2">
-              <Landmark className="text-red-500" size={18} /> Outstanding Recovery Dashboard
+            <h3 className="font-bold text-slate-800 text-xl flex items-center gap-2">
+              <Landmark className="text-red-500" size={20} /> Outstanding Recovery Dashboard
             </h3>
-            <p className="text-slate-400 text-xs mt-0.5">Outstanding payments from shops</p>
+            <p className="text-slate-400 text-xs mt-1 font-medium">Outstanding payments from shops</p>
           </div>
           <div className="space-y-3.5 mt-5 max-h-[360px] overflow-y-auto pr-1">
             {outstandingList.length === 0 ? (
@@ -521,7 +533,7 @@ export default function Shops() {
               outstandingList.map((s) => {
                 const pri = getPriorityLevel(s.stats.amountPending);
                 return (
-                  <div key={s.id} onClick={() => setSelectedShop(s)} className="group flex items-center justify-between gap-3 cursor-pointer p-2 hover:bg-slate-50 rounded-2xl border border-slate-50 hover:border-slate-100 transition-all">
+                  <div key={s.id} onClick={() => setSelectedShop(s)} className="group flex items-center justify-between gap-3 cursor-pointer p-2 hover:bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-200 transition-all">
                     <div className="flex items-center gap-2.5 truncate">
                       <ShopThumbnail shopName={s.name} />
                       <div className="truncate space-y-0.5">
@@ -547,7 +559,7 @@ export default function Shops() {
       </div>
 
       {/* Main CRM Ledger Table Container */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
         {/* Search, filters, pills */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
           {/* Search bar */}
@@ -557,7 +569,7 @@ export default function Shops() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, address, phone..."
-              className="w-full pl-8 pr-3 py-2.5 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#EF4444]"
             />
           </div>
 
@@ -575,7 +587,7 @@ export default function Shops() {
                 key={f.id} 
                 onClick={() => setStockFilter(f.id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize shrink-0 ${
-                  stockFilter === f.id ? 'bg-red-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 bg-transparent'
+                  stockFilter === f.id ? 'bg-[#EF4444] text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 bg-transparent'
                 }`}
               >
                 {f.label}
@@ -585,7 +597,7 @@ export default function Shops() {
         </div>
 
         {/* Sticky CRM Table list */}
-        <div className="max-h-[500px] overflow-y-auto border border-slate-100 rounded-2xl">
+        <div className="max-h-[500px] overflow-y-auto border border-slate-200 rounded-2xl shadow-sm">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-slate-400"><Loader2 size={24} className="animate-spin" /></div>
           ) : filtered.length === 0 ? (
@@ -594,17 +606,17 @@ export default function Shops() {
               <p className="text-xs font-semibold">No customer records matches the criteria</p>
             </div>
           ) : (
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-500 uppercase font-extrabold sticky top-0 z-10">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3">Customer Identity</th>
-                  <th className="px-4 py-3">Contact</th>
-                  <th className="px-4 py-3">Sales Activity</th>
-                  <th className="px-4 py-3">Billed Val</th>
-                  <th className="px-4 py-3">Settled Amt</th>
-                  <th className="px-4 py-3">Outstanding</th>
-                  <th className="px-4 py-3">Health State</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3 text-xs tracking-wider">Customer Identity</th>
+                  <th className="px-4 py-3 text-xs tracking-wider">Contact</th>
+                  <th className="px-4 py-3 text-xs tracking-wider">Sales Activity</th>
+                  <th className="px-4 py-3 text-xs tracking-wider">Billed Val</th>
+                  <th className="px-4 py-3 text-xs tracking-wider">Settled Amt</th>
+                  <th className="px-4 py-3 text-xs tracking-wider">Outstanding</th>
+                  <th className="px-4 py-3 text-xs tracking-wider">Health State</th>
+                  <th className="px-4 py-3 text-xs tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white font-medium text-slate-600">
@@ -952,12 +964,12 @@ export default function Shops() {
                         value={newNote}
                         onChange={(e) => setNewNote(e.target.value)}
                         placeholder="Type down follow-up call outcomes, commitments, or reminders..."
-                        className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-red-500 bg-white shadow-sm"
+                        className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-[#EF4444] bg-white shadow-sm"
                       />
                       <button 
                         type="submit" 
                         disabled={appendingNote || !newNote.trim()}
-                        className="flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm self-end"
+                        className="flex items-center justify-center gap-1.5 bg-[#EF4444] hover:bg-red-600 disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm self-end"
                       >
                         {appendingNote ? <Loader2 size={13} className="animate-spin" /> : <Send size={12} />}
                         Log Follow-up Note
@@ -982,7 +994,7 @@ export default function Shops() {
                   required
                   value={form.type || 'shop'} 
                   onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white font-medium text-slate-700"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444] bg-white font-medium text-slate-700"
                 >
                   <option value="shop">🏪 Shop</option>
                   <option value="individual">👤 Individual Customer</option>
@@ -994,13 +1006,13 @@ export default function Shops() {
                   <div className="space-y-1.5">
                     <label className="block font-bold text-slate-500 uppercase tracking-wide">Shop Name *</label>
                     <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. Sharma Electronics" />
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444]" placeholder="e.g. Sharma Electronics" />
                   </div>
                   
                   <div className="space-y-1.5">
                     <label className="block font-bold text-slate-500 uppercase tracking-wide">Owner Name</label>
                     <input value={form.ownerName || ''} onChange={(e) => setForm((f) => ({ ...f, ownerName: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. Ramesh Sharma" />
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444]" placeholder="e.g. Ramesh Sharma" />
                   </div>
 
                   <div className="space-y-1.5">
@@ -1008,8 +1020,8 @@ export default function Shops() {
                     <input value={form.mobile} onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
                       className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 ${
                         phoneValidation.error 
-                          ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50/10' 
-                          : 'border-slate-200 focus:ring-red-500'
+                          ? 'border-red-500 focus:ring-[#EF4444] focus:border-red-500 bg-red-50/10' 
+                          : 'border-slate-200 focus:ring-[#EF4444]'
                       }`} 
                       placeholder="e.g. 9876543210" 
                     />
@@ -1021,13 +1033,13 @@ export default function Shops() {
                   <div className="space-y-1.5">
                     <label className="block font-bold text-slate-500 uppercase tracking-wide">Shop Address</label>
                     <textarea rows={2} value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" placeholder="e.g. 12, Market Road, Delhi" />
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444] resize-none" placeholder="e.g. 12, Market Road, Delhi" />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="block font-bold text-slate-500 uppercase tracking-wide">GST Number (Optional)</label>
                     <input value={form.gstNumber || ''} onChange={(e) => setForm((f) => ({ ...f, gstNumber: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. 07AAAAA1111A1Z1" />
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444]" placeholder="e.g. 07AAAAA1111A1Z1" />
                   </div>
                 </>
               ) : (
@@ -1035,7 +1047,7 @@ export default function Shops() {
                   <div className="space-y-1.5">
                     <label className="block font-bold text-slate-500 uppercase tracking-wide">Customer Name *</label>
                     <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g. Ramesh Kumar" />
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444]" placeholder="e.g. Ramesh Kumar" />
                   </div>
                   
                   <div className="space-y-1.5">
@@ -1043,8 +1055,8 @@ export default function Shops() {
                     <input value={form.mobile} onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
                       className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 ${
                         phoneValidation.error 
-                          ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50/10' 
-                          : 'border-slate-200 focus:ring-red-500'
+                          ? 'border-red-500 focus:ring-[#EF4444] focus:border-red-500 bg-red-50/10' 
+                          : 'border-slate-200 focus:ring-[#EF4444]'
                       }`} 
                       placeholder="e.g. 9876543210" 
                     />
@@ -1056,7 +1068,7 @@ export default function Shops() {
                   <div className="space-y-1.5">
                     <label className="block font-bold text-slate-500 uppercase tracking-wide">Address (Optional)</label>
                     <textarea rows={2} value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" placeholder="e.g. 12, Market Road, Delhi" />
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444] resize-none" placeholder="e.g. 12, Market Road, Delhi" />
                   </div>
                 </>
               )}
@@ -1064,7 +1076,7 @@ export default function Shops() {
               <div className="space-y-1.5">
                 <label className="block font-bold text-slate-500 uppercase tracking-wide">Initial Profile Notes</label>
                 <textarea rows={2} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" placeholder="Optional background details, credit terms..." />
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444] resize-none" placeholder="Optional background details, credit terms..." />
               </div>
             </div>
 
@@ -1072,7 +1084,7 @@ export default function Shops() {
             
             <div className="flex gap-4 pt-3 border-t border-slate-100">
               <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
-              <button type="submit" disabled={saving || !phoneValidation.isValid} className="flex-1 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
+              <button type="submit" disabled={saving || !phoneValidation.isValid} className="flex-1 py-3 bg-[#EF4444] hover:bg-red-600 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
                 {saving && <Loader2 size={16} className="animate-spin" />}
                 {editing ? 'Update' : 'Register Account'}
               </button>

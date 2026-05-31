@@ -54,8 +54,13 @@ export default function AdminPanel() {
   const [restoreError, setRestoreError] = useState('');
   const [restoreSuccess, setRestoreSuccess] = useState(false);
 
+  // System Audit Logs States
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+
   useEffect(() => {
     fetchBackupStatus();
+    fetchAuditLogs();
     api.logAdminAction('Accessed Admin Control Center').catch(err => console.error(err));
   }, []);
 
@@ -68,6 +73,18 @@ export default function AdminPanel() {
       console.error('Failed to load backup status', e);
     } finally {
       setLoadingStatus(false);
+    }
+  }
+
+  async function fetchAuditLogs() {
+    setLoadingAudit(true);
+    try {
+      const logs = await api.getAuditLogs();
+      setAuditLogs(logs);
+    } catch (e) {
+      console.error('Failed to load audit logs', e);
+    } finally {
+      setLoadingAudit(false);
     }
   }
 
@@ -747,6 +764,54 @@ export default function AdminPanel() {
           </div>
         </div>
       )}
+
+      {/* ================= SECTION 4: SYSTEM AUDIT TRAIL ================= */}
+      <section className="bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-md border border-slate-200/60 space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+              <Clock size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-800">System Audit Trail</h2>
+              <p className="text-xs text-slate-400 font-semibold">Real-time log of administrative and employee actions</p>
+            </div>
+          </div>
+          <button onClick={fetchAuditLogs} className="p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-700 rounded-xl transition-all border border-slate-200">
+            <RefreshCw size={14} className={loadingAudit ? 'animate-spin' : ''} />
+          </button>
+        </div>
+
+        <div className="max-h-[300px] overflow-y-auto border border-slate-200 rounded-2xl shadow-sm">
+          {loadingAudit ? (
+            <div className="flex items-center justify-center py-16 text-slate-400"><RefreshCw size={24} className="animate-spin" /></div>
+          ) : auditLogs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+              <Info size={36} className="mb-2 opacity-30" />
+              <p className="text-xs font-semibold">No audit logs registered yet</p>
+            </div>
+          ) : (
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-3 text-xs tracking-wider">Timestamp</th>
+                  <th className="px-4 py-3 text-xs tracking-wider">User Account</th>
+                  <th className="px-4 py-3 text-xs tracking-wider">Action Description</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white font-medium text-slate-600">
+                {auditLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap text-xs font-mono">{formatTime(log.time)}</td>
+                    <td className="px-4 py-3 text-slate-700 font-bold whitespace-nowrap">{log.user}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs font-medium max-w-md truncate animate-pulse" title={log.action}>{log.action}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
 
     </div>
   );

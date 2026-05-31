@@ -236,6 +236,18 @@ app.post('/api/auth/login', catchAsync(async (req, res) => {
   const user = await User.findOne({ username, password });
   if (!user) return res.status(401).json({ message: 'Invalid credentials' });
   
+  if (user.disabled) {
+    return res.status(403).json({ message: 'Account is disabled. Please contact administrator.' });
+  }
+
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: 'Logged in'
+  });
+  await audit.save();
+
   const userObj = user.toObject();
   const { password: _, _id, __v, ...safe } = userObj;
   res.json({ user: safe, token: `token_${user.id}_${Date.now()}` });
@@ -2100,6 +2112,124 @@ app.post('/api/backup/restore', requireAdmin, catchAsync(async (req, res) => {
     console.error('RESTORE ERROR:', err);
     res.status(500).json({ message: `Restore failed: ${err.message}` });
   }
+}));
+
+// --- ADMIN SETTINGS & COMPANY PROFILE ---
+app.get('/api/settings/company', catchAsync(async (req, res) => {
+  const profile = await Setting.findOne({ key: 'company_profile' });
+  if (profile) {
+    res.json(profile.value);
+  } else {
+    res.json({
+      companyName: 'The Elite Electrotek',
+      logo: '',
+      gstNumber: '',
+      address: '',
+      mobile: '',
+      email: '',
+      upiId: '',
+      upiQr: ''
+    });
+  }
+}));
+
+app.put('/api/settings/company', requireAdmin, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const profileValue = req.body;
+  
+  await Setting.findOneAndUpdate(
+    { key: 'company_profile' },
+    { value: profileValue },
+    { upsert: true, new: true }
+  );
+
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: 'Updated Company Profile Settings'
+  });
+  await audit.save();
+
+  res.json({ success: true, message: 'Company Profile updated successfully' });
+}));
+
+// --- ADMIN EMPLOYEE MANAGEMENT ---
+app.get('/api/admin/employees', requireAdmin, catchAsync(async (req, res) => {
+  const employees = await User.find({}, '-password');
+  res.json(employees);
+}));
+
+app.post('/api/admin/employees', requireAdmin, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const { name, username, password } = req.body;
+  if (!name || !username || !password) {
+    return res.status(400).json({ message: 'Name, username, and password required' });
+  }
+
+  const existing = await User.findOne({ username });
+  if (existing) {
+    return res.status(409).json({ message: 'Username already exists' });
+  }
+
+  const newEmp = new User({
+    id: uuidv4(),
+    name,
+    username,
+    password,
+    role: 'EMPLOYEE',
+    disabled: false
+  });
+  await newEmp.save();
+
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: `Created employee account: ${name} (@${username})`
+  });
+  await audit.save();
+
+  res.json({ success: true, employee: { id: newEmp.id, name: newEmp.name, username: newEmp.username, role: newEmp.role, disabled: newEmp.disabled } });
+}));
+
+app.put('/api/admin/employees/:id', requireAdmin, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const { name, username, password, disabled } = req.body;
+  
+  const emp = await User.findOne({ id: req.params.id });
+  if (!emp) {
+    return res.status(404).json({ message: 'Employee not found' });
+  }
+
+  if (username && username !== emp.username) {
+    const existing = await User.findOne({ username });
+    if (existing) {
+      return res.status(409).json({ message: 'Username already exists' });
+    }
+    emp.username = username;
+  }
+
+  if (name) emp.name = name;
+  if (password) emp.password = password;
+  if (disabled !== undefined) emp.disabled = disabled;
+
+  await emp.save();
+
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: `Updated employee account: ${emp.name} (@${emp.username}) (Fields: name/username/password/disabled updated)`
+  });
+  await audit.save();
+
+  res.json({ success: true, message: 'Employee updated successfully' });
+}));
+
+app.get('/api/admin/audit-logs', requireAdmin, catchAsync(async (req, res) => {
+  const logs = await AuditLog.find({}).sort({ time: -1 });
+  res.json(logs);
 }));
 
 app.get("/", (req, res) => {

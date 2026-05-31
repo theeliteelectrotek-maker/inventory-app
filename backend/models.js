@@ -13,6 +13,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   name: { type: String, required: true },
   role: { type: String, default: 'EMPLOYEE' },
+  disabled: { type: Boolean, default: false },
   createdAt: { type: String, default: () => new Date().toISOString() }
 });
 const User = mongoose.model('User', userSchema);

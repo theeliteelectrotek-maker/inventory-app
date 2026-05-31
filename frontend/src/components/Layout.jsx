@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Package, ShoppingCart, Store,
-  LogOut, Menu, Building2, Undo2, BarChart3, Database
+  LogOut, Menu, Building2, Undo2, BarChart3, Database, Settings
 } from 'lucide-react';
 import logo from '../logo.png';
 
@@ -31,12 +31,13 @@ export default function Layout() {
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'admin' || user?.username === 'admin';
   if (isAdmin) {
     allowedNav.push({ to: '/admin', label: 'Admin Panel', icon: Database });
+    allowedNav.push({ to: '/settings', label: 'Settings', icon: Settings });
   }
 
   const sidebar = (
-    <aside className="flex flex-col h-full bg-zinc-950 text-white">
+    <aside className="flex flex-col h-full bg-zinc-950 dark:bg-[#020617] text-white border-r border-transparent dark:border-[#1E293B]">
       {/* Logo */}
-      <div className="flex items-center justify-center px-6 py-4 border-b border-zinc-800">
+      <div className="flex items-center justify-center px-6 py-4 border-b border-zinc-800 dark:border-[#1E293B]">
         <img src={logo}  alt="Logo" className="h-20 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
       </div>
 
@@ -52,7 +53,7 @@ export default function Layout() {
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-red-600 text-white'
-                  : 'text-slate-400 hover:bg-zinc-800 hover:text-white'
+                  : 'text-slate-400 hover:bg-zinc-800 dark:hover:bg-[#1E293B] hover:text-white'
               }`
             }
           >
@@ -63,19 +64,19 @@ export default function Layout() {
       </nav>
 
       {/* User */}
-      <div className="px-4 py-4 border-t border-zinc-800">
+      <div className="px-4 py-4 border-t border-zinc-800 dark:border-[#1E293B]">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-sm font-bold">
             {user?.name?.[0]?.toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">{user?.name}</p>
-            <p className="text-xs text-slate-400 truncate">@{user?.username}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 truncate">@{user?.username}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-zinc-800 hover:text-red-400 transition-colors"
+          className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-zinc-800 dark:hover:bg-[#1E293B] hover:text-red-400 transition-colors"
         >
           <LogOut size={16} />
           Logout
@@ -85,7 +86,7 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-100">
+    <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-[#0F172A]">
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:w-64 lg:flex-shrink-0 flex-col">{sidebar}</div>
 
@@ -100,14 +101,14 @@ export default function Layout() {
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile topbar */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b shadow-sm">
-          <button onClick={() => setOpen(true)} className="p-1 rounded-lg text-slate-600 hover:bg-slate-100">
+        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white dark:bg-[#111827] border-b border-slate-200 dark:border-[#1E293B] shadow-sm">
+          <button onClick={() => setOpen(true)} className="p-1 rounded-lg text-slate-600 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#1E293B]">
             <Menu size={22} />
           </button>
-          <span className="font-semibold text-slate-800">StockTrack</span>
+          <span className="font-semibold text-slate-800 dark:text-[#F8FAFC]">StockTrack</span>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-slate-100 dark:bg-[#0F172A]">
           <Outlet />
         </main>
       </div>
