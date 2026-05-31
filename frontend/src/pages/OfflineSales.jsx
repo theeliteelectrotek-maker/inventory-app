@@ -5,11 +5,12 @@ import {
   ChevronDown, ChevronUp, TrendingUp, IndianRupee, AlertTriangle, 
   Clock, Calendar, CheckCircle2, ArrowUpRight, DollarSign, 
   Wallet, CreditCard, Filter, RefreshCw, Eye, Tag, FileText, UserCheck, 
-  CalendarDays, Percent, Building2, UserCircle2
+  CalendarDays, Percent, Building2, UserCircle2, Printer, Download
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import SearchableSelect from '../components/SearchableSelect';
 import { useLocation } from 'react-router-dom';
+import KPICardValue from '../components/KPICardValue';
 
 const emptyItem = { productId: '', qty: '', amount: '' };
 const today = () => {
@@ -20,7 +21,18 @@ const today = () => {
   return `${year}-${month}-${date}`;
 };
 const emptyOrder = () => ({ date: today(), items: [{ ...emptyItem }], gst: false });
-const emptyTxn = () => ({ amount: '', method: 'cash', date: today() });
+const emptyTxn = () => ({ 
+  id: 'txn_' + Math.random().toString(36).substr(2, 9),
+  amount: '', 
+  method: 'cash', 
+  date: today(),
+  chequeNumber: '',
+  bankName: '',
+  chequeDate: '',
+  expectedClearingDate: '',
+  isPDC: false,
+  chequeStatus: 'pending'
+});
 const emptyForm = { buyerName: '', orders: [emptyOrder()], transactions: [], notes: '' };
 
 const METHOD_LABELS = {
@@ -38,33 +50,130 @@ const METHOD_COLORS = {
 };
 
 function TxnRow({ txn, onChange, onRemove }) {
+  const handleChequeDateChange = (dateVal) => {
+    onChange('chequeDate', dateVal);
+    const todayStr = today();
+    if (dateVal > todayStr) {
+      onChange('isPDC', true);
+      onChange('chequeStatus', 'pdc');
+    } else {
+      onChange('isPDC', false);
+      onChange('chequeStatus', 'pending');
+    }
+  };
+
   return (
-    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 sm:p-0 border border-slate-100 dark:border-[#1E293B] sm:border-0 rounded-2xl sm:rounded-none bg-slate-50/50 dark:bg-[#1E293B]/30 sm:bg-transparent relative">
-      <div className="flex gap-3">
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 dark:text-[#94A3B8]">₹</span>
-          <input type="number" min="0" value={txn.amount} onChange={(e) => onChange('amount', e.target.value)}
-            className="w-full sm:w-36 pl-7 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" placeholder="Amount" />
+    <div className="flex flex-col gap-3 p-4 border border-slate-100 dark:border-[#1E293B] rounded-2xl bg-slate-50/50 dark:bg-[#1E293B]/30 relative">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex gap-3 flex-1">
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 dark:text-[#94A3B8]">₹</span>
+            <input type="number" min="0" value={txn.amount} onChange={(e) => onChange('amount', e.target.value)}
+              className="w-full pl-7 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" placeholder="Amount" required />
+          </div>
+          <select value={txn.method} onChange={(e) => {
+              const m = e.target.value;
+              onChange('method', m);
+              if (m === 'cheque') {
+                onChange('chequeStatus', 'pending');
+              }
+            }}
+            className="w-36 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] font-medium text-slate-700 dark:text-[#CBD5E1]">
+            <option value="cash" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">💵 Cash</option>
+            <option value="upi" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">⚡ UPI</option>
+            <option value="cheque" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">✍️ Cheque</option>
+          </select>
         </div>
-        <select value={txn.method} onChange={(e) => onChange('method', e.target.value)}
-          className="w-full sm:w-32 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] font-medium text-slate-700 dark:text-[#CBD5E1]">
-          <option value="cash" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">💵 Cash</option>
-          <option value="upi" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">⚡ UPI</option>
-        </select>
+        <div className="flex items-center gap-3 flex-1">
+          <input type="date" value={txn.date} onChange={(e) => onChange('date', e.target.value)}
+            className="flex-1 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" />
+          <button type="button" onClick={onRemove}
+            className="p-2 rounded-xl text-slate-400 dark:text-[#94A3B8] hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 dark:hover:text-[#EF4444] transition-colors flex-shrink-0">
+            <X size={16} />
+          </button>
+        </div>
       </div>
-      <div className="flex items-center gap-3 w-full">
-        <input type="date" value={txn.date} onChange={(e) => onChange('date', e.target.value)}
-          className="flex-1 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" />
-        <button type="button" onClick={onRemove}
-          className="p-2 rounded-xl text-slate-400 dark:text-[#94A3B8] hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 dark:hover:text-[#EF4444] transition-colors flex-shrink-0">
-          <X size={16} />
-        </button>
-      </div>
+
+      {txn.method === 'cheque' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-3 border-t border-slate-200/50 dark:border-[#334155]/50 animate-fadeIn">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Cheque Number *</label>
+            <input type="text" value={txn.chequeNumber || ''} onChange={(e) => onChange('chequeNumber', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" placeholder="e.g. 123456" required />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Bank Name *</label>
+            <input type="text" value={txn.bankName || ''} onChange={(e) => onChange('bankName', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" placeholder="e.g. HDFC Bank" required />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Cheque Date *</label>
+            <input type="date" value={txn.chequeDate || ''} onChange={(e) => handleChequeDateChange(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" required />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Expected Clearing Date *</label>
+            <input type="date" value={txn.expectedClearingDate || ''} onChange={(e) => onChange('expectedClearingDate', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" required />
+          </div>
+          <div className="flex items-center gap-2 pt-5">
+            <input type="checkbox" id={`isPDC-${txn.id}`} checked={txn.isPDC || false} onChange={(e) => {
+              const checked = e.target.checked;
+              onChange('isPDC', checked);
+              onChange('chequeStatus', checked ? 'pdc' : 'pending');
+            }} className="text-red-550 rounded focus:ring-red-500" />
+            <label htmlFor={`isPDC-${txn.id}`} className="text-xs font-bold text-slate-500 dark:text-[#CBD5E1] cursor-pointer">
+              Post Dated Cheque (PDC)
+            </label>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider font-semibold">Cheque Status</label>
+            <select value={txn.chequeStatus || 'pending'} onChange={(e) => onChange('chequeStatus', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]">
+              <option value="pending">🟡 Pending Clearance</option>
+              <option value="cleared">🟢 Cleared</option>
+              <option value="bounced">🔴 Bounced</option>
+              <option value="pdc">🔵 PDC (Future Date)</option>
+            </select>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange, onRemove, showRemove, isGst }) {
+const filterProductOption = (option, search) => {
+  const p = option.product;
+  if (!p) return false;
+  const searchLower = (search || '').toLowerCase();
+  const name = p.name ? String(p.name).toLowerCase() : '';
+  const sku = p.sku ? String(p.sku).toLowerCase() : '';
+  const category = p.category ? String(p.category).toLowerCase() : '';
+  const description = p.description ? String(p.description).toLowerCase() : '';
+  return (
+    name.includes(searchLower) ||
+    sku.includes(searchLower) ||
+    category.includes(searchLower) ||
+    description.includes(searchLower)
+  );
+};
+
+const renderProductOption = (opt) => {
+  const p = opt.product;
+  if (!p) return opt.label;
+  return (
+    <div className="flex flex-col text-left py-0.5">
+      <span className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-xs uppercase">{p.name}</span>
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-500 dark:text-[#94A3B8] mt-1 font-semibold">
+        <span>SKU: {p.sku || 'N/A'}</span>
+        <span>Stock: {p.availableQty || 0}</span>
+        <span>Selling Price: ₹{p.offlinePrice ?? p.unitPrice ?? 0}</span>
+      </div>
+    </div>
+  );
+};
+
+function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange, onRemove, showRemove, isGst, loading }) {
   const selProd = products.find((p) => p.id === item.productId);
   return (
     <div className="space-y-2 p-4 sm:p-0 border border-slate-100 dark:border-[#1E293B] sm:border-0 rounded-2xl sm:rounded-none bg-slate-50/50 dark:bg-[#1E293B]/30 sm:bg-transparent">
@@ -73,8 +182,11 @@ function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange,
           <SearchableSelect
             value={item.productId}
             onChange={onProductChange}
-            placeholder="Select product…"
-            options={products.filter((p) => p.availableQty > 0).map((p) => ({ value: p.id, label: `${p.name} (Stock: ${p.availableQty})` }))}
+            placeholder="Search or Select Product..."
+            options={products.map((p) => ({ value: p.id, label: p.name, product: p }))}
+            filterOption={filterProductOption}
+            renderOption={renderProductOption}
+            loading={loading}
             className="w-full"
           />
         </div>
@@ -116,8 +228,8 @@ function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange,
 function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm !m-0 animate-fadeIn">
-      <div className="bg-white dark:bg-[#111827] rounded-3xl shadow-2xl w-[95%] sm:w-full max-w-2xl border border-slate-100 dark:border-[#1E293B] overflow-hidden transform transition-all scale-100">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-[#1E293B] bg-slate-50/50 dark:bg-[#1E293B]/30">
+      <div className="bg-white dark:bg-[#111827] rounded-3xl shadow-2xl w-[95%] sm:w-full max-w-2xl border border-slate-100 dark:border-[#1E293B] overflow-visible transform transition-all scale-100">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-[#1E293B] bg-slate-50/50 dark:bg-[#1E293B]/30 rounded-t-3xl">
           <h3 className="font-bold text-slate-800 dark:text-[#F8FAFC] text-base flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-red-600 dark:bg-[#EF4444]"></span>
             {title}
@@ -160,6 +272,7 @@ export default function OfflineSales() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [companySettings, setCompanySettings] = useState(null);
 
   // Receipt Audit states
   const [receiptToEdit, setReceiptToEdit] = useState(null);
@@ -204,6 +317,271 @@ export default function OfflineSales() {
 
   const handleViewReceiptHistory = (sale, txnId) => {
     setViewReceiptHistorySale(sale);
+  };
+
+  const getChequeBadgeStyle = (status) => {
+    if (status === 'cleared') return 'bg-emerald-50 text-emerald-705 border-emerald-100 dark:bg-emerald-950/30 dark:text-[#10B981] dark:border-emerald-900/50';
+    if (status === 'bounced') return 'bg-rose-50 text-rose-705 border-rose-100 dark:bg-rose-950/30 dark:text-[#EF4444] dark:border-rose-900/50';
+    if (status === 'pdc') return 'bg-blue-50 text-blue-705 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50';
+    return 'bg-amber-50 text-amber-705 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50';
+  };
+
+  const handleUpdateChequeStatus = async (sale, txnId, newStatus) => {
+    if (!confirm(`Are you sure you want to mark this cheque as ${newStatus.toUpperCase()}?`)) return;
+    setSaving(true);
+    try {
+      const updatedTxns = (sale.transactions || []).map((t) => {
+        const txn = ensureTxnId(t);
+        if (txn.id === txnId) {
+          return {
+            ...txn,
+            chequeStatus: newStatus
+          };
+        }
+        return txn;
+      });
+
+      const formattedTimestamp = new Date().toLocaleDateString('en-IN', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+      });
+      
+      const targetTxn = sale.transactions.find(t => t.id === txnId);
+      const prevSummary = `${METHOD_LABELS[targetTxn.method] || targetTxn.method} (Status: ${targetTxn.chequeStatus || 'pending'})`;
+      const updatedSummary = `${METHOD_LABELS[targetTxn.method] || targetTxn.method} (Status: ${newStatus})`;
+      
+      const logEntry = {
+        type: 'edit',
+        txnId: txnId,
+        timestamp: formattedTimestamp,
+        changedBy: user?.name || user?.role || 'Admin',
+        reason: `Cheque marked as ${newStatus.toUpperCase()}`,
+        previous: prevSummary,
+        updated: updatedSummary
+      };
+
+      const updated = await api.updateOfflineSale(sale.id, {
+        transactions: updatedTxns,
+        corrections: [...(sale.corrections || []), logEntry]
+      });
+
+      setSales((ss) => ss.map((s) => s.id === updated.id ? updated : s));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const exportChequesCSV = (statusFilter) => {
+    const headers = ['Invoice No', 'Date', 'Customer Name', 'Cheque Number', 'Bank Name', 'Cheque Date', 'Expected Clearing Date', 'PDC', 'Cheque Amount', 'Status'];
+    const rows = [];
+    
+    sales.forEach((s) => {
+      (s.transactions || []).forEach((t) => {
+        if (t.method === 'cheque' && (statusFilter === 'all' || t.chequeStatus === statusFilter)) {
+          rows.push([
+            s.invoiceNumber || s.id || '',
+            s.date || '',
+            s.buyerName || '',
+            t.chequeNumber || '',
+            t.bankName || '',
+            t.chequeDate || '',
+            t.expectedClearingDate || '',
+            t.isPDC ? 'Yes' : 'No',
+            t.amount || 0,
+            t.chequeStatus || ''
+          ]);
+        }
+      });
+    });
+
+    if (rows.length === 0) {
+      alert('No cheques found for the selected status.');
+      return;
+    }
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Cheque_Report_${statusFilter}_${today()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportChequesPDF = (statusFilter) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to export report');
+      return;
+    }
+
+    const title = `Cheque Report - ${statusFilter.toUpperCase()}`;
+    const compName = companySettings?.companyName || 'The Elite Electrotek';
+    
+    const rows = [];
+    let totalAmt = 0;
+    sales.forEach((s) => {
+      (s.transactions || []).forEach((t) => {
+        if (t.method === 'cheque' && (statusFilter === 'all' || t.chequeStatus === statusFilter)) {
+          rows.push({
+            invoiceNumber: s.invoiceNumber || s.id,
+            date: s.date,
+            buyerName: s.buyerName,
+            chequeNumber: t.chequeNumber,
+            bankName: t.bankName,
+            chequeDate: t.chequeDate,
+            expectedClearingDate: t.expectedClearingDate,
+            isPDC: t.isPDC,
+            amount: Number(t.amount) || 0,
+            status: t.chequeStatus
+          });
+          totalAmt += Number(t.amount) || 0;
+        }
+      });
+    });
+
+    if (rows.length === 0) {
+      alert('No cheques found for the selected status.');
+      printWindow.close();
+      return;
+    }
+
+    const tableRowsHTML = rows.map((row, idx) => `
+      <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+        <td style="padding: 8px 10px; color: #475569;">${idx + 1}</td>
+        <td style="padding: 8px 10px; font-weight: 600; color: #1e293b;">${row.invoiceNumber}</td>
+        <td style="padding: 8px 10px; color: #475569;">${row.buyerName}</td>
+        <td style="padding: 8px 10px; font-family: monospace;">${row.chequeNumber || '—'}</td>
+        <td style="padding: 8px 10px;">${row.bankName || '—'}</td>
+        <td style="padding: 8px 10px;">${row.chequeDate || '—'}</td>
+        <td style="padding: 8px 10px;">${row.expectedClearingDate || '—'}</td>
+        <td style="padding: 8px 10px; text-transform: uppercase; font-weight: bold; color: ${
+          row.status === 'cleared' ? '#047857' : row.status === 'bounced' ? '#b91c1c' : '#b45309'
+        };">
+          ${row.status}
+        </td>
+        <td style="padding: 8px 10px; font-weight: bold; text-align: right; color: #1e293b;">₹${row.amount.toLocaleString('en-IN')}</td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+            body {
+              font-family: 'Inter', sans-serif;
+              color: #1e293b;
+              margin: 0;
+              padding: 40px;
+              background: #ffffff;
+            }
+            .report-box {
+              max-width: 900px;
+              margin: auto;
+              border: 1px solid #e2e8f0;
+              border-radius: 16px;
+              padding: 30px;
+            }
+            .header {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              border-bottom: 2px solid #e2e8f0;
+              padding-bottom: 15px;
+              margin-bottom: 20px;
+            }
+            .report-title {
+              font-size: 20px;
+              font-weight: 800;
+              color: #ef4444;
+              margin: 0;
+              text-transform: uppercase;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 20px;
+            }
+            th {
+              background: #f1f5f9;
+              color: #475569;
+              font-weight: 800;
+              text-transform: uppercase;
+              font-size: 10px;
+              padding: 10px;
+              text-align: left;
+            }
+            .totals {
+              font-size: 14px;
+              font-weight: 850;
+              text-align: right;
+              padding-top: 10px;
+              border-top: 2px solid #e2e8f0;
+            }
+            @media print {
+              body { padding: 0; }
+              .report-box { border: none; padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="report-box">
+            <div class="header">
+              <div>
+                <h1 class="report-title">${title}</h1>
+                <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Company: ${compName}</div>
+              </div>
+              <div style="font-size: 11px; color: #64748b; text-align: right;">
+                <div>Export Date: ${today()}</div>
+                <div>Records: ${rows.length}</div>
+              </div>
+            </div>
+            
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Invoice No</th>
+                  <th>Customer</th>
+                  <th>Cheque No</th>
+                  <th>Bank Name</th>
+                  <th>Cheque Date</th>
+                  <th>Clearing Date</th>
+                  <th>Status</th>
+                  <th style="text-align: right;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRowsHTML}
+              </tbody>
+            </table>
+            
+            <div class="totals">
+              Total Amount: ₹${totalAmt.toLocaleString('en-IN')}
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                window.close();
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   const handleSaveEditReceipt = async (e) => {
@@ -304,15 +682,310 @@ export default function OfflineSales() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterShop, setFilterShop] = useState('all');
   const [filterMethod, setFilterMethod] = useState('all');
+  const [filterChequeStatus, setFilterChequeStatus] = useState('all');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterGstType, setFilterGstType] = useState('all');
 
   function load() {
-    Promise.all([api.getOfflineSales(), api.getProducts(), api.getShops()])
-      .then(([s, p, sh]) => { setSales(s.reverse()); setProducts(p); setShops(sh); })
+    Promise.all([api.getOfflineSales(), api.getProducts(), api.getShops(), api.getCompanySettings()])
+      .then(([s, p, sh, comp]) => {
+        setSales(s.reverse());
+        setProducts(p);
+        setShops(sh);
+        if (comp) setCompanySettings(comp);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }
+
+  const handlePrintInvoice = (s, isPdfMode = false) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to print/export invoice');
+      return;
+    }
+
+    const title = `Invoice_${s.invoiceNumber || s.id}`;
+
+    const compName = companySettings?.companyName || 'The Elite Electrotek';
+    const compGst = companySettings?.gstNumber || '';
+    const compAddr = companySettings?.address || '';
+    const compMobile = companySettings?.mobile || '';
+    const compEmail = companySettings?.email || '';
+    const compLogo = companySettings?.logo || '';
+
+    const isGST = s.isGSTInvoice;
+    const baseAmount = isGST ? Math.round(s.totalAmount / 1.18) : s.totalAmount;
+    const taxAmount = s.totalAmount - baseAmount;
+
+    const itemsHTML = (s.items || []).map((item, idx) => {
+      const itemBasePrice = isGST ? (item.amount / item.qty) / 1.18 : (item.amount / item.qty);
+      return `
+        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+          <td style="padding: 10px 12px; color: #475569;">${idx + 1}</td>
+          <td style="padding: 10px 12px; font-weight: 600; color: #1e293b;">
+            ${item.productName}
+          </td>
+          <td style="padding: 10px 12px; font-family: monospace; color: #475569;">${item.productId || '—'}</td>
+          <td style="padding: 10px 12px; font-weight: bold; color: #1e293b; text-align: center;">${item.qty}</td>
+          <td style="padding: 10px 12px; font-weight: bold; color: #1e293b; text-align: right;">₹${Math.round(itemBasePrice).toLocaleString('en-IN')}</td>
+          ${isGST ? `<td style="padding: 10px 12px; font-weight: bold; color: #1e293b; text-align: right;">18%</td>` : ''}
+          <td style="padding: 10px 12px; font-weight: bold; text-align: right; color: #1e293b;">₹${Math.round(item.amount).toLocaleString('en-IN')}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+            body {
+              font-family: 'Inter', sans-serif;
+              color: #1e293b;
+              margin: 0;
+              padding: 40px;
+              background: #ffffff;
+            }
+            .invoice-box {
+              max-width: 800px;
+              margin: auto;
+              border: 1px solid #e2e8f0;
+              border-radius: 16px;
+              padding: 30px;
+              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            }
+            .header-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+            }
+            .header-table td {
+              vertical-align: top;
+            }
+            .company-title {
+              font-size: 24px;
+              font-weight: 900;
+              color: #ef4444;
+              margin: 0 0 5px 0;
+              text-transform: uppercase;
+            }
+            .meta-label {
+              font-size: 10px;
+              font-weight: 700;
+              color: #64748b;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              margin-bottom: 2px;
+            }
+            .meta-value {
+              font-size: 13px;
+              font-weight: 600;
+              color: #0f172a;
+            }
+            .bill-details {
+              display: grid;
+              grid-template-cols: repeat(2, 1fr);
+              gap: 20px;
+              margin-bottom: 30px;
+              padding: 20px;
+              background: #f8fafc;
+              border-radius: 12px;
+              border: 1px solid #e2e8f0;
+            }
+            .bill-title {
+              font-size: 11px;
+              font-weight: 800;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              color: #64748b;
+              margin-bottom: 6px;
+            }
+            table.items-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+            }
+            table.items-table th {
+              background: #f1f5f9;
+              color: #475569;
+              font-weight: 800;
+              text-transform: uppercase;
+              font-size: 10px;
+              padding: 10px 12px;
+              letter-spacing: 0.025em;
+              border: none;
+            }
+            .totals-table {
+              width: 300px;
+              margin-left: auto;
+              border-collapse: collapse;
+            }
+            .totals-table td {
+              padding: 8px 12px;
+              font-size: 12px;
+            }
+            .totals-table tr.grand-total {
+              background: #f8fafc;
+              font-weight: 800;
+              font-size: 14px;
+              border-top: 2px solid #e2e8f0;
+            }
+            .badge {
+              display: inline-block;
+              font-size: 10px;
+              font-weight: 800;
+              padding: 4px 8px;
+              border-radius: 6px;
+              text-transform: uppercase;
+              margin-top: 5px;
+            }
+            .badge-gst {
+              background: #ecfdf5;
+              color: #047857;
+              border: 1px solid #a7f3d0;
+            }
+            .badge-nongst {
+              background: #f1f5f9;
+              color: #475569;
+              border: 1px solid #cbd5e1;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              .invoice-box {
+                border: none;
+                box-shadow: none;
+                padding: 0;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="invoice-box">
+            <table class="header-table">
+              <tr>
+                <td>
+                  ${compLogo ? `<img src="${compLogo}" style="height: 50px; max-width: 180px; object-fit: contain; margin-bottom: 10px;" />` : ''}
+                  <h1 class="company-title">${compName}</h1>
+                  <div style="font-size: 11px; color: #475569; line-height: 1.5;">
+                    ${compAddr ? `<div>${compAddr}</div>` : ''}
+                    ${compMobile ? `<div>Mobile: ${compMobile}</div>` : ''}
+                    ${compEmail ? `<div>Email: ${compEmail}</div>` : ''}
+                    ${compGst ? `<div style="font-weight: bold; margin-top: 5px; color: #0f172a;">GSTIN: ${compGst}</div>` : ''}
+                  </div>
+                </td>
+                <td style="text-align: right; width: 250px;">
+                  <div style="font-size: 18px; font-weight: 900; color: #0f172a; text-transform: uppercase; margin-bottom: 15px;">
+                    ${isGST ? 'Tax Invoice' : 'Bill of Supply'}
+                  </div>
+                  <div style="margin-bottom: 8px;">
+                    <div class="meta-label">Invoice Number</div>
+                    <div class="meta-value" style="color: #ef4444; font-family: monospace; font-size: 14px;">${s.invoiceNumber || 'N/A'}</div>
+                  </div>
+                  <div style="margin-bottom: 8px;">
+                    <div class="meta-label">Date</div>
+                    <div class="meta-value">${s.date}</div>
+                  </div>
+                  <div>
+                    <div class="meta-label">GST Classification</div>
+                    <div class="badge ${isGST ? 'badge-gst' : 'badge-nongst'}">${isGST ? 'GST 18%' : 'Non-GST'}</div>
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+            <div class="bill-details">
+              <div>
+                <div class="bill-title">Billed To</div>
+                <div style="font-size: 14px; font-weight: 700; color: #0f172a;">${s.buyerName}</div>
+                <div style="font-size: 11px; color: #475569; margin-top: 3px;">
+                  Customer Name: ${s.buyerName}
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <div class="bill-title">Payment Status</div>
+                <div style="font-size: 14px; font-weight: 700; color: ${s.amountLeft === 0 ? '#10b981' : '#ef4444'}">
+                  ${s.amountLeft === 0 ? 'Fully Paid' : s.amountReceived > 0 ? 'Partially Paid' : 'Unpaid'}
+                </div>
+                <div style="font-size: 11px; color: #475569; margin-top: 3px;">
+                  Pending Dues: ₹${s.amountLeft.toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
+
+            <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; color: #64748b;">Line Items</div>
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px; border-radius: 8px 0 0 8px; text-align: left;">#</th>
+                  <th style="text-align: left;">Product Name</th>
+                  <th style="text-align: left; width: 100px;">SKU/ID</th>
+                  <th style="text-align: center; width: 60px;">Qty</th>
+                  <th style="text-align: right; width: 100px;">Rate</th>
+                  ${isGST ? `<th style="text-align: right; width: 60px;">GST</th>` : ''}
+                  <th style="text-align: right; width: 100px; border-radius: 0 8px 8px 0;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHTML}
+              </tbody>
+            </table>
+
+            <table class="totals-table">
+              ${isGST ? `
+                <tr>
+                  <td style="color: #64748b; font-weight: 500;">Taxable Value</td>
+                  <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${baseAmount.toLocaleString('en-IN')}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; font-weight: 500;">CGST (9%)</td>
+                  <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${Math.round(taxAmount / 2).toLocaleString('en-IN')}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; font-weight: 500;">SGST (9%)</td>
+                  <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${Math.round(taxAmount / 2).toLocaleString('en-IN')}</td>
+                </tr>
+              ` : `
+                <tr>
+                  <td style="color: #64748b; font-weight: 500;">Subtotal</td>
+                  <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${s.totalAmount.toLocaleString('en-IN')}</td>
+                </tr>
+              `}
+              <tr class="grand-total">
+                <td style="color: #0f172a; font-weight: 800;">Grand Total</td>
+                <td style="text-align: right; font-weight: 900; color: #ef4444;">₹${s.totalAmount.toLocaleString('en-IN')}</td>
+              </tr>
+            </table>
+
+            ${s.notes ? `
+              <div style="margin-top: 40px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 11px; background: #fafafa;">
+                <strong style="color: #0f172a;">Notes/Instructions:</strong>
+                <div style="margin-top: 5px; color: #475569; line-height: 1.5;">${s.notes}</div>
+              </div>
+            ` : ''}
+          </div>
+
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                window.close();
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   function openLogInvoiceModal() {
     setForm(emptyForm);
     setCustomerCategory('existing_shop');
@@ -505,7 +1178,12 @@ export default function OfflineSales() {
 
   // ── Computed totals ────────────────────────────────────────
   const computedTotal = form.orders.reduce((s, o) => s + o.items.reduce((is, i) => is + (Number(i.amount) || 0), 0), 0);
-  const totalReceived = form.transactions.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const totalReceived = form.transactions.reduce((s, t) => {
+    if (t.method === 'cheque' && t.chequeStatus !== 'cleared') {
+      return s;
+    }
+    return s + (Number(t.amount) || 0);
+  }, 0);
   const amountLeft = computedTotal - totalReceived;
 
   // ── Submit ─────────────────────────────────────────────────
@@ -581,10 +1259,12 @@ export default function OfflineSales() {
         }
       }
       const validTxns = form.transactions.filter((t) => t.amount);
+      const isGSTInvoice = form.orders.some((o) => o.gst);
       const payload = {
         buyerName: finalBuyerName, items: allItems, totalAmount: computedTotal,
         transactions: validTxns, amountReceived: totalReceived, notes: finalNotes,
-        gst: form.orders.some((o) => o.gst),
+        gst: isGSTInvoice,
+        isGSTInvoice,
       };
       const sale = await api.addOfflineSale(payload);
       setSales((ss) => [sale, ...ss]);
@@ -614,6 +1294,7 @@ export default function OfflineSales() {
         items: editModal.items,
         totalAmount: editModal.totalAmount,
         gst: editGst,
+        isGSTInvoice: editGst,
         newTransactions: validNewTxns.length > 0 ? validNewTxns : undefined,
         newItems: validNewItems.length > 0 ? validNewItems : undefined,
         newItemsDate: editNewDate || today(),
@@ -662,6 +1343,7 @@ export default function OfflineSales() {
     const matchesSearch = !search ||
       (s.items ? s.items.some((i) => i.productName?.toLowerCase().includes(search.toLowerCase())) : s.productName?.toLowerCase().includes(search.toLowerCase())) ||
       s.buyerName.toLowerCase().includes(search.toLowerCase()) ||
+      (s.invoiceNumber && s.invoiceNumber.toLowerCase().includes(search.toLowerCase())) ||
       (s.id && s.id.toLowerCase().includes(search.toLowerCase()));
 
     // 2. Status filter (Paid, Partial, Pending, Overdue)
@@ -685,14 +1367,24 @@ export default function OfflineSales() {
     const matchesMethod = filterMethod === 'all' || 
       (filterMethod === 'cash' && txns.some(t => t.method === 'cash')) ||
       (filterMethod === 'upi' && txns.some(t => t.method === 'upi')) ||
+      (filterMethod === 'cheque' && txns.some(t => t.method === 'cheque')) ||
       (filterMethod === 'none' && txns.length === 0);
+
+    // Cheque status filter
+    const matchesChequeStatus = filterChequeStatus === 'all' ||
+      txns.some(t => t.method === 'cheque' && t.chequeStatus === filterChequeStatus);
 
     // 5. Date range filter
     let matchesDate = true;
     if (filterStartDate) matchesDate = matchesDate && s.date >= filterStartDate;
     if (filterEndDate) matchesDate = matchesDate && s.date <= filterEndDate;
 
-    return matchesSearch && matchesStatus && matchesShop && matchesMethod && matchesDate;
+    // 6. GST Type filter
+    let matchesGst = true;
+    if (filterGstType === 'gst') matchesGst = s.isGSTInvoice === true;
+    else if (filterGstType === 'non-gst') matchesGst = s.isGSTInvoice !== true;
+
+    return matchesSearch && matchesStatus && matchesShop && matchesMethod && matchesChequeStatus && matchesDate && matchesGst;
   });
 
   // ── KPI / Metrics computations (based on filtered list) ─────
@@ -702,10 +1394,104 @@ export default function OfflineSales() {
   const summaryUpi = filtered.reduce((s, x) => s + (x.transactions || []).filter((t) => t.method === 'upi').reduce((a, t) => a + (Number(t.amount) || 0), 0), 0);
   const summaryCash = filtered.reduce((s, x) => s + (x.transactions || []).filter((t) => t.method === 'cash').reduce((a, t) => a + (Number(t.amount) || 0), 0), 0);
 
-  // ── High-level Business Insights (always based on total sales for context) ──
+  // Cheque metrics computations
+  let chequePendingAmt = 0;
+  let chequeClearedAmt = 0;
+  let chequeBouncedAmt = 0;
+  let chequePdcAmt = 0;
+  let upcomingCollectionsAmt = 0;
+  
   const todayStr = today();
-  const currentMonthStr = todayStr.slice(0, 7);
+
+  filtered.forEach((s) => {
+    (s.transactions || []).forEach((t) => {
+      if (t.method === 'cheque') {
+        const amt = Number(t.amount) || 0;
+        if (t.chequeStatus === 'pending') {
+          chequePendingAmt += amt;
+        } else if (t.chequeStatus === 'cleared') {
+          chequeClearedAmt += amt;
+        } else if (t.chequeStatus === 'bounced') {
+          chequeBouncedAmt += amt;
+        } else if (t.chequeStatus === 'pdc') {
+          chequePdcAmt += amt;
+        }
+        
+        if (t.chequeStatus === 'pending' || t.chequeStatus === 'pdc') {
+          upcomingCollectionsAmt += amt;
+        }
+      }
+    });
+  });
+
+  const alertsList = [];
+  const oneWeekLater = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${date}`;
+  })();
+
+  filtered.forEach((s) => {
+    (s.transactions || []).forEach((t) => {
+      if (t.method === 'cheque') {
+        const amt = Number(t.amount) || 0;
+        if (t.chequeStatus === 'bounced') {
+          alertsList.push({
+            type: 'bounced',
+            message: `Bounced Cheque: ₹${amt.toLocaleString('en-IN')} (${t.bankName || 'N/A'}, No: ${t.chequeNumber || '—'}) for customer "${s.buyerName}" has bounced. Action required!`,
+            sale: s,
+            txnId: t.id
+          });
+        } else if (t.chequeStatus === 'pending' && t.expectedClearingDate && t.expectedClearingDate < todayStr) {
+          alertsList.push({
+            type: 'overdue',
+            message: `Overdue Cheque: Cheque (No: ${t.chequeNumber || '—'}) of ₹${amt.toLocaleString('en-IN')} for "${s.buyerName}" was expected to clear on ${t.expectedClearingDate}.`,
+            sale: s,
+            txnId: t.id
+          });
+        } else if (t.chequeStatus === 'pending' && t.expectedClearingDate === todayStr) {
+          alertsList.push({
+            type: 'clearing_today',
+            message: `Clearing Today: Cheque (No: ${t.chequeNumber || '—'}) of ₹${amt.toLocaleString('en-IN')} for "${s.buyerName}" is scheduled for clearance today.`,
+            sale: s,
+            txnId: t.id
+          });
+        } else if (t.chequeStatus === 'pdc' && t.chequeDate && t.chequeDate > todayStr && t.chequeDate <= oneWeekLater) {
+          alertsList.push({
+            type: 'upcoming_pdc',
+            message: `Upcoming PDC Maturity: Post-dated Cheque of ₹${amt.toLocaleString('en-IN')} (No: ${t.chequeNumber || '—'}) for "${s.buyerName}" matures on ${t.chequeDate}.`,
+            sale: s,
+            txnId: t.id
+          });
+        }
+      }
+    });
+  });
+
+  // Filtered calculations for GST and Non-GST
+  const gstInvoices = filtered.filter(s => s.isGSTInvoice);
+  const nonGstInvoices = filtered.filter(s => !s.isGSTInvoice);
+
+  const gstRevenue = gstInvoices.reduce((sum, s) => sum + s.totalAmount, 0);
+  const nonGstRevenue = nonGstInvoices.reduce((sum, s) => sum + s.totalAmount, 0);
+
+  const gstCount = gstInvoices.length;
+  const nonGstCount = nonGstInvoices.length;
+
+  const totalGstInvoicesCount = gstInvoices.length;
+  const totalGstRevenue = gstRevenue;
+  const gstTaxableAmount = gstInvoices.reduce((sum, s) => sum + Math.round(s.totalAmount / 1.18), 0);
+  const gstCollected = totalGstRevenue - gstTaxableAmount;
+
+  const totalNonGstInvoicesCount = nonGstInvoices.length;
+  const totalNonGstRevenue = nonGstRevenue;
+
+  // ── High-level Business Insights (always based on total sales for context) ──
   const todaySalesVal = sales.filter(s => s.date === todayStr).reduce((sum, s) => sum + s.totalAmount, 0);
+  const currentMonthStr = todayStr.slice(0, 7);
   const thisMonthSalesVal = sales.filter(s => s.date && s.date.startsWith(currentMonthStr)).reduce((sum, s) => sum + s.totalAmount, 0);
   const totalOutstandingDues = sales.reduce((sum, s) => sum + s.amountLeft, 0);
   const avgOrderValue = sales.length > 0 ? (sales.reduce((sum, s) => sum + s.totalAmount, 0) / sales.length) : 0;
@@ -722,14 +1508,16 @@ export default function OfflineSales() {
   });
 
   // Check filter active status
-  const hasActiveFilters = filterStatus !== 'all' || filterShop !== 'all' || filterMethod !== 'all' || filterStartDate !== '' || filterEndDate !== '' || search !== '';
+  const hasActiveFilters = filterStatus !== 'all' || filterShop !== 'all' || filterMethod !== 'all' || filterChequeStatus !== 'all' || filterStartDate !== '' || filterEndDate !== '' || search !== '' || filterGstType !== 'all';
   const resetFilters = () => {
     setFilterStatus('all');
     setFilterShop('all');
     setFilterMethod('all');
+    setFilterChequeStatus('all');
     setFilterStartDate('');
     setFilterEndDate('');
     setSearch('');
+    setFilterGstType('all');
   };
 
   // Build shop name map to retrieve customer type
@@ -863,11 +1651,11 @@ export default function OfflineSales() {
 
       {/* KPI Header Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Total Revenue */}
+        {/* Total Sales */}
         <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-indigo-500 dark:border-t-indigo-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Sales</span>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight mt-1 truncate" title={fmt(summaryRevenue)}>{fmt(summaryRevenue)}</p>
+            <KPICardValue value={summaryRevenue} className="text-slate-900 dark:text-[#F8FAFC]" />
           </div>
           <div className="flex items-center justify-between mt-4">
             <span className="text-[11px] font-semibold text-indigo-650 bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 rounded-lg inline-block">
@@ -883,7 +1671,7 @@ export default function OfflineSales() {
         <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-emerald-500 dark:border-t-emerald-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Received</span>
-            <p className="text-3xl font-extrabold text-emerald-600 dark:text-[#10B981] tracking-tight mt-1 truncate" title={fmt(summaryReceived)}>{fmt(summaryReceived)}</p>
+            <KPICardValue value={summaryReceived} className="text-emerald-600 dark:text-[#10B981]" />
           </div>
           <div className="flex items-center justify-between mt-4">
             <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-lg inline-block">
@@ -899,7 +1687,7 @@ export default function OfflineSales() {
         <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-red-500 dark:border-t-red-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Pending Dues</span>
-            <p className="text-3xl font-extrabold text-red-600 dark:text-[#EF4444] tracking-tight mt-1 truncate" title={fmt(summaryPending)}>{fmt(summaryPending)}</p>
+            <KPICardValue value={summaryPending} className="text-red-650 dark:text-[#EF4444]" />
           </div>
           <div className="flex items-center justify-between mt-4">
             <span className="text-[11px] font-semibold text-red-600 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded-lg inline-block">
@@ -915,7 +1703,7 @@ export default function OfflineSales() {
         <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-blue-500 dark:border-t-blue-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">UPI Payments</span>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight mt-1 truncate" title={fmt(summaryUpi)}>{fmt(summaryUpi)}</p>
+            <KPICardValue value={summaryUpi} className="text-slate-900 dark:text-[#F8FAFC]" />
           </div>
           <div className="flex items-center justify-between mt-4">
             <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-lg inline-block">
@@ -931,14 +1719,110 @@ export default function OfflineSales() {
         <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-violet-500 dark:border-t-violet-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Cash Payments</span>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight mt-1 truncate" title={fmt(summaryCash)}>{fmt(summaryCash)}</p>
+            <KPICardValue value={summaryCash} className="text-slate-900 dark:text-[#F8FAFC]" />
           </div>
           <div className="flex items-center justify-between mt-4">
             <span className="text-[11px] font-semibold text-violet-600 bg-violet-50 dark:bg-violet-950/30 px-2 py-0.5 rounded-lg inline-block">
               💵 Paper receipts
             </span>
-            <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-[#1E293B] border border-violet-100 dark:border-[#334155] text-violet-600 dark:text-violet-400 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-[#1E293B] border border-violet-100 dark:border-[#334155] text-violet-650 dark:text-violet-400 flex items-center justify-center flex-shrink-0">
               <Wallet size={16} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* GST Segregation KPI Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        {/* GST Sales Card */}
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-emerald-600 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-between h-28 relative overflow-hidden group">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">GST Sales</span>
+            <KPICardValue value={gstRevenue} className="text-slate-900 dark:text-[#F8FAFC]" />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 dark:text-[#94A3B8]">Total GST invoices value</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.2 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-[#10B981] rounded">18% GST</span>
+          </div>
+        </div>
+
+        {/* Non-GST Sales Card */}
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-slate-500 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-between h-28 relative overflow-hidden group">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Non GST Sales</span>
+            <KPICardValue value={nonGstRevenue} className="text-slate-900 dark:text-[#F8FAFC]" />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 dark:text-[#94A3B8]">Exempt / Cash invoices</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.2 bg-slate-50 text-slate-650 dark:bg-slate-900 dark:text-[#CBD5E1] rounded">Tax Free</span>
+          </div>
+        </div>
+
+        {/* GST Invoices Count Card */}
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-teal-500 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-between h-28 relative overflow-hidden group">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">GST Invoices</span>
+            <p className="text-2xl font-black text-slate-800 dark:text-[#F8FAFC] tracking-tight">{gstCount} <span className="text-xs font-normal text-slate-400">bills</span></p>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 dark:text-[#94A3B8]">GST billing count</span>
+            <FileText size={14} className="text-teal-500" />
+          </div>
+        </div>
+
+        {/* Non-GST Invoices Count Card */}
+        <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-gray-400 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-between h-28 relative overflow-hidden group">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Non GST Invoices</span>
+            <p className="text-2xl font-black text-slate-800 dark:text-[#F8FAFC] tracking-tight">{nonGstCount} <span className="text-xs font-normal text-slate-400">bills</span></p>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 dark:text-[#94A3B8]">Standard / Cash count</span>
+            <FileText size={14} className="text-gray-400" />
+          </div>
+        </div>
+      </div>
+
+      {/* GST & Non-GST Billing Summaries */}
+      <div className="bg-slate-50 dark:bg-[#1E293B]/50 border border-slate-200 dark:border-[#334155] rounded-3xl p-6 grid grid-cols-1 md:grid-cols-2 gap-6 shadow-sm mt-6">
+        {/* GST Summary */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-extrabold text-slate-700 dark:text-[#CBD5E1] uppercase tracking-wider border-b border-slate-200 dark:border-[#334155] pb-2 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span> GST Summary
+          </h3>
+          <div className="space-y-2 text-xs font-semibold text-slate-600 dark:text-[#94A3B8]">
+            <div className="flex justify-between">
+              <span>Total GST Bills:</span>
+              <span className="text-slate-900 dark:text-[#F8FAFC] font-bold">{totalGstInvoicesCount} bills</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Taxable Amount (Base Price):</span>
+              <span className="text-slate-900 dark:text-[#F8FAFC] font-bold">{fmt(gstTaxableAmount)}</span>
+            </div>
+            <div className="flex justify-between text-emerald-600 dark:text-[#10B981] font-bold">
+              <span>GST Collected (18%):</span>
+              <span>{fmt(gstCollected)}</span>
+            </div>
+            <div className="flex justify-between border-t border-slate-200 dark:border-[#334155] pt-2 font-bold text-slate-800 dark:text-[#F8FAFC]">
+              <span>Total Revenue:</span>
+              <span>{fmt(totalGstRevenue)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Non-GST Summary */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-extrabold text-slate-700 dark:text-[#CBD5E1] uppercase tracking-wider border-b border-slate-200 dark:border-[#334155] pb-2 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-slate-400"></span> Non GST Summary
+          </h3>
+          <div className="space-y-2 text-xs font-semibold text-slate-600 dark:text-[#94A3B8]">
+            <div className="flex justify-between">
+              <span>Total Bills:</span>
+              <span className="text-slate-900 dark:text-[#F8FAFC] font-bold">{totalNonGstInvoicesCount} bills</span>
+            </div>
+            <div className="flex justify-between border-t border-slate-200 dark:border-[#334155] pt-8 font-bold text-slate-800 dark:text-[#F8FAFC]">
+              <span>Total Revenue:</span>
+              <span className="text-slate-900 dark:text-[#F8FAFC] font-bold">{fmt(totalNonGstRevenue)}</span>
             </div>
           </div>
         </div>
@@ -956,6 +1840,43 @@ export default function OfflineSales() {
               <RefreshCw size={10} /> Reset Filters
             </button>
           )}
+        </div>
+
+        {/* GST Segregation Tab Filters */}
+        <div className="flex flex-wrap gap-2 pb-2">
+          <button
+            type="button"
+            onClick={() => setFilterGstType('all')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              filterGstType === 'all'
+                ? 'bg-slate-800 text-white dark:bg-[#F8FAFC] dark:text-[#0F172A] shadow-sm'
+                : 'bg-slate-50 dark:bg-[#1E293B] text-slate-650 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#334155]'
+            }`}
+          >
+            📋 All Bills
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterGstType('gst')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              filterGstType === 'gst'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-slate-50 dark:bg-[#1E293B] text-slate-650 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#334155]'
+            }`}
+          >
+            🟢 GST Bills
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterGstType('non-gst')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              filterGstType === 'non-gst'
+                ? 'bg-slate-500 text-white shadow-sm'
+                : 'bg-slate-50 dark:bg-[#1E293B] text-slate-650 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#334155]'
+            }`}
+          >
+            ⚪ Non-GST Bills
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -1083,6 +2004,11 @@ export default function OfflineSales() {
                             {totalQty(s)} units
                           </span>
                         </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-red-50 text-[#EF4444] border border-red-200/30 dark:bg-red-950/30 dark:text-[#EF4444] dark:border-red-900/30">
+                            Invoice # {s.invoiceNumber || 'N/A'}
+                          </span>
+                        </div>
                         <p className="text-xs text-slate-400 dark:text-[#94A3B8] font-medium flex items-center gap-1">
                           <Calendar size={12} /> Date: {s.date}
                         </p>
@@ -1097,9 +2023,13 @@ export default function OfflineSales() {
                           {renderCustomerBadge(s.buyerName)}
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          {s.gst && (
-                            <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold px-1.5 py-0.2 bg-emerald-50 text-emerald-700 border border-emerald-200/50 rounded dark:bg-emerald-950/30 dark:text-[#10B981] dark:border-emerald-900/50">
-                              GST 18%
+                          {s.isGSTInvoice ? (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold px-1.5 py-0.2 bg-emerald-50 text-emerald-700 border border-emerald-200/50 rounded dark:bg-emerald-950/30 dark:text-[#10B981] dark:border-emerald-900/50 uppercase">
+                              GST BILL
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold px-1.5 py-0.2 bg-slate-100 text-slate-500 border border-slate-200/50 rounded dark:bg-[#1E293B] dark:text-[#CBD5E1] dark:border-[#334155]/50 uppercase">
+                              NON GST
                             </span>
                           )}
                           {s.transactions && s.transactions.length > 0 ? (
@@ -1248,21 +2178,32 @@ export default function OfflineSales() {
 
                       {/* Action buttons footer */}
                       <div className="flex items-center justify-between border-t border-slate-100 dark:border-[#334155] mt-4 pt-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">
+                            Invoice #: <span className="text-red-505 font-black select-all font-mono">{s.invoiceNumber || 'N/A'}</span>
+                          </span>
                           <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">
                             Invoice ID: <span className="text-slate-500 dark:text-[#CBD5E1] select-all font-mono">{s.id}</span>
                           </span>
                           {s.corrections && s.corrections.length > 0 && (
                             <button
                               onClick={() => handleViewReceiptHistory(s, null)}
-                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-150 dark:border-blue-900/50 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-150 dark:border-blue-900/50 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors w-fit mt-1"
                             >
                               📋 Audit Logs ({s.corrections.length})
                             </button>
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button onClick={() => handlePrintInvoice(s, false)}
+                            className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-xs font-semibold text-slate-600 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#111827] transition-colors shadow-sm bg-white dark:bg-[#1E293B]">
+                            <Printer size={12} /> Print Invoice
+                          </button>
+                          <button onClick={() => handlePrintInvoice(s, true)}
+                            className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-xs font-semibold text-slate-600 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#111827] transition-colors shadow-sm bg-white dark:bg-[#1E293B]">
+                            <Download size={12} /> PDF Export
+                          </button>
                           <button onClick={() => { setEditModal(s); setEditNewItems([]); setEditNewDate(today()); setEditNewTxns([]); setEditError(''); setEditGst(s.gst || false); }}
                             className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-xs font-semibold text-slate-600 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#111827] transition-colors shadow-sm bg-white dark:bg-[#1E293B]">
                             <Edit2 size={12} /> Edit Billing
@@ -1522,8 +2463,8 @@ export default function OfflineSales() {
             <div className="space-y-4">
               <label className="block text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider">Orders List</label>
               {form.orders.map((order, oi) => (
-                <div key={oi} className="border border-slate-200/80 dark:border-[#334155]/80 rounded-2xl overflow-hidden bg-slate-50/20 dark:bg-[#1E293B]/20">
-                  <div className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-[#111827] px-4 py-3 border-b border-slate-200/50 dark:border-b-[#334155]">
+                <div key={oi} className="border border-slate-200/80 dark:border-[#334155]/80 rounded-2xl bg-slate-50/20 dark:bg-[#1E293B]/20 relative">
+                  <div className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-[#111827] px-4 py-3 border-b border-slate-200/50 dark:border-b-[#334155] rounded-t-2xl">
                     <span className="text-xs font-extrabold text-slate-500 dark:text-[#CBD5E1]">Order {oi + 1}</span>
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8]">Date:</span>
@@ -1546,6 +2487,7 @@ export default function OfflineSales() {
                         onRemove={() => removeItemFromOrder(oi, ii)}
                         showRemove={order.items.length > 1}
                         isGst={order.gst}
+                        loading={loading}
                       />
                     ))}
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-50 dark:border-[#334155]">
@@ -1632,7 +2574,12 @@ export default function OfflineSales() {
         const newItemsTotal = editNewItems.reduce((s, i) => s + (Number(i.amount) || 0), 0);
         const updatedTotal = editModal.totalAmount + newItemsTotal;
         const existingReceived = editModal.amountReceived || 0;
-        const newTxnsTotal = editNewTxns.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+        const newTxnsTotal = editNewTxns.reduce((s, t) => {
+          if (t.method === 'cheque' && t.chequeStatus !== 'cleared') {
+            return s;
+          }
+          return s + (Number(t.amount) || 0);
+        }, 0);
         const updatedReceived = existingReceived + newTxnsTotal;
         const updatedPending = updatedTotal - updatedReceived;
         return (
@@ -1706,8 +2653,11 @@ export default function OfflineSales() {
                               <SearchableSelect
                                 value={item.productId}
                                 onChange={(val) => handleEditItemProductChange(idx, val)}
-                                placeholder="Select product…"
-                                options={products.filter((p) => p.availableQty > 0).map((p) => ({ value: p.id, label: `${p.name} (Stock: ${p.availableQty})` }))}
+                                placeholder="Search or Select Product..."
+                                options={products.map((p) => ({ value: p.id, label: p.name, product: p }))}
+                                filterOption={filterProductOption}
+                                renderOption={renderProductOption}
+                                loading={loading}
                                 className="w-full"
                               />
                             </div>

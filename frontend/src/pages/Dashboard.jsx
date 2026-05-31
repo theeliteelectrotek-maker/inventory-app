@@ -7,6 +7,7 @@ import {
   ArrowUpRight, RotateCcw, AlertCircle, User
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import KPICardValue from '../components/KPICardValue';
 
 function parseLocalDate(dateStr) {
   if (!dateStr) return new Date();
@@ -320,9 +321,9 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Sales Today */}
         <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
             <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Sales Today</span>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{fmt(salesToday)}</p>
+            <KPICardValue value={salesToday} className="text-slate-900 dark:text-[#F8FAFC] leading-none" />
             <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">Online & Offline orders</span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
@@ -332,9 +333,9 @@ export default function Dashboard() {
 
         {/* Total Collections Today */}
         <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
             <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Collections Today</span>
-            <p className="text-3xl font-extrabold text-[#10B981] tracking-tight leading-none">{fmt(collectionsToday)}</p>
+            <KPICardValue value={collectionsToday} className="text-[#10B981] leading-none" />
             <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">Total payments collected</span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
@@ -344,9 +345,9 @@ export default function Dashboard() {
 
         {/* Total Pending Dues */}
         <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#EF4444] rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
             <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Outstanding Dues</span>
-            <p className="text-3xl font-extrabold text-[#EF4444] tracking-tight leading-none">{fmt(totalPendingDues)}</p>
+            <KPICardValue value={totalPendingDues} className="text-[#EF4444] leading-none" />
             <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">Awaiting shop clearances</span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 text-[#EF4444] flex items-center justify-center shrink-0">

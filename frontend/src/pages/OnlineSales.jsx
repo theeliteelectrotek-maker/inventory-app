@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useIsDarkMode } from '../context/ThemeContext';
 import SearchableSelect from '../components/SearchableSelect';
+import KPICardValue from '../components/KPICardValue';
 
 const PLATFORMS = [
   { id: 'amazon', label: 'Amazon', color: 'bg-orange-500', light: 'bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-450', border: 'border-orange-200 text-orange-600 bg-orange-50/50 dark:border-orange-900/50 dark:text-orange-400 dark:bg-orange-950/20' },
@@ -1079,7 +1080,7 @@ export default function OnlineSales() {
           <div className="mt-3.5 space-y-2.5">
             <div>
               <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue</span>
-              <p className="text-2xl font-bold text-[#111827] dark:text-[#F8FAFC]">{fmt(currentKPIs.total.revenue)}</p>
+              <KPICardValue value={currentKPIs.total.revenue} className="text-[#111827] dark:text-[#F8FAFC]" />
             </div>
             <div className="grid grid-cols-2 border-t border-slate-100 dark:border-[#1E293B] pt-2 text-xs">
               <div>
@@ -1105,7 +1106,7 @@ export default function OnlineSales() {
           <div className="mt-3.5 space-y-2.5">
             <div>
               <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue</span>
-              <p className="text-2xl font-bold text-[#111827] dark:text-[#F8FAFC]">{fmt(currentKPIs.amazon.revenue)}</p>
+              <KPICardValue value={currentKPIs.amazon.revenue} className="text-[#111827] dark:text-[#F8FAFC]" />
             </div>
             <div className="grid grid-cols-2 border-t border-slate-100 dark:border-[#1E293B] pt-2 text-xs">
               <div>
@@ -1131,7 +1132,7 @@ export default function OnlineSales() {
           <div className="mt-3.5 space-y-2.5">
             <div>
               <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue</span>
-              <p className="text-2xl font-bold text-[#111827] dark:text-[#F8FAFC]">{fmt(currentKPIs.flipkart.revenue)}</p>
+              <KPICardValue value={currentKPIs.flipkart.revenue} className="text-[#111827] dark:text-[#F8FAFC]" />
             </div>
             <div className="grid grid-cols-2 border-t border-slate-100 dark:border-[#1E293B] pt-2 text-xs">
               <div>
@@ -1157,7 +1158,7 @@ export default function OnlineSales() {
           <div className="mt-3.5 space-y-2.5">
             <div>
               <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue</span>
-              <p className="text-2xl font-bold text-[#111827] dark:text-[#F8FAFC]">{fmt(currentKPIs.meesho.revenue)}</p>
+              <KPICardValue value={currentKPIs.meesho.revenue} className="text-[#111827] dark:text-[#F8FAFC]" />
             </div>
             <div className="grid grid-cols-2 border-t border-slate-100 dark:border-[#1E293B] pt-2 text-xs">
               <div>

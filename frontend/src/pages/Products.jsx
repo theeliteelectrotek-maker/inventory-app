@@ -7,6 +7,7 @@ import {
   CheckCircle2, Box, Sparkles, DollarSign 
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import KPICardValue from '../components/KPICardValue';
 
 const empty = { name: '', sku: '', description: '', qty: '', costPrice: '', offlinePrice: '', amazonPrice: '', flipkartPrice: '', meeshoPrice: '', category: 'General' };
 
@@ -335,9 +336,9 @@ export default function Products() {
 
         {/* Inventory Value */}
         <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-emerald-600 rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 min-h-[140px]">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
             <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Inventory Value</span>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{fmt(totalInventoryValue)}</p>
+            <KPICardValue value={totalInventoryValue} className="text-slate-900 dark:text-[#F8FAFC] leading-none" />
             <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">
               Valued at cost price
             </span>

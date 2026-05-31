@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useIsDarkMode } from '../context/ThemeContext';
+import KPICardValue from '../components/KPICardValue';
 
 // --- Date Range Presets Helper ---
 const getTodayStr = (offsetDays = 0) => {
@@ -665,13 +666,13 @@ export default function Analytics() {
                 </div>
               )}
 
-              {/* Profitability Overview Cards */}
+               {/* Profitability Overview Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6">
                 {/* Revenue */}
                 <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
                   <div className="space-y-1.5">
                     <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Revenue</span>
-                    <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{fmt(overview.revenue)}</p>
+                    <KPICardValue value={overview.revenue} className="text-slate-900 dark:text-[#F8FAFC] leading-none" />
                   </div>
                   <div className="mt-4 text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] bg-slate-50 dark:bg-[#1E293B] px-2.5 py-1 rounded-lg self-start">
                     Gross sales receipts
@@ -682,7 +683,7 @@ export default function Analytics() {
                 <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#3B82F6] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
                   <div className="space-y-1.5">
                     <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Product Cost (COGS)</span>
-                    <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{fmt(overview.productCost)}</p>
+                    <KPICardValue value={overview.productCost} className="text-slate-900 dark:text-[#F8FAFC] leading-none" />
                   </div>
                   <div className="mt-4 text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] bg-slate-50 dark:bg-[#1E293B] px-2.5 py-1 rounded-lg self-start">
                     Cost of materials sold
@@ -693,7 +694,7 @@ export default function Analytics() {
                 <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
                   <div className="space-y-1.5">
                     <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Gross Profit</span>
-                    <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{fmt(overview.grossProfit)}</p>
+                    <KPICardValue value={overview.grossProfit} className="text-slate-900 dark:text-[#F8FAFC] leading-none" />
                   </div>
                   <div className="mt-4 flex items-center gap-1 text-[10px] font-extrabold text-emerald-600 dark:text-[#10B981] bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-lg self-start">
                     <TrendingUp size={12} /> {overview.revenue > 0 ? ((overview.grossProfit / overview.revenue) * 100).toFixed(0) : 0}% margin
@@ -704,7 +705,7 @@ export default function Analytics() {
                 <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#EF4444] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
                   <div className="space-y-1.5">
                     <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Returns Cost</span>
-                    <p className="text-3xl font-extrabold text-[#EF4444] tracking-tight leading-none">{fmt(overview.returnsValue)}</p>
+                    <KPICardValue value={overview.returnsValue} className="text-[#EF4444] leading-none" />
                   </div>
                   <div className="mt-4 text-[10px] font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2.5 py-1 rounded-lg self-start">
                     Lost returned sales value
@@ -715,7 +716,7 @@ export default function Analytics() {
                 <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-5 shadow-md shadow-[#10B981]/10 dark:shadow-none flex flex-col justify-between relative overflow-hidden ring-2 ring-[#10B981] dark:ring-[#10B981] ring-offset-2 dark:ring-offset-[#0F172A] hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
                   <div className="space-y-1.5">
                     <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Net Profit</span>
-                    <p className="text-3xl font-extrabold text-emerald-600 dark:text-[#10B981] tracking-tight leading-none">{fmt(overview.netProfit)}</p>
+                    <KPICardValue value={overview.netProfit} className="text-emerald-600 dark:text-[#10B981] leading-none" />
                   </div>
                   <div className={`mt-4 flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-1 rounded-lg self-start ${
                     overview.netProfit >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-[#10B981]' : 'bg-red-50 text-red-650 dark:bg-red-950/30 dark:text-[#EF4444]'
@@ -1005,7 +1006,7 @@ export default function Analytics() {
                     <IndianRupee size={160} />
                   </div>
                   <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-100/80">Current Inventory Value</span>
-                  <h2 className="text-3xl font-black mt-2">{fmt(inv.summary.totalValue)}</h2>
+                  <KPICardValue value={inv.summary.totalValue} className="text-white mt-2" />
                   <p className="text-xs text-emerald-100/90 mt-2 font-medium">Asset value based on cost price</p>
                 </div>
 

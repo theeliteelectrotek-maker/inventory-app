@@ -23,7 +23,9 @@ export default function Settings() {
     mobile: '',
     email: '',
     upiId: '',
-    upiQr: ''
+    upiQr: '',
+    invoicePrefix: 'TEE',
+    invoiceStartNumber: '0001'
   });
   const [loadingCompany, setLoadingCompany] = useState(true);
   const [savingCompany, setSavingCompany] = useState(false);
@@ -75,7 +77,9 @@ export default function Settings() {
           mobile: data.mobile || '',
           email: data.email || '',
           upiId: data.upiId || '',
-          upiQr: data.upiQr || ''
+          upiQr: data.upiQr || '',
+          invoicePrefix: data.invoicePrefix || 'TEE',
+          invoiceStartNumber: data.invoiceStartNumber || '0001'
         });
       }
       setCompanyError('');
@@ -476,6 +480,46 @@ export default function Settings() {
                       placeholder="Enter complete company registered address..."
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-[#334155] focus:outline-none focus:ring-2 focus:ring-[#EF4444]/20 focus:border-[#EF4444] font-semibold bg-white dark:bg-[#0F172A] text-slate-955 dark:text-[#F8FAFC] transition-all text-sm resize-none"
                     />
+                  </div>
+
+                  <div className="md:col-span-2 border-t border-slate-200 dark:border-slate-800 pt-6 mt-2">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-[#CBD5E1] mb-4">Invoice Number Settings</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-sm font-bold text-slate-900 dark:text-[#CBD5E1] mb-1.5">Invoice Prefix</label>
+                        <input
+                          type="text"
+                          value={profile.invoicePrefix || ''}
+                          onChange={(e) => setProfile({ ...profile, invoicePrefix: e.target.value.toUpperCase() })}
+                          placeholder="e.g. TEE"
+                          required
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-[#334155] focus:outline-none focus:ring-2 focus:ring-[#EF4444]/20 focus:border-[#EF4444] font-semibold bg-white dark:bg-[#0F172A] text-slate-955 dark:text-[#F8FAFC] transition-all text-sm"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-bold text-slate-900 dark:text-[#CBD5E1] mb-1.5">Financial Year</label>
+                        <input
+                          type="text"
+                          value="Auto"
+                          disabled
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-[#334155] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-sm cursor-not-allowed"
+                        />
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 block">Determined automatically from date</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-bold text-slate-900 dark:text-[#CBD5E1] mb-1.5">Starting Number</label>
+                        <input
+                          type="text"
+                          value={profile.invoiceStartNumber || ''}
+                          onChange={(e) => setProfile({ ...profile, invoiceStartNumber: e.target.value.replace(/\D/g, '') })}
+                          placeholder="e.g. 0001"
+                          required
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-[#334155] focus:outline-none focus:ring-2 focus:ring-[#EF4444]/20 focus:border-[#EF4444] font-semibold bg-white dark:bg-[#0F172A] text-slate-955 dark:text-[#F8FAFC] transition-all text-sm"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 

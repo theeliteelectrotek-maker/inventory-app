@@ -28,7 +28,11 @@ export default function SalesHistory() {
 
   function applyFilters(list) {
     return list.filter((s) => {
-      const matchSearch = !search || s.productName.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = !search || 
+        (s.productName && s.productName.toLowerCase().includes(search.toLowerCase())) ||
+        (s.type === 'offline' && s.invoiceNumber && s.invoiceNumber.toLowerCase().includes(search.toLowerCase())) ||
+        (s.type === 'online' && s.orderId && s.orderId.toLowerCase().includes(search.toLowerCase())) ||
+        (s.type === 'offline' && s.buyerName && s.buyerName.toLowerCase().includes(search.toLowerCase()));
       const matchFrom = !dateFrom || s.date >= dateFrom;
       const matchTo = !dateTo || s.date <= dateTo;
       return matchSearch && matchFrom && matchTo;
@@ -118,7 +122,7 @@ export default function SalesHistory() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b">
-                  {['Date', 'Type', 'Product', 'Buyer/Platform', 'Qty', 'Amount', 'Status'].map((h) => (
+                  {['Date', 'Type', 'Invoice/Order #', 'Product', 'Buyer/Platform', 'Qty', 'Amount', 'Status'].map((h) => (
                     <th key={h} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-3">{h}</th>
                   ))}
                 </tr>
@@ -131,6 +135,9 @@ export default function SalesHistory() {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.type === 'online' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
                         {s.type === 'online' ? 'Online' : 'Offline'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 font-mono font-bold text-xs text-slate-700 dark:text-slate-300">
+                      {s.type === 'online' ? (s.orderId || '—') : (s.invoiceNumber || '—')}
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-800">{s.productName}</td>
                     <td className="px-4 py-3">

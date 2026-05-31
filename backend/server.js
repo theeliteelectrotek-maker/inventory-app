@@ -134,6 +134,152 @@ async function runShopMigration() {
   }
 }
 
+function getFinancialYear(dateStr) {
+  let year = new Date().getFullYear();
+  let month = new Date().getMonth();
+  if (dateStr && typeof dateStr === 'string') {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1;
+    } else {
+      const parsedDate = new Date(dateStr);
+      if (!isNaN(parsedDate.getTime())) {
+        year = parsedDate.getFullYear();
+        month = parsedDate.getMonth();
+      }
+    }
+  } else if (dateStr instanceof Date) {
+    year = dateStr.getFullYear();
+    month = dateStr.getMonth();
+  }
+  if (month < 3) {
+    return year - 1;
+  }
+  return year;
+}
+
+function getNextSeq(sales, defaultStart) {
+  let maxSeq = 0;
+  for (const s of sales) {
+    if (s.invoiceNumber) {
+      const match = s.invoiceNumber.match(/-(\d+)$/);
+      if (match) {
+        const seqVal = parseInt(match[1], 10);
+        if (seqVal > maxSeq) {
+          maxSeq = seqVal;
+        }
+      }
+    }
+  }
+  const defaultStartNum = parseInt(defaultStart, 10) || 1;
+  return maxSeq >= defaultStartNum ? maxSeq + 1 : defaultStartNum;
+}
+
+async function getRequestUser(req) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const parts = token.split('_');
+      if (parts[0] === 'token' && parts[1]) {
+        const user = await User.findOne({ id: parts[1] });
+        if (user) {
+          return `${user.name} (@${user.username})`;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error getting request user:', err);
+  }
+  return 'System';
+}
+
+function calculateReceivedAmount(transactions) {
+  return (transactions || []).reduce((sum, t) => {
+    if (t.method === 'cash' || t.method === 'upi') {
+      return sum + (Number(t.amount) || 0);
+    }
+    if (t.method === 'cheque' && t.chequeStatus === 'cleared') {
+      return sum + (Number(t.amount) || 0);
+    }
+    return sum;
+  }, 0);
+}
+
+async function syncPDCCheques() {
+  try {
+    const today = normalizeToLocalYYYYMMDD(new Date());
+    const sales = await OfflineSale.find({ 
+      'transactions.method': 'cheque', 
+      'transactions.chequeStatus': 'pdc' 
+    });
+    let updatedCount = 0;
+    for (const sale of sales) {
+      let modified = false;
+      for (const t of sale.transactions) {
+        if (t.method === 'cheque' && t.chequeStatus === 'pdc' && t.chequeDate && t.chequeDate <= today) {
+          t.chequeStatus = 'pending';
+          modified = true;
+        }
+      }
+      if (modified) {
+        sale.amountReceived = calculateReceivedAmount(sale.transactions);
+        sale.amountLeft = sale.totalAmount - sale.amountReceived;
+        sale.markModified('transactions');
+        await sale.save();
+        updatedCount++;
+      }
+    }
+    if (updatedCount > 0) {
+      console.log(`[PDC AUTO-LOGIC] Auto-transitioned PDCs to Pending Clearance for ${updatedCount} sales.`);
+    }
+  } catch (err) {
+    console.error('Error during PDC sync:', err);
+  }
+}
+
+async function runOfflineSaleMigration() {
+  try {
+    await syncPDCCheques();
+    const undefinedGstSales = await OfflineSale.find({ isGSTInvoice: { $exists: false } });
+    if (undefinedGstSales.length > 0) {
+      console.log(`[MIGRATION] Found ${undefinedGstSales.length} offline sales without isGSTInvoice. Migrating...`);
+      for (const s of undefinedGstSales) {
+        s.isGSTInvoice = false;
+        await s.save();
+      }
+    }
+
+    const profile = await Setting.findOne({ key: 'company_profile' });
+    const invoicePrefix = (profile && profile.value && profile.value.invoicePrefix) || 'TEE';
+    const invoiceStartNumber = (profile && profile.value && profile.value.invoiceStartNumber) || '0001';
+
+    const allSales = await OfflineSale.find({}).sort({ date: 1, createdAt: 1 });
+    let migratedCount = 0;
+    
+    for (const sale of allSales) {
+      if (!sale.invoiceNumber) {
+        const fyYear = getFinancialYear(sale.date);
+        const nextSeq = getNextSeq(allSales, invoiceStartNumber);
+        const padLen = invoiceStartNumber.length || 4;
+        const seqStr = String(nextSeq).padStart(padLen, '0');
+        const invNum = `${invoicePrefix}-${fyYear}-${seqStr}`;
+        
+        sale.invoiceNumber = invNum;
+        await sale.save();
+        migratedCount++;
+      }
+    }
+    if (migratedCount > 0) {
+      console.log(`[MIGRATION] Generated invoice numbers for ${migratedCount} legacy offline sales.`);
+    }
+    console.log('✅ Offline sale migration completed successfully.');
+  } catch (err) {
+    console.error('❌ Error during offline sale migration:', err);
+  }
+}
+
 async function runUserMigration() {
   try {
     const fs = require('fs');
@@ -173,6 +319,7 @@ if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('<db_password>')) {
       console.log('✅ Connected to MongoDB Atlas');
       await runProductMigration();
       await runShopMigration();
+      await runOfflineSaleMigration();
       await runUserMigration();
     })
     .catch((err) => {
@@ -398,6 +545,7 @@ app.delete('/api/online-sales/:id', deleteOnlineSalesHandler);
 
 // OFFLINE SALES
 const getOfflineSalesHandler = catchAsync(async (_req, res) => {
+  await syncPDCCheques();
   const sales = await OfflineSale.find({}, '-_id -__v');
   res.json(sales);
 });
@@ -405,7 +553,7 @@ app.get('/api/sales/offline', getOfflineSalesHandler);
 app.get('/api/offline-sales', getOfflineSalesHandler);
 
 const postOfflineSalesHandler = catchAsync(async (req, res) => {
-  const { buyerName, items, totalAmount, transactions, date, notes, gst } = req.body;
+  const { buyerName, items, totalAmount, transactions, date, notes, gst, isGSTInvoice } = req.body;
   if (!buyerName || !items || !items.length)
     return res.status(400).json({ message: 'Buyer name and at least one product required' });
   
@@ -427,7 +575,51 @@ const postOfflineSalesHandler = catchAsync(async (req, res) => {
     await product.save();
   }
 
-  const calculatedReceived = (transactions || []).reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const profile = await Setting.findOne({ key: 'company_profile' });
+  const invoicePrefix = (profile && profile.value && profile.value.invoicePrefix) || 'TEE';
+  const invoiceStartNumber = (profile && profile.value && profile.value.invoiceStartNumber) || '0001';
+
+  const allSales = await OfflineSale.find({});
+  const resolvedDate = normalizeToLocalYYYYMMDD(date || new Date());
+  const fyYear = getFinancialYear(resolvedDate);
+  const nextSeq = getNextSeq(allSales, invoiceStartNumber);
+  const padLen = invoiceStartNumber.length || 4;
+  const seqStr = String(nextSeq).padStart(padLen, '0');
+  const generatedInvoiceNumber = `${invoicePrefix}-${fyYear}-${seqStr}`;
+
+  const requestUser = await getRequestUser(req);
+  const nowStr = new Date().toISOString();
+
+  const mappedTransactions = (transactions || []).map(t => {
+    const isPdcVal = t.isPDC || false;
+    let statusVal = t.chequeStatus || '';
+    if (t.method === 'cheque') {
+      if (!statusVal) {
+        statusVal = isPdcVal ? 'pdc' : 'pending';
+      }
+    }
+    return {
+      id: t.id || uuidv4(),
+      amount: Number(t.amount) || 0,
+      date: normalizeToLocalYYYYMMDD(t.date || date || new Date()),
+      method: t.method || 'cash',
+      referenceNumber: t.referenceNumber || '',
+      notes: t.notes || '',
+      chequeNumber: t.chequeNumber || '',
+      bankName: t.bankName || '',
+      chequeDate: t.chequeDate ? normalizeToLocalYYYYMMDD(t.chequeDate) : '',
+      expectedClearingDate: t.expectedClearingDate ? normalizeToLocalYYYYMMDD(t.expectedClearingDate) : '',
+      isPDC: isPdcVal,
+      chequeStatus: statusVal,
+      createdBy: requestUser,
+      createdDateTime: nowStr,
+      lastUpdatedBy: requestUser,
+      updatedDateTime: nowStr,
+      statusChangedBy: requestUser
+    };
+  });
+
+  const calculatedReceived = calculateReceivedAmount(mappedTransactions);
   const calculatedLeft = totalAmount - calculatedReceived;
 
   const sale = new OfflineSale({
@@ -438,17 +630,14 @@ const postOfflineSalesHandler = catchAsync(async (req, res) => {
       date: normalizeToLocalYYYYMMDD(item.date || date || new Date())
     })),
     totalAmount,
-    transactions: (transactions || []).map(t => ({
-      id: t.id || uuidv4(),
-      ...t,
-      amount: Number(t.amount) || 0,
-      date: normalizeToLocalYYYYMMDD(t.date || date || new Date())
-    })),
+    invoiceNumber: req.body.invoiceNumber || generatedInvoiceNumber,
+    transactions: mappedTransactions,
     amountReceived: calculatedReceived,
     amountLeft: calculatedLeft,
-    date: normalizeToLocalYYYYMMDD(date || new Date()),
+    date: resolvedDate,
     notes,
-    gst: gst || false
+    gst: gst || false,
+    isGSTInvoice: isGSTInvoice !== undefined ? isGSTInvoice : (gst || false)
   });
   await sale.save();
   
@@ -479,7 +668,7 @@ app.delete('/api/sales/offline/:id', deleteOfflineSalesHandler);
 app.delete('/api/offline-sales/:id', deleteOfflineSalesHandler);
 
 const putOfflineSalesHandler = catchAsync(async (req, res) => {
-  const { newTransactions, newItems, newItemsDate, items, totalAmount, gst, transactions, corrections } = req.body;
+  const { newTransactions, newItems, newItemsDate, items, totalAmount, gst, isGSTInvoice, transactions, corrections } = req.body;
   const sale = await OfflineSale.findOne({ id: req.params.id });
   if (!sale) return res.status(404).json({ message: 'Sale not found' });
 
@@ -496,6 +685,14 @@ const putOfflineSalesHandler = catchAsync(async (req, res) => {
   }
   if (gst !== undefined) {
     sale.gst = gst;
+  }
+  if (isGSTInvoice !== undefined) {
+    sale.isGSTInvoice = isGSTInvoice;
+  } else if (gst !== undefined) {
+    sale.isGSTInvoice = gst;
+  }
+  if (req.body.invoiceNumber !== undefined) {
+    sale.invoiceNumber = req.body.invoiceNumber;
   }
 
   if (newItems && newItems.length > 0) {
@@ -520,26 +717,65 @@ const putOfflineSalesHandler = catchAsync(async (req, res) => {
   }
 
   if (transactions) {
-    sale.transactions = transactions.map(t => ({
-      id: t.id || uuidv4(),
-      amount: Number(t.amount) || 0,
-      date: normalizeToLocalYYYYMMDD(t.date || new Date()),
-      method: t.method || 'cash',
-      referenceNumber: t.referenceNumber || '',
-      notes: t.notes || ''
-    }));
-    sale.amountReceived = sale.transactions.reduce((sum, t) => sum + t.amount, 0);
+    const requestUser = await getRequestUser(req);
+    const nowStr = new Date().toISOString();
+
+    sale.transactions = transactions.map(t => {
+      const oldTxn = sale.transactions.find(ot => ot.id === t.id);
+      const oldStatus = oldTxn ? oldTxn.chequeStatus : '';
+      const statusChanged = oldStatus !== t.chequeStatus;
+      
+      const createdBy = oldTxn?.createdBy || requestUser;
+      const createdDateTime = oldTxn?.createdDateTime || nowStr;
+
+      return {
+        id: t.id || uuidv4(),
+        amount: Number(t.amount) || 0,
+        date: normalizeToLocalYYYYMMDD(t.date || new Date()),
+        method: t.method || 'cash',
+        referenceNumber: t.referenceNumber || '',
+        notes: t.notes || '',
+        chequeNumber: t.chequeNumber || '',
+        bankName: t.bankName || '',
+        chequeDate: t.chequeDate ? normalizeToLocalYYYYMMDD(t.chequeDate) : '',
+        expectedClearingDate: t.expectedClearingDate ? normalizeToLocalYYYYMMDD(t.expectedClearingDate) : '',
+        isPDC: t.isPDC || false,
+        chequeStatus: t.chequeStatus || '',
+        createdBy: createdBy,
+        createdDateTime: createdDateTime,
+        lastUpdatedBy: requestUser,
+        updatedDateTime: nowStr,
+        statusChangedBy: statusChanged ? requestUser : (oldTxn?.statusChangedBy || requestUser)
+      };
+    });
+    sale.amountReceived = calculateReceivedAmount(sale.transactions);
     sale.markModified('transactions');
   } else if (newTransactions && newTransactions.length > 0) {
+    const requestUser = await getRequestUser(req);
+    const nowStr = new Date().toISOString();
+
     for (const txn of newTransactions) {
       sale.transactions.push({
         id: txn.id || uuidv4(),
-        ...txn,
         amount: Number(txn.amount) || 0,
-        date: normalizeToLocalYYYYMMDD(txn.date || new Date())
+        date: normalizeToLocalYYYYMMDD(txn.date || new Date()),
+        method: txn.method || 'cash',
+        referenceNumber: txn.referenceNumber || '',
+        notes: txn.notes || '',
+        chequeNumber: txn.chequeNumber || '',
+        bankName: txn.bankName || '',
+        chequeDate: txn.chequeDate ? normalizeToLocalYYYYMMDD(txn.chequeDate) : '',
+        expectedClearingDate: txn.expectedClearingDate ? normalizeToLocalYYYYMMDD(txn.expectedClearingDate) : '',
+        isPDC: txn.isPDC || false,
+        chequeStatus: txn.chequeStatus || '',
+        createdBy: requestUser,
+        createdDateTime: nowStr,
+        lastUpdatedBy: requestUser,
+        updatedDateTime: nowStr,
+        statusChangedBy: requestUser
       });
-      sale.amountReceived += (Number(txn.amount) || 0);
     }
+    sale.amountReceived = calculateReceivedAmount(sale.transactions);
     sale.markModified('transactions');
   }
 
@@ -2117,19 +2353,22 @@ app.post('/api/backup/restore', requireAdmin, catchAsync(async (req, res) => {
 // --- ADMIN SETTINGS & COMPANY PROFILE ---
 app.get('/api/settings/company', catchAsync(async (req, res) => {
   const profile = await Setting.findOne({ key: 'company_profile' });
+  const defaultProfile = {
+    companyName: 'The Elite Electrotek',
+    logo: '',
+    gstNumber: '',
+    address: '',
+    mobile: '',
+    email: '',
+    upiId: '',
+    upiQr: '',
+    invoicePrefix: 'TEE',
+    invoiceStartNumber: '0001'
+  };
   if (profile) {
-    res.json(profile.value);
+    res.json({ ...defaultProfile, ...profile.value });
   } else {
-    res.json({
-      companyName: 'The Elite Electrotek',
-      logo: '',
-      gstNumber: '',
-      address: '',
-      mobile: '',
-      email: '',
-      upiId: '',
-      upiQr: ''
-    });
+    res.json(defaultProfile);
   }
 }));
 

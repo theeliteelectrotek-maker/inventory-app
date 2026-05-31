@@ -61,7 +61,22 @@ const transactionSchema = new mongoose.Schema({
   date: { type: String, default: () => getSystemLocalDate() },
   method: { type: String, default: 'cash' },
   referenceNumber: { type: String, default: '' },
-  notes: { type: String, default: '' }
+  notes: { type: String, default: '' },
+  
+  // Cheque details
+  chequeNumber: { type: String, default: '' },
+  bankName: { type: String, default: '' },
+  chequeDate: { type: String, default: '' },
+  expectedClearingDate: { type: String, default: '' },
+  isPDC: { type: Boolean, default: false },
+  chequeStatus: { type: String, default: '' },
+  
+  // Audit log for cheque/payment
+  createdBy: { type: String, default: '' },
+  lastUpdatedBy: { type: String, default: '' },
+  statusChangedBy: { type: String, default: '' },
+  createdDateTime: { type: String, default: '' },
+  updatedDateTime: { type: String, default: '' }
 }, { _id: false });
 
 const offlineItemSchema = new mongoose.Schema({
@@ -78,6 +93,8 @@ const offlineSaleSchema = new mongoose.Schema({
   items: { type: [offlineItemSchema], default: [] },
   totalAmount: { type: Number, default: 0 },
   gst: { type: Boolean, default: false },
+  isGSTInvoice: { type: Boolean, default: false },
+  invoiceNumber: { type: String, default: '' },
   transactions: { type: [transactionSchema], default: [] },
   corrections: { type: [mongoose.Schema.Types.Mixed], default: [] },
   amountReceived: { type: Number, default: 0 },

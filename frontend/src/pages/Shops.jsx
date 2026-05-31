@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from 'react-router-dom';
+import KPICardValue from '../components/KPICardValue';
 
 const empty = { name: '', type: 'shop', ownerName: '', mobile: '', address: '', gstNumber: '', notes: '' };
 
@@ -407,16 +408,14 @@ export default function Shops() {
               <CheckCircle2 size={16} />
             </div>
           </div>
-        </div>
-
-        {/* Total Sales */}
+        </div>        {/* Total Sales */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-indigo-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Lifetime Sales</span>
-            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 truncate" title={fmt(totalSalesVal)}>{fmt(totalSalesVal)}</p>
+            <KPICardValue value={totalSalesVal} className="text-slate-900" />
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg inline-block">
+            <span className="text-[11px] font-semibold text-indigo-650 bg-indigo-50 px-2 py-0.5 rounded-lg inline-block">
               Gross billed amount
             </span>
             <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
@@ -429,7 +428,7 @@ export default function Shops() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-teal-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Collected</span>
-            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 truncate" title={fmt(totalCollectedVal)}>{fmt(totalCollectedVal)}</p>
+            <KPICardValue value={totalCollectedVal} className="text-slate-900" />
           </div>
           <div className="flex items-center justify-between mt-4">
             <span className="text-[11px] font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-lg inline-block">
@@ -445,7 +444,7 @@ export default function Shops() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-red-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Pending</span>
-            <p className="text-3xl font-extrabold text-red-600 tracking-tight mt-1 truncate" title={fmt(totalOutstandingVal)}>{fmt(totalOutstandingVal)}</p>
+            <KPICardValue value={totalOutstandingVal} className="text-red-650" />
           </div>
           <div className="flex items-center justify-between mt-4">
             <span className="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg inline-block">
@@ -461,7 +460,7 @@ export default function Shops() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-blue-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
           <div className="space-y-1">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Average Shop LTV</span>
-            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 truncate" title={fmt(avgCustomerLtv)}>{fmt(avgCustomerLtv)}</p>
+            <KPICardValue value={avgCustomerLtv} className="text-slate-900" />
           </div>
           <div className="flex items-center justify-between mt-4">
             <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg inline-block">
@@ -899,6 +898,7 @@ export default function Shops() {
                         <thead className="bg-slate-50 text-slate-500 font-extrabold uppercase">
                           <tr>
                             <th className="px-4 py-2.5">Date</th>
+                            <th className="px-4 py-2.5">Invoice No.</th>
                             <th className="px-4 py-2.5 text-right">Billed</th>
                             <th className="px-4 py-2.5 text-right">Settled</th>
                             <th className="px-4 py-2.5 text-right">Outstanding</th>
@@ -909,6 +909,9 @@ export default function Shops() {
                             <tr key={idx} className="hover:bg-slate-50/50">
                               <td className="px-4 py-3 whitespace-nowrap">
                                 {new Date(s.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </td>
+                              <td className="px-4 py-3 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                {s.invoiceNumber || '—'}
                               </td>
                               <td className="px-4 py-3 text-right font-bold text-slate-700">{fmt(s.totalAmount)}</td>
                               <td className="px-4 py-3 text-right text-green-600 font-bold">{fmt(s.amountReceived)}</td>
