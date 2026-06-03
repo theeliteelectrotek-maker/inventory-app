@@ -10,9 +10,11 @@ import OnlineSales from './pages/OnlineSales';
 import OfflineSales from './pages/OfflineSales';
 import Shops from './pages/Shops';
 import Returns from './pages/Returns';
+import Replacements from './pages/Replacements';
 import Analytics from './pages/Analytics';
 import AdminPanel from './pages/AdminPanel';
 import Settings from './pages/Settings';
+import CommunicationHub from './pages/CommunicationHub';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -92,8 +94,10 @@ export default function App() {
               <Route path="offline-sales" element={<OfflineSales />} />
               <Route path="shops" element={<Shops />} />
               <Route path="returns" element={<Returns />} />
+              <Route path="replacements" element={<Replacements />} />
+              <Route path="communication" element={<CommunicationHub />} />
               <Route path="admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-              <Route path="settings" element={<AdminRoute><Settings /></AdminRoute>} />
+              <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -15,9 +15,36 @@ async function request(method, url, body) {
     },
   };
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(BASE + url, opts);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Request failed');
+
+  let res;
+  try {
+    res = await fetch(BASE + url, opts);
+  } catch (err) {
+    throw new Error('Network error. Please check if the server is running.');
+  }
+
+  let data = null;
+  const contentType = res.headers.get('Content-Type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      data = await res.json();
+    } catch (err) {
+      // Body might be empty or invalid JSON
+      data = null;
+    }
+  } else {
+    try {
+      const text = await res.text();
+      data = { message: text };
+    } catch (err) {
+      data = null;
+    }
+  }
+
+  if (!res.ok) {
+    throw new Error((data && data.message) || `Request failed with status ${res.status}`);
+  }
+
   return data;
 }
 
@@ -54,6 +81,12 @@ export const api = {
   addReturn: (r) => request('POST', '/returns', r),
   deleteReturn: (id) => request('DELETE', `/returns/${id}`),
 
+  // Replacements
+  getReplacements: () => request('GET', '/replacements'),
+  addReplacement: (r) => request('POST', '/replacements', r),
+  updateReplacement: (id, r) => request('PUT', `/replacements/${id}`, r),
+  deleteReplacement: (id) => request('DELETE', `/replacements/${id}`),
+
   // Stats
   getStats: () => request('GET', '/stats'),
 
@@ -80,5 +113,32 @@ export const api = {
   addEmployee: (emp) => request('POST', '/admin/employees', emp),
   updateEmployee: (id, emp) => request('PUT', `/admin/employees/${id}`, emp),
   getAuditLogs: () => request('GET', '/admin/audit-logs'),
+
+  // Team Communication Hub
+  getChannels: () => request('GET', '/communication/channels'),
+  createChannel: (c) => request('POST', '/communication/channels', c),
+  getMessages: (channelId) => request('GET', `/communication/messages/${channelId}`),
+  sendMessage: (msg) => request('POST', '/communication/messages', msg),
+  editMessage: (id, content) => request('PUT', `/communication/messages/${id}`, { content }),
+  deleteMessage: (id) => request('DELETE', `/communication/messages/${id}`),
+  updateTaskStatus: (id, status) => request('PUT', `/communication/tasks/${id}`, { status }),
+  getChatUsers: () => request('GET', '/communication/users'),
+  getChatFiles: () => request('GET', '/communication/files'),
+  getChatStats: () => request('GET', '/communication/stats'),
+  getUnreadCount: () => request('GET', '/communication/unread-count'),
+  markAsRead: (channelId) => request('POST', '/communication/read', { channelId }),
+
+  // My Profile & Appearance Settings
+  getProfile: () => request('GET', '/profile'),
+  updateProfile: (data) => request('PUT', '/profile', data),
+  updateAvatar: (avatar) => request('PUT', '/profile/avatar', { avatar }),
+  changeMyPassword: (currentPassword, newPassword) => request('PUT', '/profile/password', { currentPassword, newPassword }),
+  updateSecurityQuestions: (securityQuestions) => request('PUT', '/profile/security-questions', { securityQuestions }),
+  getActiveSessions: () => request('GET', '/profile/sessions'),
+  logoutAllSessions: () => request('POST', '/profile/logout-all'),
+  updateAppearance: (appearance) => request('PUT', '/profile/appearance', appearance),
+  getEmployeeProfile: (id) => request('GET', `/admin/employees/${id}/profile`),
+  updateEmployeeProfile: (id, data) => request('PUT', `/admin/employees/${id}/profile`, data),
+  updateEmployeeAvatar: (id, avatar) => request('PUT', `/admin/employees/${id}/avatar`, { avatar }),
 };
 

@@ -33,3 +33,61 @@ html.dark body {
   border-radius: 2px;
 }
 
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(220, 38, 38, 0.15);
+    border-color: rgba(220, 38, 38, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(220, 38, 38, 0.45);
+    border-color: rgba(220, 38, 38, 0.5);
+  }
+}
+
+@keyframes mention-pulse {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(245, 158, 11, 0.2);
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.65);
+    border-color: rgba(245, 158, 11, 0.75);
+  }
+}
+
+@keyframes announce-pulse {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.6);
+    border-color: rgba(239, 68, 68, 0.6);
+    transform: scale(1.025);
+  }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 3s infinite ease-in-out;
+}
+
+.animate-mention-pulse {
+  animation: mention-pulse 2s infinite ease-in-out;
+}
+
+.animate-announce-pulse {
+  animation: announce-pulse 2s infinite ease-in-out;
+}
+
+@keyframes energy-flow {
+  to {
+    stroke-dashoffset: -80;
+  }
+}
+
+.animate-energy-flow {
+  stroke-dasharray: 20, 60;
+  animation: energy-flow 3s linear infinite;
+}
+

@@ -4,7 +4,7 @@ import { api } from '../api';
 import {
   Package, ShoppingCart, Store, Clock, IndianRupee, Loader2, Building2,
   AlertTriangle, CheckCircle2, Activity, TrendingUp, Plus, ShieldAlert,
-  ArrowUpRight, RotateCcw, AlertCircle, User
+  ArrowUpRight, RotateCcw, AlertCircle, User, Users
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import KPICardValue from '../components/KPICardValue';
@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [offlineSales, setOfflineSales] = useState([]);
   const [shops, setShops] = useState([]);
   const [returns, setReturns] = useState([]);
+  const [chatStats, setChatStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -45,15 +46,17 @@ export default function Dashboard() {
       api.getOnlineSales(),
       api.getOfflineSales(),
       api.getShops(),
-      api.getReturns()
+      api.getReturns(),
+      api.getChatStats()
     ])
-      .then(([apiStats, p, online, offline, sh, rets]) => {
+      .then(([apiStats, p, online, offline, sh, rets, chatSt]) => {
         setStats(apiStats);
         setProducts(p);
         setOnlineSales(online || []);
         setOfflineSales(offline || []);
         setShops(sh || []);
         setReturns(rets || []);
+        setChatStats(chatSt || null);
         setError(null);
       })
       .catch((err) => {
@@ -536,6 +539,95 @@ export default function Dashboard() {
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${pendingReturnsCount > 0 ? 'bg-violet-100/80 text-violet-650 dark:bg-violet-950/50 dark:text-violet-400' : 'bg-slate-50 dark:bg-[#1E293B] text-slate-400 dark:text-[#CBD5E1]'}`}>
               <RotateCcw size={18} />
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* TEAM COLLABORATION HUB SECTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Announcements */}
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl shadow-md overflow-hidden flex flex-col hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-[#1E293B] bg-slate-50/50 dark:bg-slate-900/50">
+            <span className="text-sm font-extrabold text-slate-850 dark:text-[#F8FAFC] uppercase tracking-wider flex items-center gap-1.5">
+              <ShieldAlert size={16} className="text-red-500" /> Recent Announcements
+            </span>
+            <button onClick={() => navigate('/communication')} className="text-[10px] font-bold text-red-650 dark:text-red-400 hover:underline">View Chat</button>
+          </div>
+          <div className="p-5 flex-1 space-y-3.5 overflow-y-auto max-h-[240px] scrollbar-thin">
+            {!chatStats?.announcements || chatStats.announcements.length === 0 ? (
+              <p className="text-center text-slate-400 dark:text-[#94A3B8] text-xs py-8">No official announcements posted.</p>
+            ) : (
+              chatStats.announcements.slice(0, 3).map((ann) => (
+                <div key={ann.id} className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/40 rounded-xl text-xs flex gap-2">
+                  <AlertCircle size={15} className="text-red-550 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-extrabold text-slate-800 dark:text-slate-200">{ann.senderName}:</span>
+                    <p className="text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{ann.content}</p>
+                    <span className="text-[8px] text-slate-400 dark:text-slate-550 block mt-1.5">{new Date(ann.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Pending Tasks */}
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl shadow-md overflow-hidden flex flex-col hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-[#1E293B] bg-slate-50/50 dark:bg-slate-900/50">
+            <span className="text-sm font-extrabold text-slate-850 dark:text-[#F8FAFC] uppercase tracking-wider flex items-center gap-1.5">
+              <CheckCircle2 size={16} className="text-emerald-500" /> Pending Tasks
+            </span>
+            <span className="text-[9px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+              {chatStats?.pendingTasks?.length || 0} Pending
+            </span>
+          </div>
+          <div className="p-5 flex-1 space-y-3.5 overflow-y-auto max-h-[240px] scrollbar-thin">
+            {!chatStats?.pendingTasks || chatStats.pendingTasks.length === 0 ? (
+              <p className="text-center text-slate-400 dark:text-[#94A3B8] text-xs py-8">🎉 No pending tasks assigned to you!</p>
+            ) : (
+              chatStats.pendingTasks.map((tMsg) => (
+                <div key={tMsg.id} className="p-3 bg-slate-50 dark:bg-[#1E293B]/40 border border-slate-150 dark:border-slate-800 rounded-xl flex items-center justify-between gap-3 text-xs">
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-slate-800 dark:text-[#F8FAFC] truncate">{tMsg.task.title}</h4>
+                    <p className="text-[9px] text-slate-400 mt-0.5">Assigned by {tMsg.senderName}</p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/communication')}
+                    className="px-2.5 py-1 bg-red-600 hover:bg-red-750 text-white font-bold text-[9px] rounded-lg shadow-sm shrink-0"
+                  >
+                    Open
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Online Employees & Chat Activity Feed */}
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] rounded-3xl shadow-md overflow-hidden flex flex-col hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-[#1E293B] bg-slate-50/50 dark:bg-slate-900/50">
+            <span className="text-sm font-extrabold text-slate-850 dark:text-[#F8FAFC] uppercase tracking-wider flex items-center gap-1.5">
+              <Users size={16} className="text-indigo-500" /> Team Telemetry
+            </span>
+            <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 px-2 py-0.5 rounded-full">
+              {chatStats?.onlineCount || 0} Online
+            </span>
+          </div>
+          <div className="p-4 flex-1 space-y-2.5 overflow-y-auto max-h-[240px] scrollbar-thin">
+            <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-widest block border-b border-slate-100 dark:border-[#1E293B] pb-1">Activity Feed</span>
+            {!chatStats?.activityFeed || chatStats.activityFeed.length === 0 ? (
+              <p className="text-center text-slate-400 dark:text-[#94A3B8] text-xs py-8">No recent chat activity.</p>
+            ) : (
+              chatStats.activityFeed.slice(0, 4).map((act) => (
+                <div key={act.id} className="text-[11px] leading-relaxed flex gap-2 text-slate-600 dark:text-[#CBD5E1] font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <span className="font-bold text-slate-800 dark:text-[#F8FAFC]">{act.userName}</span> {act.content}
+                    <span className="text-[8px] text-slate-400 dark:text-slate-500 block mt-0.5">{new Date(act.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

@@ -14,13 +14,18 @@ const empty = { name: '', type: 'shop', ownerName: '', mobile: '', address: '', 
 
 function Modal({ title, onClose, children }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 !m-0">
-      <div className="bg-white rounded-2xl shadow-2xl w-[95%] sm:w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h3 className="font-semibold text-slate-800">{title}</h3>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"><X size={18} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm !m-0 animate-fadeIn">
+      <div className="bg-white dark:bg-[#1E293B] rounded-2xl shadow-2xl w-[95%] sm:w-full max-w-md border border-slate-100 dark:border-[#334155] overflow-hidden transform transition-all scale-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-[#334155] bg-slate-50/50 dark:bg-slate-900/50">
+          <h3 className="font-bold text-slate-850 dark:text-[#F8FAFC] text-base flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-650"></span>
+            {title}
+          </h3>
+          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 dark:text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-[#F8FAFC] transition-colors">
+            <X size={18} />
+          </button>
         </div>
-        <div className="px-6 py-5 overflow-auto max-h-[85vh]">{children}</div>
+        <div className="px-6 py-5 overflow-auto max-h-[80vh] scrollbar-thin">{children}</div>
       </div>
     </div>
   );
@@ -272,9 +277,9 @@ export default function Shops() {
     .sort((a, b) => b.stats.amountPending - a.stats.amountPending);
 
   const getPriorityLevel = (pendingAmt) => {
-    if (pendingAmt >= 5000) return { label: 'High Priority', color: 'bg-red-50 border-red-200 text-red-700' };
-    if (pendingAmt >= 1000) return { label: 'Medium Priority', color: 'bg-amber-50 border-amber-200 text-amber-700' };
-    return { label: 'Low Priority', color: 'bg-blue-50 border-blue-200 text-blue-700' };
+    if (pendingAmt >= 5000) return { label: 'High Priority', color: 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-405' };
+    if (pendingAmt >= 1000) return { label: 'Medium Priority', color: 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-405' };
+    return { label: 'Low Priority', color: 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 text-blue-700 dark:text-blue-405' };
   };
 
   // Filtering shops for display
@@ -307,9 +312,9 @@ export default function Shops() {
   const fmt = (val) => `₹${Math.round(val || 0).toLocaleString('en-IN')}`;
 
   function healthBadge(health) {
-    if (health === 'Recovery Required') return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-red-50 text-red-600 border border-red-100">Recovery Required</span>;
-    if (health === 'Watch') return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100">Watch</span>;
-    return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Safe</span>;
+    if (health === 'Recovery Required') return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50">Recovery Required</span>;
+    if (health === 'Watch') return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/50">Watch</span>;
+    return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 border border-emerald-100 dark:border-emerald-900/50">Safe</span>;
   }
 
   // Format mobile numbers for Call/WhatsApp
@@ -361,112 +366,118 @@ export default function Shops() {
     return list.map(item => ({ ...item, pct: (item.amount / maxAmount) * 100 }));
   };
 
-  const monthlyTrendList = getDrawerMonthlyTrend();
-
-  return (
-    <div className="space-y-6 relative min-h-screen pb-10 bg-[#F8FAFC]">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Customer Management</h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium">Audit customer accounts, lifetime revenues, invoice recoveries, and customer health status</p>
+  const monthlyTrendList = getDrawerMonthlyTrend();  return (
+    <div className="space-y-6 pb-12 relative text-slate-800 dark:text-[#CBD5E1]">
+      {/* Header Panel */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 bg-white dark:bg-[#1E293B] p-6 rounded-2xl border border-slate-200 dark:border-[#334155] shadow-sm">
+        <div className="flex items-center gap-3">
+          <span className="w-2.5 h-10 bg-red-650 dark:bg-[#EF4444] rounded-full shrink-0"></span>
+          <div>
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight">
+              Customer Management
+            </h1>
+            <p className="text-slate-500 dark:text-[#94A3B8] text-sm mt-1 font-medium">Audit customer accounts, lifetime revenues, invoice recoveries, and customer health status</p>
+          </div>
         </div>
-        <button onClick={openAdd} className="flex items-center justify-center gap-2 bg-[#EF4444] hover:bg-red-600 text-white text-sm font-bold px-5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg hover:shadow-red-500/10 self-start">
+
+        <button onClick={openAdd} className="flex items-center justify-center gap-2 bg-[#EF4444] hover:bg-red-600 text-white text-sm font-bold px-5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg hover:shadow-red-500/10 whitespace-nowrap self-start">
           <Plus size={16} /> Add New Customer
         </button>
       </div>
 
       {/* Top CRM KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
         {/* Total Shops */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-slate-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
+        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-slate-500 dark:border-t-slate-400 hover:shadow-md transition-all flex flex-col justify-between h-32">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Customers</span>
-            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">{totalShops}</p>
+            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Customers</span>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight mt-1">{totalShops}</p>
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg inline-block">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-[#CBD5E1] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg inline-block">
               Accounts Registered
             </span>
-            <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-[#334155] text-slate-500 dark:text-slate-400 flex items-center justify-center flex-shrink-0">
               <Building2 size={16} />
             </div>
           </div>
         </div>
 
         {/* Active Shops */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-emerald-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
+        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-emerald-500 dark:border-t-emerald-500 hover:shadow-md transition-all flex flex-col justify-between h-32">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Active Customers</span>
-            <p className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">{activeShops}</p>
+            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Active Customers</span>
+            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight mt-1">{activeShops}</p>
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg inline-block">
+            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-lg inline-block">
               With billing logs
             </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-[#334155] text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
               <CheckCircle2 size={16} />
             </div>
           </div>
-        </div>        {/* Total Sales */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-indigo-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
+        </div>
+
+        {/* Total Sales */}
+        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-indigo-500 dark:border-t-indigo-550 hover:shadow-md transition-all flex flex-col justify-between h-32">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Lifetime Sales</span>
-            <KPICardValue value={totalSalesVal} className="text-slate-900" />
+            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Lifetime Sales</span>
+            <KPICardValue value={totalSalesVal} className="text-slate-900 dark:text-[#F8FAFC]" />
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-indigo-650 bg-indigo-50 px-2 py-0.5 rounded-lg inline-block">
+            <span className="text-[11px] font-semibold text-indigo-650 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20 px-2 py-0.5 rounded-lg inline-block">
               Gross billed amount
             </span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-[#334155] text-indigo-600 dark:text-indigo-450 flex items-center justify-center flex-shrink-0">
               <TrendingUp size={16} />
             </div>
           </div>
         </div>
 
         {/* Amount Collected */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-teal-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
+        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-teal-500 dark:border-t-teal-500 hover:shadow-md transition-all flex flex-col justify-between h-32">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Collected</span>
-            <KPICardValue value={totalCollectedVal} className="text-slate-900" />
+            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Collected</span>
+            <KPICardValue value={totalCollectedVal} className="text-slate-900 dark:text-[#F8FAFC]" />
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-lg inline-block">
+            <span className="text-[11px] font-semibold text-teal-650 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/20 px-2 py-0.5 rounded-lg inline-block">
               Payments settled
             </span>
-            <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-100 text-teal-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-[#334155] text-teal-650 dark:text-teal-450 flex items-center justify-center flex-shrink-0">
               <Landmark size={16} />
             </div>
           </div>
         </div>
 
         {/* Outstanding Dues */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-red-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
+        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-red-500 dark:border-t-red-550 hover:shadow-md transition-all flex flex-col justify-between h-32">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Pending</span>
-            <KPICardValue value={totalOutstandingVal} className="text-red-650" />
+            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Outstanding</span>
+            <KPICardValue value={totalOutstandingVal} className="text-red-650 dark:text-red-405" />
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg inline-block">
+            <span className="text-[11px] font-semibold text-red-650 dark:text-red-400 bg-red-50 dark:bg-red-950/20 px-2 py-0.5 rounded-lg inline-block">
               Outstanding dues
             </span>
-            <div className="w-8 h-8 rounded-lg bg-red-50 border border-red-100 text-red-500 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-[#334155] text-red-500 dark:text-red-405 flex items-center justify-center flex-shrink-0">
               <AlertTriangle size={16} />
             </div>
           </div>
         </div>
 
         {/* Avg customer value */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 border-t-4 border-t-blue-500 hover:shadow-md transition-all flex flex-col justify-between h-36">
+        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-blue-500 dark:border-t-blue-500 hover:shadow-md transition-all flex flex-col justify-between h-32">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Average Shop LTV</span>
-            <KPICardValue value={avgCustomerLtv} className="text-slate-900" />
+            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Average Shop LTV</span>
+            <KPICardValue value={avgCustomerLtv} className="text-slate-900 dark:text-[#F8FAFC]" />
           </div>
           <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg inline-block">
+            <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 px-2 py-0.5 rounded-lg inline-block">
               Sales per customer
             </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-[#334155] text-blue-650 dark:text-blue-450 flex items-center justify-center flex-shrink-0">
               <IndianRupee size={16} />
             </div>
           </div>
@@ -476,16 +487,16 @@ export default function Shops() {
       {/* CRM Insight Leaderboards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Customer Leaderboard */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#334155]">
           <div>
-            <h3 className="font-bold text-slate-800 text-xl flex items-center gap-2">
+            <h3 className="font-bold text-slate-800 dark:text-[#F8FAFC] text-xl flex items-center gap-2">
               <Award className="text-amber-500" size={20} /> Customer Leaderboard
             </h3>
-            <p className="text-slate-400 text-xs mt-1 font-medium">Top performing shops based on lifetime sales volume</p>
+            <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-1 font-medium">Top performing shops based on lifetime sales volume</p>
           </div>
-          <div className="space-y-3.5 mt-5 max-h-[360px] overflow-y-auto pr-1">
+          <div className="space-y-3.5 mt-5 max-h-[360px] overflow-y-auto pr-1 scrollbar-thin">
             {leaderboardList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+              <div className="flex flex-col items-center justify-center py-12 text-slate-400 dark:text-[#94A3B8]">
                 <Building2 className="opacity-30 mb-2" size={32} />
                 <span className="text-xs font-semibold">No shop records with billing found</span>
               </div>
@@ -493,20 +504,20 @@ export default function Shops() {
               leaderboardList.map((s, idx) => {
                 const maxSales = leaderboardList[0]?.stats.totalAmount || 1;
                 return (
-                  <div key={s.id} onClick={() => setSelectedShop(s)} className="group flex items-center gap-3 cursor-pointer p-1.5 hover:bg-slate-50 rounded-2xl transition-all">
-                    <div className="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 text-xs font-black flex items-center justify-center group-hover:bg-amber-100 group-hover:text-amber-700 transition-colors">
+                  <div key={s.id} onClick={() => setSelectedShop(s)} className="group flex items-center gap-3 cursor-pointer p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-2xl transition-all">
+                    <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-[#CBD5E1] text-xs font-black flex items-center justify-center group-hover:bg-amber-100 dark:group-hover:bg-amber-950/40 group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
                       {idx + 1}
                     </div>
                     <div className="flex-1 min-w-0 space-y-1.5">
                       <div className="flex justify-between items-center text-xs gap-3">
-                        <span className="font-bold text-slate-700 truncate">{s.name}</span>
-                        <span className="font-black text-slate-800 whitespace-nowrap">{fmt(s.stats.totalAmount)}</span>
+                        <span className="font-bold text-slate-700 dark:text-[#CBD5E1] truncate">{s.name}</span>
+                        <span className="font-black text-slate-800 dark:text-[#F8FAFC] whitespace-nowrap">{fmt(s.stats.totalAmount)}</span>
                       </div>
-                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                      <div className="w-full bg-slate-100 dark:bg-slate-900 h-1.5 rounded-full overflow-hidden">
                         <div style={{ width: `${(s.stats.totalAmount / maxSales) * 100}%` }} className="h-full bg-indigo-600 rounded-full" />
                       </div>
                     </div>
-                    <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-600 transition-colors" />
+                    <ChevronRight size={14} className="text-slate-300 dark:text-slate-650 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
                   </div>
                 );
               })
@@ -515,16 +526,16 @@ export default function Shops() {
         </div>
 
         {/* Outstanding Recovery Dashboard */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#334155]">
           <div>
-            <h3 className="font-bold text-slate-800 text-xl flex items-center gap-2">
+            <h3 className="font-bold text-slate-800 dark:text-[#F8FAFC] text-xl flex items-center gap-2">
               <Landmark className="text-red-500" size={20} /> Outstanding Recovery Dashboard
             </h3>
-            <p className="text-slate-400 text-xs mt-1 font-medium">Outstanding payments from shops</p>
+            <p className="text-slate-400 dark:text-[#94A3B8] text-xs mt-1 font-medium">Outstanding payments from shops</p>
           </div>
-          <div className="space-y-3.5 mt-5 max-h-[360px] overflow-y-auto pr-1">
+          <div className="space-y-3.5 mt-5 max-h-[360px] overflow-y-auto pr-1 scrollbar-thin">
             {outstandingList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+              <div className="flex flex-col items-center justify-center py-12 text-slate-400 dark:text-[#94A3B8]">
                 <CheckCircle2 className="text-emerald-500 mb-2 opacity-60" size={32} />
                 <span className="text-xs font-semibold">Perfect! No outstanding dues remaining.</span>
               </div>
@@ -532,22 +543,22 @@ export default function Shops() {
               outstandingList.map((s) => {
                 const pri = getPriorityLevel(s.stats.amountPending);
                 return (
-                  <div key={s.id} onClick={() => setSelectedShop(s)} className="group flex items-center justify-between gap-3 cursor-pointer p-2 hover:bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-200 transition-all">
+                  <div key={s.id} onClick={() => setSelectedShop(s)} className="group flex items-center justify-between gap-3 cursor-pointer p-2 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 transition-all">
                     <div className="flex items-center gap-2.5 truncate">
                       <ShopThumbnail shopName={s.name} />
                       <div className="truncate space-y-0.5">
-                        <p className="font-bold text-slate-700 text-xs truncate">{s.name}</p>
-                        <p className="text-[10px] text-slate-400 font-medium truncate">{s.mobile || 'No Mobile'}</p>
+                        <p className="font-bold text-slate-700 dark:text-[#CBD5E1] text-xs truncate">{s.name}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-[#94A3B8] font-medium truncate">{s.mobile || 'No Mobile'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3.5 flex-shrink-0">
                       <div className="text-right space-y-0.5">
-                        <p className="font-black text-red-600 text-xs">{fmt(s.stats.amountPending)}</p>
+                        <p className="font-black text-red-600 dark:text-red-405 text-xs">{fmt(s.stats.amountPending)}</p>
                         <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black border uppercase tracking-wider inline-block ${pri.color}`}>
                           {pri.label}
                         </span>
                       </div>
-                      <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-600 transition-colors" />
+                      <ChevronRight size={14} className="text-slate-300 dark:text-slate-650 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
                     </div>
                   </div>
                 );
@@ -558,22 +569,22 @@ export default function Shops() {
       </div>
 
       {/* Main CRM Ledger Table Container */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+      <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#334155] space-y-4">
         {/* Search, filters, pills */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-[#334155] pb-4">
           {/* Search bar */}
           <div className="relative w-full lg:w-[320px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, address, phone..."
-              className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#EF4444]"
+              className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-xs bg-white dark:bg-[#0F172A] text-slate-700 dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#EF4444]"
             />
           </div>
 
           {/* CRM Filter Pills */}
-          <div className="flex gap-1 bg-slate-100 rounded-xl p-1 overflow-x-auto scrollbar-none max-w-full">
+          <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 rounded-xl p-1 overflow-x-auto scrollbar-none max-w-full">
             {[
               { id: 'all', label: 'All Customers' },
               { id: 'shop', label: '🏪 Shops' },
@@ -586,7 +597,7 @@ export default function Shops() {
                 key={f.id} 
                 onClick={() => setStockFilter(f.id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize shrink-0 ${
-                  stockFilter === f.id ? 'bg-[#EF4444] text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 bg-transparent'
+                  stockFilter === f.id ? 'bg-[#EF4444] text-white shadow-sm' : 'text-slate-550 dark:text-[#94A3B8] hover:text-slate-800 dark:hover:text-[#F8FAFC] bg-transparent'
                 }`}
               >
                 {f.label}
@@ -596,17 +607,17 @@ export default function Shops() {
         </div>
 
         {/* Sticky CRM Table list */}
-        <div className="max-h-[500px] overflow-y-auto border border-slate-200 rounded-2xl shadow-sm">
+        <div className="max-h-[500px] overflow-y-auto border border-slate-200 dark:border-[#334155] rounded-2xl shadow-sm scrollbar-thin">
           {loading ? (
-            <div className="flex items-center justify-center py-16 text-slate-400"><Loader2 size={24} className="animate-spin" /></div>
+            <div className="flex items-center justify-center py-16 text-slate-400 dark:text-slate-500"><Loader2 size={24} className="animate-spin" /></div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-slate-500">
               <Building2 size={36} className="mb-2 opacity-30" />
               <p className="text-xs font-semibold">No customer records matches the criteria</p>
             </div>
           ) : (
             <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold sticky top-0 z-10">
+              <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-[#334155] text-slate-500 dark:text-[#94A3B8] uppercase font-bold sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-3 text-xs tracking-wider">Customer Identity</th>
                   <th className="px-4 py-3 text-xs tracking-wider">Contact</th>
@@ -618,27 +629,27 @@ export default function Shops() {
                   <th className="px-4 py-3 text-xs tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white font-medium text-slate-600">
+              <tbody className="divide-y divide-slate-100 dark:divide-[#334155] bg-white dark:bg-[#1E293B] font-medium text-slate-600 dark:text-[#CBD5E1]">
                 {filtered.map((s) => {
                   return (
                     <tr 
                       key={s.id} 
                       onClick={() => setSelectedShop(s)}
-                      className="hover:bg-slate-50/50 transition-colors cursor-pointer"
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
                     >
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
                           <ShopThumbnail shopName={s.name} />
                           <div className="space-y-0.5 truncate max-w-[180px]">
                             <div className="flex items-center gap-1.5">
-                              <p className="font-bold text-slate-700 truncate">{s.name}</p>
+                              <p className="font-bold text-slate-700 dark:text-[#F8FAFC] truncate">{s.name}</p>
                               {s.type === 'shop' ? (
-                                <span className="text-[9px] px-1.5 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-lg font-bold">🏪 Shop</span>
+                                <span className="text-[9px] px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold">🏪 Shop</span>
                               ) : (
-                                <span className="text-[9px] px-1.5 py-0.5 bg-orange-50 border border-orange-100 text-orange-600 rounded-lg font-bold">👤 Individual</span>
+                                <span className="text-[9px] px-1.5 py-0.5 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/50 text-orange-600 dark:text-orange-400 rounded-lg font-bold">👤 Individual</span>
                               )}
                             </div>
-                            <span className="text-[9px] text-slate-400 font-semibold bg-slate-50 px-1.5 py-0.5 rounded-full inline-block truncate max-w-[160px]">
+                            <span className="text-[9px] text-slate-400 dark:text-[#94A3B8] font-semibold bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded-full inline-block truncate max-w-[160px]">
                               {s.address || 'No Address Logged'}
                             </span>
                           </div>
@@ -646,22 +657,22 @@ export default function Shops() {
                       </td>
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         {s.mobile ? (
-                          <div className="flex items-center gap-1.5 text-slate-700">
-                            <Phone size={11} className="text-slate-400" />
+                          <div className="flex items-center gap-1.5 text-slate-700 dark:text-[#CBD5E1]">
+                            <Phone size={11} className="text-slate-400 dark:text-slate-550" />
                             <span>{s.mobile}</span>
                           </div>
-                        ) : <span className="text-slate-300">No Mobile</span>}
+                        ) : <span className="text-slate-300 dark:text-slate-600">No Mobile</span>}
                       </td>
-                      <td className="px-4 py-3.5 font-bold text-slate-700 whitespace-nowrap">
+                      <td className="px-4 py-3.5 font-bold text-slate-700 dark:text-[#F8FAFC] whitespace-nowrap">
                         {s.stats.totalSales} billing logs
                       </td>
-                      <td className="px-4 py-3.5 font-extrabold text-slate-800 whitespace-nowrap">
+                      <td className="px-4 py-3.5 font-extrabold text-slate-800 dark:text-[#F8FAFC] whitespace-nowrap">
                         {fmt(s.stats.totalAmount)}
                       </td>
-                      <td className="px-4 py-3.5 text-green-600 font-extrabold whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-green-600 dark:text-green-400 font-extrabold whitespace-nowrap">
                         {fmt(s.stats.amountReceived)}
                       </td>
-                      <td className={`px-4 py-3.5 font-black whitespace-nowrap ${s.stats.amountPending > 0 ? 'text-red-500' : 'text-slate-400'}`}>
+                      <td className={`px-4 py-3.5 font-black whitespace-nowrap ${s.stats.amountPending > 0 ? 'text-red-500' : 'text-slate-405 dark:text-slate-500'}`}>
                         {fmt(s.stats.amountPending)}
                       </td>
                       <td className="px-4 py-3.5 whitespace-nowrap">
@@ -671,18 +682,18 @@ export default function Shops() {
                         <div className="flex items-center justify-end gap-1.5">
                           {s.mobile && (
                             <>
-                              <a href={`tel:${s.mobile}`} title="Call Shop" className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors">
+                              <a href={`tel:${s.mobile}`} title="Call Shop" className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white transition-colors">
                                 <PhoneCall size={13} />
                               </a>
-                              <a href={`https://wa.me/${getCleanMobile(s.mobile)}?text=Hello%20${encodeURIComponent(s.name)}%2C%20this%20is%20regarding%20your%20inventory%20billing%20account.`} target="_blank" rel="noopener noreferrer" title="WhatsApp Message" className="p-1.5 rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                              <a href={`https://wa.me/${getCleanMobile(s.mobile)}?text=Hello%20${encodeURIComponent(s.name)}%2C%20this%20is%20regarding%20your%20inventory%20billing%20account.`} target="_blank" rel="noopener noreferrer" title="WhatsApp Message" className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 hover:text-emerald-600 dark:hover:text-emerald-450 transition-colors">
                                 <MessageSquare size={13} />
                               </a>
                             </>
                           )}
-                          <button onClick={() => openEdit(s)} title="Edit General Info" className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors">
+                          <button onClick={() => openEdit(s)} title="Edit General Info" className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white transition-colors">
                             <Pencil size={13} />
                           </button>
-                          <button onClick={(e) => handleDelete(s.id, e)} disabled={user?.role === 'EMPLOYEE'} title="Delete" className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                          <button onClick={(e) => handleDelete(s.id, e)} disabled={user?.role === 'EMPLOYEE'} title="Delete" className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-955/20 hover:text-red-600 dark:hover:text-red-405 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -701,51 +712,51 @@ export default function Shops() {
         <div className="fixed inset-0 z-50 overflow-hidden flex justify-end bg-black/40">
           <div className="absolute inset-0 bg-transparent" onClick={() => setSelectedShop(null)} />
           
-          <div className="relative w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col transition-transform duration-300">
+          <div className="relative w-full max-w-2xl bg-white dark:bg-[#1E293B] h-full shadow-2xl flex flex-col transition-transform duration-300 border-l border-slate-100 dark:border-[#334155]">
             {/* Drawer Header */}
-            <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div className="p-6 border-b border-slate-100 dark:border-[#334155] bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <ShopThumbnail shopName={selectedShop.name} />
                 <div>
-                  <h3 className="text-lg font-black text-slate-800">{selectedShop.name}</h3>
+                  <h3 className="text-lg font-black text-slate-800 dark:text-[#F8FAFC]">{selectedShop.name}</h3>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] text-slate-400 font-medium">Shop ID: {selectedShop.id.slice(0, 8)}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-[#94A3B8] font-medium">Shop ID: {selectedShop.id.slice(0, 8)}</span>
                     {selectedShop.type === 'shop' ? (
-                      <span className="px-2 py-0.5 rounded-xl text-xs font-bold bg-indigo-50 border border-indigo-100 text-indigo-700">🏪 Shop</span>
+                      <span className="px-2 py-0.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 text-indigo-700 dark:text-indigo-400">🏪 Shop</span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-xl text-xs font-bold bg-orange-50 border border-orange-100 text-orange-700">👤 Individual</span>
+                      <span className="px-2 py-0.5 rounded-xl text-xs font-bold bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/50 text-orange-700 dark:text-orange-400">👤 Individual</span>
                     )}
                     {healthBadge(selectedShop.health)}
                   </div>
                 </div>
               </div>
-              <button onClick={() => setSelectedShop(null)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"><X size={18} /></button>
+              <button onClick={() => setSelectedShop(null)} className="p-2 rounded-xl text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X size={18} /></button>
             </div>
 
             {/* Quick Actions Panel */}
-            <div className="px-6 py-3 border-b border-slate-100 bg-white flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-slate-600">
+            <div className="px-6 py-3 border-b border-slate-100 dark:border-[#334155] bg-white dark:bg-[#1E293B] flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-slate-600 dark:text-[#CBD5E1]">
               <div className="flex items-center gap-2">
                 {selectedShop.mobile ? (
                   <>
-                    <a href={`tel:${selectedShop.mobile}`} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-slate-800 transition-all">
-                      <PhoneCall size={12} className="text-slate-500" /> Call CRM Contact
+                    <a href={`tel:${selectedShop.mobile}`} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-[#334155] hover:bg-slate-100 dark:hover:bg-slate-850 hover:text-slate-800 dark:hover:text-[#F8FAFC] transition-all">
+                      <PhoneCall size={12} className="text-slate-500 dark:text-slate-400" /> Call CRM Contact
                     </a>
-                    <a href={`https://wa.me/${getCleanMobile(selectedShop.mobile)}?text=Hello%20${encodeURIComponent(selectedShop.name)}%2C%20this%20is%20regarding%20your%20inventory%20billing%20account.`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100 transition-all">
-                      <MessageSquare size={12} className="text-emerald-600" /> WhatsApp
+                    <a href={`https://wa.me/${getCleanMobile(selectedShop.mobile)}?text=Hello%20${encodeURIComponent(selectedShop.name)}%2C%20this%20is%20regarding%20your%20inventory%20billing%20account.`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-all">
+                      <MessageSquare size={12} className="text-emerald-600 dark:text-emerald-450" /> WhatsApp
                     </a>
                   </>
                 ) : (
-                  <span className="text-slate-400 italic">No phone logged for shortcuts</span>
+                  <span className="text-slate-400 dark:text-slate-500 italic">No phone logged for shortcuts</span>
                 )}
               </div>
               
-              <button onClick={() => openEdit(selectedShop)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100 transition-all">
+              <button onClick={() => openEdit(selectedShop)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-405 border border-indigo-100 dark:border-indigo-900/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all">
                 <Pencil size={12} /> Edit General Details
               </button>
             </div>
 
             {/* Drawer Tabs Selection */}
-            <div className="flex border-b border-slate-100 px-6 bg-slate-50/20 text-xs font-bold text-slate-400">
+            <div className="flex border-b border-slate-100 dark:border-[#334155] px-6 bg-slate-50/20 dark:bg-slate-900/20 text-xs font-bold text-slate-400 dark:text-[#94A3B8]">
               {[
                 { id: 'overview', label: 'Summary & Analytics' },
                 { id: 'history', label: `Invoice Logs (${drawerStats.totalSales})` },
@@ -755,7 +766,7 @@ export default function Shops() {
                   key={t.id}
                   onClick={() => setActiveDrawerTab(t.id)}
                   className={`px-4 py-3 border-b-2 font-black transition-all ${
-                    activeDrawerTab === t.id ? 'border-red-600 text-red-600' : 'border-transparent hover:text-slate-700'
+                    activeDrawerTab === t.id ? 'border-red-600 dark:border-red-500 text-red-600 dark:text-red-405' : 'border-transparent hover:text-slate-700 dark:hover:text-[#F8FAFC]'
                   }`}
                 >
                   {t.label}
@@ -764,62 +775,62 @@ export default function Shops() {
             </div>
 
             {/* Drawer scroll content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
               {activeDrawerTab === 'overview' && (
                 <div className="space-y-6">
                   {/* General Info cards */}
                   <div className="grid grid-cols-2 gap-4 text-xs">
                     {selectedShop.type === 'shop' && (
                       <>
-                        <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
-                          <p className="font-bold text-slate-400 uppercase tracking-wide">Owner Name</p>
-                          <p className="font-extrabold text-slate-700 text-sm">
+                        <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 border border-transparent dark:border-[#334155]/30 space-y-2">
+                          <p className="font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wide">Owner Name</p>
+                          <p className="font-extrabold text-slate-700 dark:text-[#CBD5E1] text-sm">
                             {selectedShop.ownerName || '—'}
                           </p>
                         </div>
-                        <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
-                          <p className="font-bold text-slate-400 uppercase tracking-wide">GST Number</p>
-                          <p className="font-extrabold text-slate-700 text-sm uppercase">
+                        <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 border border-transparent dark:border-[#334155]/30 space-y-2">
+                          <p className="font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wide">GST Number</p>
+                          <p className="font-extrabold text-slate-700 dark:text-[#CBD5E1] text-sm uppercase">
                             {selectedShop.gstNumber || '—'}
                           </p>
                         </div>
                       </>
                     )}
-                    <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
-                      <p className="font-bold text-slate-400 uppercase tracking-wide">Contact Phone</p>
-                      <p className="font-extrabold text-slate-700 text-sm flex items-center gap-1.5">
-                        <Phone size={13} className="text-slate-400" /> {selectedShop.mobile || '—'}
+                    <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 border border-transparent dark:border-[#334155]/30 space-y-2">
+                      <p className="font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wide">Contact Phone</p>
+                      <p className="font-extrabold text-slate-700 dark:text-[#CBD5E1] text-sm flex items-center gap-1.5">
+                        <Phone size={13} className="text-slate-400 dark:text-slate-550" /> {selectedShop.mobile || '—'}
                       </p>
                     </div>
-                    <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
-                      <p className="font-bold text-slate-400 uppercase tracking-wide">
+                    <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 border border-transparent dark:border-[#334155]/30 space-y-2">
+                      <p className="font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wide">
                         {selectedShop.type === 'shop' ? 'Shop Location' : 'Address'}
                       </p>
-                      <p className="font-extrabold text-slate-700 text-sm flex items-center gap-1.5 truncate" title={selectedShop.address}>
+                      <p className="font-extrabold text-slate-700 dark:text-[#CBD5E1] text-sm flex items-center gap-1.5 truncate" title={selectedShop.address}>
                         <MapPin size={13} className="text-slate-400 flex-shrink-0" /> {selectedShop.address || '—'}
                       </p>
                     </div>
                   </div>
 
                   {/* Financial Grid */}
-                  <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm space-y-4">
-                    <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wide text-slate-500">Financial Ledger Stats</h4>
+                  <div className="bg-white dark:bg-[#1E293B] border border-slate-105 dark:border-[#334155] rounded-3xl p-5 shadow-sm space-y-4">
+                    <h4 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-xs uppercase tracking-wide text-slate-500 dark:text-[#94A3B8]">Financial Ledger Stats</h4>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <div>
-                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Total Purchased</span>
-                        <p className="text-base font-black text-slate-800 mt-1">{fmt(drawerStats.totalAmount)}</p>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] block uppercase">Total Purchased</span>
+                        <p className="text-base font-black text-slate-800 dark:text-[#F8FAFC] mt-1">{fmt(drawerStats.totalAmount)}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Total Collected</span>
-                        <p className="text-base font-black text-green-600 mt-1">{fmt(drawerStats.amountReceived)}</p>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] block uppercase">Total Collected</span>
+                        <p className="text-base font-black text-green-600 dark:text-green-400 mt-1">{fmt(drawerStats.amountReceived)}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Pending Balance</span>
-                        <p className={`text-base font-black mt-1 ${drawerStats.amountPending > 0 ? 'text-red-500' : 'text-slate-800'}`}>{fmt(drawerStats.amountPending)}</p>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] block uppercase">Pending Balance</span>
+                        <p className={`text-base font-black mt-1 ${drawerStats.amountPending > 0 ? 'text-red-500' : 'text-slate-800 dark:text-[#CBD5E1]'}`}>{fmt(drawerStats.amountPending)}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Average order value</span>
-                        <p className="text-base font-black text-slate-800 mt-1">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] block uppercase">Average order value</span>
+                        <p className="text-base font-black text-slate-800 dark:text-[#F8FAFC] mt-1">
                           {fmt(drawerStats.totalSales > 0 ? drawerStats.totalAmount / drawerStats.totalSales : 0)}
                         </p>
                       </div>
@@ -827,12 +838,12 @@ export default function Shops() {
 
                     {/* Progress behavior */}
                     {(drawerStats.upi > 0 || drawerStats.cash > 0) && (
-                      <div className="space-y-2 pt-2 border-t border-slate-100">
-                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase">
+                      <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-[#334155]">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase">
                           <span>UPI Split ({drawerUpiPct.toFixed(0)}%)</span>
                           <span>Cash Split ({drawerCashPct.toFixed(0)}%)</span>
                         </div>
-                        <div className="w-full h-2 rounded-full overflow-hidden bg-slate-100 flex">
+                        <div className="w-full h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-900 flex">
                           <div style={{ width: `${drawerUpiPct}%` }} className="h-full bg-blue-500" title="UPI Payment Share" />
                           <div style={{ width: `${drawerCashPct}%` }} className="h-full bg-green-500" title="Cash Payment Share" />
                         </div>
@@ -841,41 +852,41 @@ export default function Shops() {
                   </div>
 
                   {/* Last Purchase details */}
-                  <div className="bg-slate-50/50 rounded-2xl p-4 flex items-center justify-between text-xs">
+                  <div className="bg-slate-50/50 dark:bg-slate-900/50 border border-transparent dark:border-[#334155]/30 rounded-2xl p-4 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <Calendar size={15} className="text-slate-400" />
-                      <span className="font-semibold text-slate-500">Last Invoice Issued Date:</span>
+                      <Calendar size={15} className="text-slate-400 dark:text-slate-500" />
+                      <span className="font-semibold text-slate-500 dark:text-[#94A3B8]">Last Invoice Issued Date:</span>
                     </div>
-                    <span className="font-black text-slate-700">
+                    <span className="font-black text-slate-700 dark:text-[#CBD5E1]">
                       {drawerStats.lastPurchaseDate ? new Date(drawerStats.lastPurchaseDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'No purchase logged'}
                     </span>
                   </div>
 
                   {/* Purchases Trend Chart (SVG Visual representation) */}
-                  <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm space-y-4">
+                  <div className="bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-[#334155] rounded-3xl p-5 shadow-sm space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wide text-slate-500">Shop Monthly Revenue Trend</h4>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Purchases accumulated in the last 6 months</p>
+                        <h4 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-xs uppercase tracking-wide text-slate-500 dark:text-[#94A3B8]">Shop Monthly Revenue Trend</h4>
+                        <p className="text-[10px] text-slate-400 dark:text-[#94A3B8] mt-0.5">Purchases accumulated in the last 6 months</p>
                       </div>
-                      <BarChart3 size={15} className="text-slate-400" />
+                      <BarChart3 size={15} className="text-slate-400 dark:text-slate-550" />
                     </div>
 
-                    <div className="flex items-end justify-between gap-2 pt-6 h-[120px] px-2 border-b border-slate-100">
+                    <div className="flex items-end justify-between gap-2 pt-6 h-[120px] px-2 border-b border-slate-100 dark:border-[#334155] relative">
                       {monthlyTrendList.map((item, idx) => (
                         <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
                           {item.amount > 0 && (
-                            <div className="text-[9px] font-black text-slate-700 bg-slate-100 px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity absolute -translate-y-8">
+                            <div className="text-[9px] font-black text-slate-700 dark:text-[#F8FAFC] bg-slate-100 dark:bg-slate-800 border border-transparent dark:border-[#334155] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity absolute -translate-y-8">
                               {fmt(item.amount)}
                             </div>
                           )}
                           <div 
                             style={{ height: `${Math.max(item.pct, 4)}%` }} 
                             className={`w-full rounded-t-lg transition-all duration-500 ${
-                              item.amount > 0 ? 'bg-indigo-500 hover:bg-indigo-600' : 'bg-slate-100'
+                              item.amount > 0 ? 'bg-indigo-500 hover:bg-indigo-600' : 'bg-slate-100 dark:bg-slate-900'
                             }`}
                           />
-                          <span className="text-[9px] font-extrabold text-slate-400 mt-1 whitespace-nowrap">{item.month}</span>
+                          <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 mt-1 whitespace-nowrap">{item.month}</span>
                         </div>
                       ))}
                     </div>
@@ -885,17 +896,17 @@ export default function Shops() {
 
               {activeDrawerTab === 'history' && (
                 <div className="space-y-4">
-                  <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wide text-slate-500">Invoice Ledger history</h4>
+                  <h4 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-xs uppercase tracking-wide text-slate-500 dark:text-[#94A3B8]">Invoice Ledger history</h4>
                   
                   {drawerStats.salesHistory.length === 0 ? (
-                    <div className="flex flex-col items-center py-12 text-slate-400">
+                    <div className="flex flex-col items-center py-12 text-slate-400 dark:text-[#94A3B8]">
                       <FileText size={32} className="opacity-30 mb-2" />
                       <p className="text-xs font-semibold">No offline orders logged for this customer</p>
                     </div>
                   ) : (
-                    <div className="border border-slate-100 rounded-2xl overflow-hidden text-xs">
-                      <table className="w-full text-left">
-                        <thead className="bg-slate-50 text-slate-500 font-extrabold uppercase">
+                    <div className="border border-slate-100 dark:border-[#334155] rounded-2xl overflow-hidden text-xs">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-[#94A3B8] font-extrabold uppercase">
                           <tr>
                             <th className="px-4 py-2.5">Date</th>
                             <th className="px-4 py-2.5">Invoice No.</th>
@@ -904,18 +915,18 @@ export default function Shops() {
                             <th className="px-4 py-2.5 text-right">Outstanding</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 font-medium text-slate-600 bg-white">
+                        <tbody className="divide-y divide-slate-100 dark:divide-[#334155] font-medium text-slate-650 dark:text-[#CBD5E1] bg-white dark:bg-[#1E293B]">
                           {drawerStats.salesHistory.map((s, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50/50">
+                            <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                               <td className="px-4 py-3 whitespace-nowrap">
                                 {new Date(s.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                               </td>
-                              <td className="px-4 py-3 font-mono font-bold text-slate-700 dark:text-slate-300">
+                              <td className="px-4 py-3 font-mono font-bold text-slate-700 dark:text-[#CBD5E1]">
                                 {s.invoiceNumber || '—'}
                               </td>
-                              <td className="px-4 py-3 text-right font-bold text-slate-700">{fmt(s.totalAmount)}</td>
-                              <td className="px-4 py-3 text-right text-green-600 font-bold">{fmt(s.amountReceived)}</td>
-                              <td className={`px-4 py-3 text-right font-black ${s.amountLeft > 0 ? 'text-red-500' : 'text-slate-400'}`}>
+                              <td className="px-4 py-3 text-right font-bold text-slate-755 dark:text-[#F8FAFC]">{fmt(s.totalAmount)}</td>
+                              <td className="px-4 py-3 text-right text-green-600 dark:text-green-400 font-bold">{fmt(s.amountReceived)}</td>
+                              <td className={`px-4 py-3 text-right font-black ${s.amountLeft > 0 ? 'text-red-500' : 'text-slate-405 dark:text-slate-500'}`}>
                                 {fmt(s.amountLeft)}
                               </td>
                             </tr>
@@ -931,24 +942,24 @@ export default function Shops() {
                 <div className="space-y-6">
                   {/* Notes timelines */}
                   <div className="space-y-4">
-                    <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wide text-slate-500">Customer Follow-up Timeline</h4>
+                    <h4 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-xs uppercase tracking-wide text-slate-500 dark:text-[#94A3B8]">Customer Follow-up Timeline</h4>
                     
                     {drawerNotes.length === 0 ? (
-                      <div className="bg-slate-50 rounded-2xl p-6 flex flex-col items-center justify-center text-slate-400 border border-dashed">
+                      <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 flex flex-col items-center justify-center text-slate-400 dark:text-[#94A3B8] border border-dashed dark:border-[#334155]/50">
                         <MessageSquare size={28} className="opacity-30 mb-2" />
                         <p className="text-xs font-semibold">No CRM follow-up logs registered yet</p>
                       </div>
                     ) : (
-                      <div className="relative border-l-2 border-slate-100 pl-4 ml-2 space-y-6 py-2">
+                      <div className="relative border-l-2 border-slate-100 dark:border-[#334155] pl-4 ml-2 space-y-6 py-2">
                         {drawerNotes.map((note) => (
                           <div key={note.id} className="relative space-y-1.5">
                             {/* Dot icon */}
-                            <span className="absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full bg-red-500 ring-4 ring-white" />
+                            <span className="absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full bg-red-500 ring-4 ring-white dark:ring-[#1E293B]" />
                             
-                            <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400 font-semibold">
+                            <div className="flex items-center justify-between gap-3 text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
                               <span>{note.date}</span>
                             </div>
-                            <div className="bg-slate-50 rounded-2xl p-3.5 text-xs text-slate-700 font-medium leading-relaxed shadow-sm border border-slate-100/50">
+                            <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-3.5 text-xs text-slate-700 dark:text-[#CBD5E1] font-medium leading-relaxed shadow-sm border border-slate-100/50 dark:border-[#334155]/30">
                               {note.text}
                             </div>
                           </div>
@@ -958,8 +969,8 @@ export default function Shops() {
                   </div>
 
                   {/* Add note timeline form */}
-                  <form onSubmit={handleAddNote} className="space-y-3.5 pt-4 border-t border-slate-100">
-                    <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wide text-slate-500">Log Follow-up Call or Comment</h4>
+                  <form onSubmit={handleAddNote} className="space-y-3.5 pt-4 border-t border-slate-100 dark:border-[#334155]">
+                    <h4 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-xs uppercase tracking-wide text-slate-500 dark:text-[#94A3B8]">Log Follow-up Call or Comment</h4>
                     <div className="space-y-2">
                       <textarea
                         rows={3}
@@ -967,7 +978,7 @@ export default function Shops() {
                         value={newNote}
                         onChange={(e) => setNewNote(e.target.value)}
                         placeholder="Type down follow-up call outcomes, commitments, or reminders..."
-                        className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-xs resize-none focus:outline-none focus:ring-2 focus:ring-[#EF4444] bg-white shadow-sm"
+                        className="w-full px-4 py-3 border border-slate-200 dark:border-[#334155] rounded-2xl text-xs bg-white dark:bg-[#0F172A] text-slate-750 dark:text-[#CBD5E1] resize-none focus:outline-none focus:ring-2 focus:ring-[#EF4444] shadow-sm"
                       />
                       <button 
                         type="submit" 
@@ -992,101 +1003,101 @@ export default function Shops() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex flex-col gap-3.5 text-xs">
               <div className="space-y-1.5">
-                <label className="block font-bold text-slate-500 uppercase tracking-wide">Customer Type *</label>
+                <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Customer Type *</label>
                 <select 
                   required
                   value={form.type || 'shop'} 
                   onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444] bg-white font-medium text-slate-700"
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-700 dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#EF4444] font-medium"
                 >
-                  <option value="shop">🏪 Shop</option>
-                  <option value="individual">👤 Individual Customer</option>
+                  <option value="shop" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">🏪 Shop</option>
+                  <option value="individual" className="dark:bg-[#1E293B] dark:text-[#F8FAFC]">👤 Individual Customer</option>
                 </select>
               </div>
 
               {form.type === 'shop' ? (
                 <>
                   <div className="space-y-1.5">
-                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Shop Name *</label>
+                    <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Shop Name *</label>
                     <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444]" placeholder="e.g. Sharma Electronics" />
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-700 dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#EF4444]" placeholder="e.g. Sharma Electronics" />
                   </div>
                   
                   <div className="space-y-1.5">
-                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Owner Name</label>
+                    <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Owner Name</label>
                     <input value={form.ownerName || ''} onChange={(e) => setForm((f) => ({ ...f, ownerName: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444]" placeholder="e.g. Ramesh Sharma" />
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-700 dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#EF4444]" placeholder="e.g. Ramesh Sharma" />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Mobile Number</label>
+                    <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Mobile Number</label>
                     <input value={form.mobile} onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
-                      className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 ${
+                      className={`w-full px-4 py-2.5 border rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-700 dark:text-[#CBD5E1] focus:outline-none focus:ring-2 ${
                         phoneValidation.error 
-                          ? 'border-red-500 focus:ring-[#EF4444] focus:border-red-500 bg-red-50/10' 
-                          : 'border-slate-200 focus:ring-[#EF4444]'
+                          ? 'border-red-500 focus:ring-[#EF4444] focus:border-red-500 bg-red-50/10 dark:bg-red-950/10' 
+                          : 'border-slate-200 dark:border-[#334155] focus:ring-[#EF4444]'
                       }`} 
                       placeholder="e.g. 9876543210" 
                     />
                     {phoneValidation.error && (
-                      <p className="text-[11px] font-semibold text-red-500">{phoneValidation.error}</p>
+                      <p className="text-[11px] font-semibold text-red-500 dark:text-red-400">{phoneValidation.error}</p>
                     )}
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Shop Address</label>
+                    <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Shop Address</label>
                     <textarea rows={2} value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444] resize-none" placeholder="e.g. 12, Market Road, Delhi" />
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-700 dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#EF4444] resize-none" placeholder="e.g. 12, Market Road, Delhi" />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block font-bold text-slate-500 uppercase tracking-wide">GST Number (Optional)</label>
+                    <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">GST Number (Optional)</label>
                     <input value={form.gstNumber || ''} onChange={(e) => setForm((f) => ({ ...f, gstNumber: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444]" placeholder="e.g. 07AAAAA1111A1Z1" />
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-700 dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#EF4444]" placeholder="e.g. 07AAAAA1111A1Z1" />
                   </div>
                 </>
               ) : (
                 <>
                   <div className="space-y-1.5">
-                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Customer Name *</label>
+                    <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Customer Name *</label>
                     <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444]" placeholder="e.g. Ramesh Kumar" />
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-700 dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#EF4444]" placeholder="e.g. Ramesh Kumar" />
                   </div>
                   
                   <div className="space-y-1.5">
-                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Mobile Number</label>
+                    <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Mobile Number</label>
                     <input value={form.mobile} onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
-                      className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 ${
+                      className={`w-full px-4 py-2.5 border rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-700 dark:text-[#CBD5E1] focus:outline-none focus:ring-2 ${
                         phoneValidation.error 
-                          ? 'border-red-500 focus:ring-[#EF4444] focus:border-red-500 bg-red-50/10' 
-                          : 'border-slate-200 focus:ring-[#EF4444]'
+                          ? 'border-red-500 focus:ring-[#EF4444] focus:border-red-500 bg-red-50/10 dark:bg-red-950/10' 
+                          : 'border-slate-200 dark:border-[#334155] focus:ring-[#EF4444]'
                       }`} 
                       placeholder="e.g. 9876543210" 
                     />
                     {phoneValidation.error && (
-                      <p className="text-[11px] font-semibold text-red-500">{phoneValidation.error}</p>
+                      <p className="text-[11px] font-semibold text-red-500 dark:text-red-400">{phoneValidation.error}</p>
                     )}
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block font-bold text-slate-500 uppercase tracking-wide">Address (Optional)</label>
+                    <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Address (Optional)</label>
                     <textarea rows={2} value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444] resize-none" placeholder="e.g. 12, Market Road, Delhi" />
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-700 dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#EF4444] resize-none" placeholder="e.g. 12, Market Road, Delhi" />
                   </div>
                 </>
               )}
 
               <div className="space-y-1.5">
-                <label className="block font-bold text-slate-500 uppercase tracking-wide">Initial Profile Notes</label>
+                <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Initial Profile Notes</label>
                 <textarea rows={2} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444] resize-none" placeholder="Optional background details, credit terms..." />
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-700 dark:text-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#EF4444] resize-none" placeholder="Optional background details, credit terms..." />
               </div>
             </div>
 
-            {error && <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-xl">{error}</p>}
+            {error && <p className="text-sm text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-955/20 border border-red-100 dark:border-red-900/50 px-3 py-2 rounded-xl">{error}</p>}
             
-            <div className="flex gap-4 pt-3 border-t border-slate-100">
-              <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+            <div className="flex gap-4 pt-3 border-t border-slate-100 dark:border-[#334155]">
+              <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-slate-200 dark:border-[#334155] rounded-xl text-sm font-semibold text-slate-600 dark:text-[#CBD5E1] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancel</button>
               <button type="submit" disabled={saving || !phoneValidation.isValid} className="flex-1 py-3 bg-[#EF4444] hover:bg-red-600 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
                 {saving && <Loader2 size={16} className="animate-spin" />}
                 {editing ? 'Update' : 'Register Account'}

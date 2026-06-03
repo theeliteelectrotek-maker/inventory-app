@@ -8,7 +8,7 @@ const xlsx = require('xlsx');
 const PDFDocument = require('pdfkit');
 const AdmZip = require('adm-zip');
 
-const { User, Product, OnlineSale, OfflineSale, Shop, Return, Setting, AuditLog } = require('./models');
+const { User, Product, OnlineSale, OfflineSale, Shop, Return, Setting, AuditLog, Replacement, ChatChannel, ChatMessage } = require('./models');
 
 function getSystemLocalDate(d = new Date()) {
   const offset = d.getTimezoneOffset();
@@ -95,6 +95,38 @@ async function runProductMigration() {
     }
   } catch (err) {
     console.error('❌ Error during product migration:', err);
+  }
+}
+
+async function runReturnMigration() {
+  try {
+    const legacyReturns = await Return.find({ 
+      $or: [
+        { items: { $exists: false } },
+        { items: { $size: 0 } }
+      ],
+      productId: { $exists: true, $ne: '' }
+    });
+    if (legacyReturns.length > 0) {
+      console.log(`🔍 Migrating ${legacyReturns.length} legacy returns to multi-product structure...`);
+      for (const r of legacyReturns) {
+        r.items = [{
+          productId: r.productId,
+          productName: r.productName || 'Unknown Product',
+          sku: '',
+          category: 'General',
+          qty: r.qty || 1,
+          condition: r.condition || 'good',
+          reason: 'Legacy Return',
+          notes: r.notes || ''
+        }];
+        r.markModified('items');
+        await r.save();
+      }
+      console.log(`✅ Return migration completed.`);
+    }
+  } catch (err) {
+    console.error('❌ Error during return migration:', err);
   }
 }
 
@@ -318,6 +350,7 @@ if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('<db_password>')) {
     .then(async () => {
       console.log('✅ Connected to MongoDB Atlas');
       await runProductMigration();
+      await runReturnMigration();
       await runShopMigration();
       await runOfflineSaleMigration();
       await runUserMigration();
@@ -338,6 +371,28 @@ const catchAsync = fn => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
+// Authentication middleware
+const requireAuth = catchAsync(async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+  const token = authHeader.substring(7);
+  const parts = token.split('_');
+  if (parts[0] !== 'token' || !parts[1]) {
+    return res.status(401).json({ message: 'Invalid authentication token' });
+  }
+  const userId = parts[1];
+  const sessionId = parts[2];
+  const user = await User.findOne({ id: userId });
+  if (!user || user.disabled) {
+    return res.status(401).json({ message: 'User not found or account disabled' });
+  }
+  req.userObj = user;
+  req.sessionId = sessionId;
+  next();
+});
+
 // RBAC requireAdmin middleware
 const requireAdmin = catchAsync(async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -350,12 +405,14 @@ const requireAdmin = catchAsync(async (req, res, next) => {
     return res.status(403).json({ message: 'Access Denied. Administrator privileges required.' });
   }
   const userId = parts[1];
+  const sessionId = parts[2];
   const user = await User.findOne({ id: userId });
   if (!user || (user.role !== 'ADMIN' && user.role !== 'admin' && user.username !== 'admin')) {
     return res.status(403).json({ message: 'Access Denied. Administrator privileges required.' });
   }
   
   req.userObj = user;
+  req.sessionId = sessionId;
   next();
 });
 
@@ -387,6 +444,32 @@ app.post('/api/auth/login', catchAsync(async (req, res) => {
     return res.status(403).json({ message: 'Account is disabled. Please contact administrator.' });
   }
 
+  // Parse User Agent to identify device
+  const ua = req.headers['user-agent'] || '';
+  let device = 'Web Browser';
+  if (/mobile/i.test(ua)) device = 'Mobile Device';
+  else if (/tablet/i.test(ua)) device = 'Tablet Device';
+  else if (/mac/i.test(ua)) device = 'macOS Desktop';
+  else if (/windows/i.test(ua)) device = 'Windows Desktop';
+  else if (/linux/i.test(ua)) device = 'Linux Desktop';
+
+  const sessionId = 'sess_' + uuidv4().substring(0, 8);
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+
+  // Initialize activeSessions array if empty
+  if (!user.activeSessions) {
+    user.activeSessions = [];
+  }
+
+  // Push new active session details
+  user.activeSessions.push({
+    sessionId,
+    device,
+    ip,
+    lastLogin: new Date().toISOString()
+  });
+  await user.save();
+
   const audit = new AuditLog({
     id: uuidv4(),
     user: `${user.name} (@${user.username})`,
@@ -397,7 +480,7 @@ app.post('/api/auth/login', catchAsync(async (req, res) => {
 
   const userObj = user.toObject();
   const { password: _, _id, __v, ...safe } = userObj;
-  res.json({ user: safe, token: `token_${user.id}_${Date.now()}` });
+  res.json({ user: safe, token: `token_${user.id}_${sessionId}_${Date.now()}` });
 }));
 
 app.post('/api/auth/register', catchAsync(async (req, res) => {
@@ -841,28 +924,82 @@ app.get('/api/returns', catchAsync(async (_req, res) => {
 }));
 
 app.post('/api/returns', catchAsync(async (req, res) => {
-  const { productId, platform, date, condition, qty, notes, shopId, shopName, action } = req.body;
-  if (!productId || !platform || !condition)
-    return res.status(400).json({ message: 'Product, platform and condition required' });
-  
-  const product = await Product.findOne({ id: productId });
-  if (!product) return res.status(404).json({ message: 'Product not found' });
-  
-  const returnQty = Number(qty) || 1;
-  if (condition === 'good' && action !== 'replace') {
-    product.availableQty += returnQty;
-    product.totalQty += returnQty;
-    product.updatedAt = new Date().toISOString();
-    await product.save();
+  const { platform, date, shopId, shopName, action, notes, items } = req.body;
+  if (!platform) {
+    return res.status(400).json({ message: 'Platform is required' });
   }
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: 'At least one return item is required' });
+  }
+
+  const processedItems = [];
+
+  for (const item of items) {
+    const { productId, qty, condition, reason, notes: itemNotes } = item;
+    if (!productId || !condition) {
+      return res.status(400).json({ message: 'Product and condition are required for all return items' });
+    }
+
+    const returnQty = Number(qty) || 1;
+    if (returnQty <= 0) {
+      return res.status(400).json({ message: 'Returned quantity must be greater than zero' });
+    }
+
+    const product = await Product.findOne({ id: productId });
+    if (!product) {
+      return res.status(404).json({ message: `Product ${productId} not found` });
+    }
+
+    if (condition === 'good' && action !== 'replace') {
+      product.availableQty += returnQty;
+      product.totalQty += returnQty;
+      product.updatedAt = new Date().toISOString();
+      await product.save();
+    }
+
+    processedItems.push({
+      productId,
+      productName: product.name,
+      sku: product.sku || '',
+      category: product.category || 'General',
+      qty: returnQty,
+      condition,
+      reason: reason || '',
+      notes: itemNotes || ''
+    });
+  }
+
+  const returnId = uuidv4();
+  const firstItem = processedItems[0];
   
   const ret = new Return({
-    id: uuidv4(), productId, productName: product.name,
-    platform, shopId, shopName, action: action || 'return', qty: returnQty, date: normalizeToLocalYYYYMMDD(date || new Date()),
-    condition, notes: notes || ''
+    id: returnId,
+    platform,
+    shopId,
+    shopName,
+    action: action || 'return',
+    date: normalizeToLocalYYYYMMDD(date || new Date()),
+    notes: notes || '',
+    items: processedItems,
+    
+    // Legacy support fallback
+    productId: firstItem.productId,
+    productName: firstItem.productName,
+    qty: firstItem.qty,
+    condition: firstItem.condition
   });
+
   await ret.save();
-  
+
+  const requestUser = await getRequestUser(req);
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: requestUser,
+    time: new Date().toISOString(),
+    action: `Logged return transaction ${returnId} for ${shopName || platform} (${processedItems.length} products, total ${processedItems.reduce((s, x) => s + x.qty, 0)} units)`
+  });
+  await audit.save();
+
   const retObj = ret.toObject();
   delete retObj._id;
   delete retObj.__v;
@@ -870,20 +1007,273 @@ app.post('/api/returns', catchAsync(async (req, res) => {
 }));
 
 app.delete('/api/returns/:id', catchAsync(async (req, res) => {
-  const ret = await Return.findOneAndDelete({ id: req.params.id });
+  const ret = await Return.findOne({ id: req.params.id });
   if (!ret) return res.status(404).json({ message: 'Return not found' });
-  
-  if (ret.condition === 'good' && ret.action !== 'replace') {
-    const product = await Product.findOne({ id: ret.productId });
+
+  const items = (ret.items && ret.items.length > 0)
+    ? ret.items
+    : [{
+        productId: ret.productId,
+        qty: ret.qty || 1,
+        condition: ret.condition || 'good'
+      }];
+
+  for (const item of items) {
+    if (item.condition === 'good' && ret.action !== 'replace') {
+      const product = await Product.findOne({ id: item.productId });
+      if (product) {
+        const returnQty = Number(item.qty) || 1;
+        product.availableQty -= returnQty;
+        product.totalQty -= returnQty;
+        product.updatedAt = new Date().toISOString();
+        await product.save();
+      }
+    }
+  }
+
+  await Return.findOneAndDelete({ id: req.params.id });
+
+  const requestUser = await getRequestUser(req);
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: requestUser,
+    time: new Date().toISOString(),
+    action: `Deleted return transaction ${ret.id} for ${ret.shopName || ret.platform}`
+  });
+  await audit.save();
+
+  res.json({ message: 'Deleted' });
+}));
+
+// REPLACEMENTS
+app.get('/api/replacements', catchAsync(async (_req, res) => {
+  const replacements = await Replacement.find({}, '-_id -__v');
+  res.json(replacements);
+}));
+
+app.post('/api/replacements', catchAsync(async (req, res) => {
+  const {
+    shopId, shopName, contactPerson, mobile, cityState, dealerCode,
+    productId, productName, productCategory, sku, batchNumber, qty, invoiceNumber, invoiceDate,
+    reason, condition, productImages, invoiceCopy, damageProof, additionalDocs,
+    status, approvalRemarks, approvedBy, dispatchDate, trackingNumber, courierPartner,
+    productValue, replacementCost, recoveryAmount, netLoss
+  } = req.body;
+
+  if (!shopName || !productId || !productName || !reason || !condition) {
+    return res.status(400).json({ message: 'Shop name, product details, reason and condition are required' });
+  }
+
+  const reqQty = Number(qty) || 1;
+  const prodVal = Number(productValue) || 0;
+  const repCost = Number(replacementCost) || 0;
+  const recAmt = Number(recoveryAmount) || 0;
+  const calculatedNetLoss = netLoss !== undefined ? Number(netLoss) : (repCost - recAmt);
+
+  const product = await Product.findOne({ id: productId });
+  if (!product) {
+    return res.status(404).json({ message: 'Product not found' });
+  }
+
+  let stockAdjusted = false;
+  const finalStatus = status || 'Pending';
+
+  if (finalStatus === 'Dispatched' || finalStatus === 'Completed') {
+    if (product.availableQty < reqQty) {
+      return res.status(400).json({ message: `Insufficient stock for product ${product.name} to fulfill replacement.` });
+    }
+    product.availableQty -= reqQty;
+    product.totalQty -= reqQty;
+    product.updatedAt = new Date().toISOString();
+    await product.save();
+    stockAdjusted = true;
+  }
+
+  const rep = new Replacement({
+    id: uuidv4(),
+    shopId: shopId || '',
+    shopName,
+    contactPerson: contactPerson || '',
+    mobile: mobile || '',
+    cityState: cityState || '',
+    dealerCode: dealerCode || '',
+    productId,
+    productName: product.name,
+    productCategory: productCategory || product.category || 'General',
+    sku: sku || product.sku || '',
+    batchNumber: batchNumber || '',
+    qty: reqQty,
+    invoiceNumber: invoiceNumber || '',
+    invoiceDate: invoiceDate || '',
+    reason,
+    condition,
+    productImages: productImages || [],
+    invoiceCopy: invoiceCopy || [],
+    damageProof: damageProof || [],
+    additionalDocs: additionalDocs || [],
+    status: finalStatus,
+    approvalRemarks: approvalRemarks || '',
+    approvedBy: approvedBy || '',
+    dispatchDate: dispatchDate || '',
+    trackingNumber: trackingNumber || '',
+    courierPartner: courierPartner || '',
+    productValue: prodVal,
+    replacementCost: repCost,
+    recoveryAmount: recAmt,
+    netLoss: calculatedNetLoss,
+    stockAdjusted,
+    date: normalizeToLocalYYYYMMDD(new Date())
+  });
+
+  await rep.save();
+
+  const requestUser = await getRequestUser(req);
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: requestUser,
+    time: new Date().toISOString(),
+    action: `Created replacement request for ${shopName} (Product: ${product.name}, Qty: ${reqQty}, Status: ${finalStatus})`
+  });
+  await audit.save();
+
+  const repObj = rep.toObject();
+  delete repObj._id;
+  delete repObj.__v;
+  res.json(repObj);
+}));
+
+app.put('/api/replacements/:id', catchAsync(async (req, res) => {
+  const rep = await Replacement.findOne({ id: req.params.id });
+  if (!rep) {
+    return res.status(404).json({ message: 'Replacement request not found' });
+  }
+
+  const oldQty = rep.qty;
+  const oldStatus = rep.status;
+  const oldProductId = rep.productId;
+
+  const updateData = { ...req.body };
+  const newStatus = updateData.status || rep.status;
+  const newQty = updateData.qty !== undefined ? Number(updateData.qty) : rep.qty;
+  const newProductId = updateData.productId || rep.productId;
+
+  const product = await Product.findOne({ id: newProductId });
+  if (!product) {
+    return res.status(404).json({ message: 'Product not found' });
+  }
+
+  let stockAdjusted = rep.stockAdjusted;
+
+  const wasFulfilling = (oldStatus === 'Dispatched' || oldStatus === 'Completed');
+  const isFulfilling = (newStatus === 'Dispatched' || newStatus === 'Completed');
+
+  // Revert old product if product changed and we were already adjusted
+  if (oldProductId !== newProductId && stockAdjusted) {
+    const oldProduct = await Product.findOne({ id: oldProductId });
+    if (oldProduct) {
+      oldProduct.availableQty += oldQty;
+      oldProduct.totalQty += oldQty;
+      await oldProduct.save();
+    }
+    stockAdjusted = false;
+  }
+
+  if (isFulfilling) {
+    if (!stockAdjusted) {
+      if (product.availableQty < newQty) {
+        return res.status(400).json({ message: `Insufficient stock for product ${product.name} to fulfill replacement.` });
+      }
+      product.availableQty -= newQty;
+      product.totalQty -= newQty;
+      stockAdjusted = true;
+    } else {
+      const diff = newQty - oldQty;
+      if (diff !== 0) {
+        if (product.availableQty < diff) {
+          return res.status(400).json({ message: `Insufficient stock for product ${product.name} to adjust replacement quantity.` });
+        }
+        product.availableQty -= diff;
+        product.totalQty -= diff;
+      }
+    }
+    await product.save();
+  } else {
+    if (stockAdjusted) {
+      product.availableQty += oldQty;
+      product.totalQty += oldQty;
+      await product.save();
+      stockAdjusted = false;
+    }
+  }
+
+  const fields = [
+    'shopId', 'shopName', 'contactPerson', 'mobile', 'cityState', 'dealerCode',
+    'productId', 'productName', 'productCategory', 'sku', 'batchNumber', 'invoiceNumber', 'invoiceDate',
+    'reason', 'condition', 'productImages', 'invoiceCopy', 'damageProof', 'additionalDocs',
+    'approvalRemarks', 'approvedBy', 'dispatchDate', 'trackingNumber', 'courierPartner',
+    'productValue', 'replacementCost', 'recoveryAmount', 'netLoss'
+  ];
+
+  fields.forEach(f => {
+    if (updateData[f] !== undefined) {
+      rep[f] = updateData[f];
+    }
+  });
+
+  rep.qty = newQty;
+  rep.status = newStatus;
+  rep.stockAdjusted = stockAdjusted;
+
+  if (updateData.netLoss === undefined && (updateData.replacementCost !== undefined || updateData.recoveryAmount !== undefined)) {
+    rep.netLoss = rep.replacementCost - rep.recoveryAmount;
+  }
+
+  rep.updatedAt = new Date().toISOString();
+  await rep.save();
+
+  const requestUser = await getRequestUser(req);
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: requestUser,
+    time: new Date().toISOString(),
+    action: `Updated replacement request ${rep.id} (Shop: ${rep.shopName}, Status: ${newStatus}, Stock Adjusted: ${stockAdjusted})`
+  });
+  await audit.save();
+
+  const repObj = rep.toObject();
+  delete repObj._id;
+  delete repObj.__v;
+  res.json(repObj);
+}));
+
+app.delete('/api/replacements/:id', catchAsync(async (req, res) => {
+  const rep = await Replacement.findOne({ id: req.params.id });
+  if (!rep) {
+    return res.status(404).json({ message: 'Replacement request not found' });
+  }
+
+  if (rep.stockAdjusted) {
+    const product = await Product.findOne({ id: rep.productId });
     if (product) {
-      const returnQty = Number(ret.qty) || 1;
-      product.availableQty -= returnQty;
-      product.totalQty -= returnQty;
+      product.availableQty += rep.qty;
+      product.totalQty += rep.qty;
       product.updatedAt = new Date().toISOString();
       await product.save();
     }
   }
-  res.json({ message: 'Deleted' });
+
+  await Replacement.findOneAndDelete({ id: req.params.id });
+
+  const requestUser = await getRequestUser(req);
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: requestUser,
+    time: new Date().toISOString(),
+    action: `Deleted replacement request ${rep.id} (Shop: ${rep.shopName}, Product: ${rep.productName}, Qty: ${rep.qty})`
+  });
+  await audit.save();
+
+  res.json({ message: 'Replacement request successfully deleted' });
 }));
 
 // BUSINESS ANALYTICS & PROFIT
@@ -1042,19 +1432,30 @@ app.get('/api/analytics', catchAsync(async (req, res) => {
 
   // 6. Process Returns
   returns.forEach(r => {
-    const val = getReturnPrice(r.productId, r.platform) * r.qty;
-    totalReturnsValue += val;
-    totalUnitsReturned += r.qty;
+    const items = (r.items && r.items.length > 0)
+      ? r.items
+      : [{
+          productId: r.productId,
+          productName: r.productName,
+          qty: r.qty || 1,
+          condition: r.condition || 'good'
+        }];
 
-    const plat = r.platform ? r.platform.toLowerCase() : 'offline';
-    const platKey = plat === 'shop' ? 'offline' : plat;
-    if (platformStats[platKey]) {
-      platformStats[platKey].returnsValue += val;
-      platformStats[platKey].unitsReturned += r.qty;
-    }
+    items.forEach(item => {
+      const val = getReturnPrice(item.productId, r.platform) * item.qty;
+      totalReturnsValue += val;
+      totalUnitsReturned += item.qty;
 
-    const pStat = getProductAccumulator(r.productId, r.productName);
-    pStat.returnsValue += val;
+      const plat = r.platform ? r.platform.toLowerCase() : 'offline';
+      const platKey = plat === 'shop' ? 'offline' : plat;
+      if (platformStats[platKey]) {
+        platformStats[platKey].returnsValue += val;
+        platformStats[platKey].unitsReturned += item.qty;
+      }
+
+      const pStat = getProductAccumulator(item.productId, item.productName);
+      pStat.returnsValue += val;
+    });
   });
 
   // 7. Calculate final gross / net profits
@@ -1412,7 +1813,10 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
     if (platform === 'meesho') return p.meeshoPrice || p.onlinePrice || p.unitPrice || 0;
     return p.offlinePrice || p.unitPrice || 0;
   };
-  const returnsValue = returns.reduce((sum, r) => sum + (getReturnPrice(r.productId, r.platform) * r.qty), 0);
+  const returnsValue = returns.reduce((sum, r) => {
+    const items = (r.items && r.items.length > 0) ? r.items : [{ productId: r.productId, qty: r.qty || 1 }];
+    return sum + items.reduce((s, item) => s + (getReturnPrice(item.productId, r.platform) * item.qty), 0);
+  }, 0);
 
   // Net Profit
   // Net Profit = (Online Sales + Offline Sales) - Product Cost of Sold Items - Returns Value
@@ -1480,7 +1884,7 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
 
   // 3. Returns Rate deduction
   const totalSoldUnits = onlineSales.reduce((s, x) => s + x.qty, 0) + offlineSales.reduce((s, x) => s + (x.items || []).reduce((a, i) => a + i.qty, 0), 0);
-  const totalReturnedUnits = returns.reduce((s, x) => s + x.qty, 0);
+  const totalReturnedUnits = returns.reduce((s, x) => s + ((x.items && x.items.length > 0) ? x.items.reduce((sum, item) => sum + item.qty, 0) : x.qty || 1), 0);
   if (totalSoldUnits > 0) {
     const returnRatio = totalReturnedUnits / totalSoldUnits;
     if (returnRatio > 0.10) healthScore -= 15;
@@ -2240,6 +2644,7 @@ app.get('/api/backup/download', requireAdmin, catchAsync(async (req, res) => {
   const shops = await Shop.find({});
   const returns = await Return.find({});
   const settings = await Setting.find({});
+  const replacements = await Replacement.find({});
 
   const zip = new AdmZip();
   zip.addFile('products.json', Buffer.from(JSON.stringify(products, null, 2)));
@@ -2248,6 +2653,7 @@ app.get('/api/backup/download', requireAdmin, catchAsync(async (req, res) => {
   zip.addFile('shops.json', Buffer.from(JSON.stringify(shops, null, 2)));
   zip.addFile('returns.json', Buffer.from(JSON.stringify(returns, null, 2)));
   zip.addFile('settings.json', Buffer.from(JSON.stringify(settings, null, 2)));
+  zip.addFile('replacements.json', Buffer.from(JSON.stringify(replacements, null, 2)));
 
   const systemDateStr = new Date().toISOString().split('T')[0].replace(/-/g, '_');
   const filename = `TEE_Backup_${systemDateStr}.zip`;
@@ -2322,6 +2728,11 @@ app.post('/api/backup/restore', requireAdmin, catchAsync(async (req, res) => {
       settings = JSON.parse(zip.readAsText('settings.json'));
     }
 
+    let replacements = [];
+    if (files.includes('replacements.json')) {
+      replacements = JSON.parse(zip.readAsText('replacements.json'));
+    }
+
     // Overwrite database collections safely
     await Product.deleteMany({});
     if (products.length > 0) await Product.insertMany(products);
@@ -2337,6 +2748,9 @@ app.post('/api/backup/restore', requireAdmin, catchAsync(async (req, res) => {
 
     await Return.deleteMany({});
     if (returns.length > 0) await Return.insertMany(returns);
+
+    await Replacement.deleteMany({});
+    if (replacements.length > 0) await Replacement.insertMany(replacements);
 
     if (settings.length > 0) {
       await Setting.deleteMany({});
@@ -2471,6 +2885,570 @@ app.get('/api/admin/audit-logs', requireAdmin, catchAsync(async (req, res) => {
   res.json(logs);
 }));
 
+// --- MY PROFILE & APPEARANCE SETTINGS ENDPOINTS ---
+
+// Fetch current user's profile
+app.get('/api/profile', requireAuth, catchAsync(async (req, res) => {
+  const user = req.userObj.toObject();
+  const { password, _id, __v, ...safeUser } = user;
+  res.json(safeUser);
+}));
+
+// Update current user's profile metadata
+app.put('/api/profile', requireAuth, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const {
+    name, displayName, mobile, alternateMobile, email, dob,
+    city, state, address, bio, emergencyContact, socialLinks
+  } = req.body;
+
+  if (name) user.name = name;
+  if (displayName !== undefined) user.displayName = displayName;
+  if (mobile !== undefined) user.mobile = mobile;
+  if (alternateMobile !== undefined) user.alternateMobile = alternateMobile;
+  if (email !== undefined) user.email = email;
+  if (dob !== undefined) user.dob = dob;
+  if (city !== undefined) user.city = city;
+  if (state !== undefined) user.state = state;
+  if (address !== undefined) user.address = address;
+  if (bio !== undefined) user.bio = bio;
+  if (emergencyContact !== undefined) user.emergencyContact = emergencyContact;
+  if (socialLinks !== undefined) user.socialLinks = socialLinks;
+
+  await user.save();
+
+  // Audit Log
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: 'Updated their profile information'
+  });
+  await audit.save();
+
+  const userObj = user.toObject();
+  const { password: _, _id, __v, ...safe } = userObj;
+  res.json({ success: true, user: safe });
+}));
+
+// Update current user's avatar
+app.put('/api/profile/avatar', requireAuth, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const { avatar } = req.body; // base64 string or empty string to remove
+
+  user.avatar = avatar || '';
+  await user.save();
+
+  // Audit Log
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: avatar ? 'Updated their profile picture' : 'Removed their profile picture'
+  });
+  await audit.save();
+
+  res.json({ success: true, avatar: user.avatar });
+}));
+
+// Update current user's password
+app.put('/api/profile/password', requireAuth, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'Current password and new password are required.' });
+  }
+
+  // Check if current password is correct
+  if (user.password !== currentPassword) {
+    return res.status(400).json({ message: 'Incorrect current password.' });
+  }
+
+  if (newPassword.length < 4) {
+    return res.status(400).json({ message: 'New password must be at least 4 characters long.' });
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  // Audit Log
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: 'Changed their login password'
+  });
+  await audit.save();
+
+  res.json({ success: true, message: 'Password updated successfully.' });
+}));
+
+// Update current user's security questions
+app.put('/api/profile/security-questions', requireAuth, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const { securityQuestions } = req.body; // Array of { question, answer }
+
+  if (!Array.isArray(securityQuestions)) {
+    return res.status(400).json({ message: 'Security questions must be an array.' });
+  }
+
+  user.securityQuestions = securityQuestions;
+  await user.save();
+
+  // Audit Log
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: 'Updated their security questions'
+  });
+  await audit.save();
+
+  res.json({ success: true, message: 'Security questions updated successfully.' });
+}));
+
+// Retrieve current user's active login sessions
+app.get('/api/profile/sessions', requireAuth, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  res.json(user.activeSessions || []);
+}));
+
+// Clear all active sessions except current
+app.post('/api/profile/logout-all', requireAuth, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const currentSessionId = req.sessionId;
+
+  // Filter to keep only current session
+  user.activeSessions = (user.activeSessions || []).filter(
+    (s) => s.sessionId === currentSessionId
+  );
+  await user.save();
+
+  // Audit Log
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: 'Logged out other active sessions'
+  });
+  await audit.save();
+
+  res.json({ success: true, message: 'Other active sessions terminated.' });
+}));
+
+// Update appearance settings
+app.put('/api/profile/appearance', requireAuth, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const { theme, sidebar, density, accentColor, fontSize } = req.body;
+
+  user.appearance = {
+    theme: theme || user.appearance?.theme || 'dark',
+    sidebar: sidebar || user.appearance?.sidebar || 'expanded',
+    density: density || user.appearance?.density || 'comfortable',
+    accentColor: accentColor || user.appearance?.accentColor || 'red',
+    fontSize: fontSize || user.appearance?.fontSize || 'medium'
+  };
+  await user.save();
+
+  res.json({ success: true, appearance: user.appearance });
+}));
+
+// Admin endpoint: View employee full profile
+app.get('/api/admin/employees/:id/profile', requireAdmin, catchAsync(async (req, res) => {
+  const emp = await User.findOne({ id: req.params.id });
+  if (!emp) return res.status(404).json({ message: 'Employee not found' });
+  const empObj = emp.toObject();
+  const { password, _id, __v, ...safe } = empObj;
+  res.json(safe);
+}));
+
+// Admin endpoint: Update employee profile metadata
+app.put('/api/admin/employees/:id/profile', requireAdmin, catchAsync(async (req, res) => {
+  const emp = await User.findOne({ id: req.params.id });
+  if (!emp) return res.status(404).json({ message: 'Employee not found' });
+
+  const {
+    name, displayName, mobile, alternateMobile, email, dob,
+    city, state, address, bio, emergencyContact, socialLinks
+  } = req.body;
+
+  if (name) emp.name = name;
+  if (displayName !== undefined) emp.displayName = displayName;
+  if (mobile !== undefined) emp.mobile = mobile;
+  if (alternateMobile !== undefined) emp.alternateMobile = alternateMobile;
+  if (email !== undefined) emp.email = email;
+  if (dob !== undefined) emp.dob = dob;
+  if (city !== undefined) emp.city = city;
+  if (state !== undefined) emp.state = state;
+  if (address !== undefined) emp.address = address;
+  if (bio !== undefined) emp.bio = bio;
+  if (emergencyContact !== undefined) emp.emergencyContact = emergencyContact;
+  if (socialLinks !== undefined) emp.socialLinks = socialLinks;
+
+  await emp.save();
+
+  // Audit Log
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${req.userObj.name} (@${req.userObj.username})`,
+    time: new Date().toISOString(),
+    action: `Admin updated profile details for employee: ${emp.name} (@${emp.username})`
+  });
+  await audit.save();
+
+  res.json({ success: true, message: 'Employee profile updated successfully.' });
+}));
+
+// Admin endpoint: Update/reset employee avatar
+app.put('/api/admin/employees/:id/avatar', requireAdmin, catchAsync(async (req, res) => {
+  const emp = await User.findOne({ id: req.params.id });
+  if (!emp) return res.status(404).json({ message: 'Employee not found' });
+  
+  const { avatar } = req.body;
+  emp.avatar = avatar || '';
+  await emp.save();
+
+  // Audit Log
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${req.userObj.name} (@${req.userObj.username})`,
+    time: new Date().toISOString(),
+    action: avatar 
+      ? `Admin updated profile picture for employee: ${emp.name} (@${emp.username})`
+      : `Admin reset profile picture for employee: ${emp.name} (@${emp.username})`
+  });
+  await audit.save();
+
+  res.json({ success: true, avatar: emp.avatar });
+}));
+
+// requireAuth middleware defined above
+
+// Helper to count unread messages and flags for a specific user across public and DM channels
+async function getUnreadStateForUser(userId) {
+  try {
+    const user = await User.findOne({ id: userId });
+    const username = user ? user.username : '';
+
+    const userChannels = await ChatChannel.find({
+      $or: [
+        { type: { $in: ['group', 'announcement', 'department'] }, members: { $size: 0 } },
+        { members: userId }
+      ]
+    });
+    const channelIds = userChannels.map(c => c.id);
+
+    const unreadMessages = await ChatMessage.find({
+      senderId: { $ne: userId },
+      readers: { $ne: userId },
+      deleted: { $ne: true },
+      $or: [
+        { channelId: { $in: channelIds } },
+        { channelId: { $regex: userId } }
+      ]
+    });
+
+    const unreadCount = unreadMessages.length;
+    let hasMention = false;
+    let hasAnnouncement = false;
+
+    if (username) {
+      hasMention = unreadMessages.some(m => m.mentions && m.mentions.includes(username));
+    }
+    hasAnnouncement = unreadMessages.some(m => m.channelId === 'announcements');
+
+    return { unreadCount, hasMention, hasAnnouncement };
+  } catch (err) {
+    console.error('Error calculating unread state:', err);
+    return { unreadCount: 0, hasMention: false, hasAnnouncement: false };
+  }
+}
+
+// Fetch unread count for the logged-in user
+app.get('/api/communication/unread-count', requireAuth, catchAsync(async (req, res) => {
+  const state = await getUnreadStateForUser(req.userObj.id);
+  res.json(state);
+}));
+
+// Mark messages in a channel as read
+app.post('/api/communication/read', requireAuth, catchAsync(async (req, res) => {
+  const { channelId } = req.body;
+  const user = req.userObj;
+  if (!channelId) return res.status(400).json({ message: 'channelId is required' });
+
+  await ChatMessage.updateMany(
+    { channelId, readers: { $ne: user.id } },
+    { $addToSet: { readers: user.id } }
+  );
+
+  const state = await getUnreadStateForUser(user.id);
+  res.json({ success: true, ...state });
+}));
+
+// Fetch all channels (and auto-populate default channels if empty)
+app.get('/api/communication/channels', requireAuth, catchAsync(async (req, res) => {
+  let channels = await ChatChannel.find({});
+  if (channels.length === 0) {
+    const defaultChannels = [
+      { id: 'tee_official', name: 'TEE Official Group', type: 'group', description: 'Company-wide official group chat' },
+      { id: 'announcements', name: 'Announcements', type: 'announcement', description: 'Important alerts (Admin posting only)' },
+      { id: 'dept_sales', name: 'Sales Team', type: 'department', description: 'Department chat room for Sales' },
+      { id: 'dept_inventory', name: 'Inventory Team', type: 'department', description: 'Department chat room for Inventory' },
+      { id: 'dept_accounts', name: 'Accounts Team', type: 'department', description: 'Department chat room for Accounts' },
+      { id: 'dept_operations', name: 'Operations Team', type: 'department', description: 'Department chat room for Operations' },
+      { id: 'dept_management', name: 'Management Team', type: 'department', description: 'Department chat room for Management' }
+    ];
+    for (const dc of defaultChannels) {
+      await ChatChannel.create(dc);
+    }
+    channels = await ChatChannel.find({});
+  }
+  res.json(channels);
+}));
+
+// Create custom chat channel
+app.post('/api/communication/channels', requireAuth, catchAsync(async (req, res) => {
+  const { name, description, type, members } = req.body;
+  const user = req.userObj;
+  if (!name) return res.status(400).json({ message: 'Channel name is required' });
+
+  const id = 'custom_' + uuidv4().substring(0, 8);
+  const channel = new ChatChannel({
+    id,
+    name,
+    description: description || '',
+    type: type || 'group',
+    members: members || [],
+    createdBy: user.id
+  });
+  await channel.save();
+
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: `${user.name} (@${user.username})`,
+    time: new Date().toISOString(),
+    action: `Created new chat channel: ${name} (Type: ${channel.type})`
+  });
+  await audit.save();
+
+  const socketio = req.app.get('socketio');
+  if (socketio) {
+    socketio.emit('channelCreated', channel);
+  }
+
+  res.status(201).json(channel);
+}));
+
+// Fetch message history for a channel
+app.get('/api/communication/messages/:channelId', requireAuth, catchAsync(async (req, res) => {
+  const { channelId } = req.params;
+  const messages = await ChatMessage.find({ channelId }).sort({ createdAt: 1 });
+  res.json(messages);
+}));
+
+// Send a new message
+app.post('/api/communication/messages', requireAuth, catchAsync(async (req, res) => {
+  const { channelId, content, attachments, replyTo, urgent, task } = req.body;
+  const user = req.userObj;
+
+  const channelObj = await ChatChannel.findOne({ id: channelId });
+  if (channelId === 'announcements' || (channelObj && channelObj.type === 'announcement')) {
+    const isAdmin = user.role === 'ADMIN' || user.role === 'admin' || user.username === 'admin';
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Only administrators can post announcements.' });
+    }
+  }
+
+  let taskObj = null;
+  if (task && task.title) {
+    taskObj = {
+      id: 'task_' + uuidv4().substring(0, 8),
+      title: task.title,
+      assignedTo: task.assignedTo || '',
+      assignedToName: task.assignedToName || '',
+      status: 'Pending',
+      history: [{
+        status: 'Pending',
+        updatedBy: user.name,
+        time: new Date().toISOString()
+      }]
+    };
+  }
+
+  const mentions = [];
+  const mentionRegex = /@(\w+)/g;
+  let match;
+  while ((match = mentionRegex.exec(content)) !== null) {
+    mentions.push(match[1]);
+  }
+
+  const message = new ChatMessage({
+    id: 'msg_' + uuidv4().substring(0, 8),
+    channelId,
+    senderId: user.id,
+    senderName: user.name,
+    senderRole: user.role,
+    content: content || '',
+    attachments: attachments || [],
+    replyTo: replyTo || '',
+    urgent: !!urgent,
+    mentions,
+    task: taskObj,
+    readers: [user.id],
+    createdAt: new Date().toISOString()
+  });
+  await message.save();
+
+  const socketio = req.app.get('socketio');
+  if (socketio) {
+    socketio.emit('newMessage', message);
+  }
+
+  res.status(201).json(message);
+}));
+
+// Edit message content
+app.put('/api/communication/messages/:messageId', requireAuth, catchAsync(async (req, res) => {
+  const { messageId } = req.params;
+  const { content } = req.body;
+  const user = req.userObj;
+
+  const msg = await ChatMessage.findOne({ id: messageId });
+  if (!msg) return res.status(404).json({ message: 'Message not found' });
+
+  if (msg.senderId !== user.id) {
+    return res.status(403).json({ message: 'You can only edit your own messages.' });
+  }
+
+  msg.content = content || '';
+  msg.edited = true;
+  await msg.save();
+
+  const socketio = req.app.get('socketio');
+  if (socketio) {
+    socketio.emit('messageUpdated', msg);
+  }
+
+  res.json(msg);
+}));
+
+// Soft delete a message
+app.delete('/api/communication/messages/:messageId', requireAuth, catchAsync(async (req, res) => {
+  const { messageId } = req.params;
+  const user = req.userObj;
+
+  const msg = await ChatMessage.findOne({ id: messageId });
+  if (!msg) return res.status(404).json({ message: 'Message not found' });
+
+  const isAdmin = user.role === 'ADMIN' || user.role === 'admin' || user.username === 'admin';
+  if (msg.senderId !== user.id && !isAdmin) {
+    return res.status(403).json({ message: 'You can only delete your own messages.' });
+  }
+
+  msg.deleted = true;
+  msg.content = 'This message was deleted.';
+  msg.attachments = [];
+  msg.task = undefined;
+  await msg.save();
+
+  const socketio = req.app.get('socketio');
+  if (socketio) {
+    socketio.emit('messageDeleted', msg);
+  }
+
+  res.json(msg);
+}));
+
+// Update a chat message task status
+app.put('/api/communication/tasks/:messageId', requireAuth, catchAsync(async (req, res) => {
+  const { messageId } = req.params;
+  const { status } = req.body;
+  const user = req.userObj;
+
+  const msg = await ChatMessage.findOne({ id: messageId });
+  if (!msg || !msg.task) return res.status(404).json({ message: 'Task message not found' });
+
+  msg.task.status = status;
+  msg.task.history.push({
+    status,
+    updatedBy: user.name,
+    time: new Date().toISOString()
+  });
+  msg.markModified('task');
+  await msg.save();
+
+  const socketio = req.app.get('socketio');
+  if (socketio) {
+    socketio.emit('messageUpdated', msg);
+  }
+
+  res.json(msg);
+}));
+
+// Fetch all registered users
+app.get('/api/communication/users', requireAuth, catchAsync(async (req, res) => {
+  const users = await User.find({}, { password: 0 }).sort({ name: 1 });
+  res.json(users);
+}));
+
+// Fetch all shared files in chats
+app.get('/api/communication/files', requireAuth, catchAsync(async (req, res) => {
+  const messages = await ChatMessage.find({ 'attachments.0': { $exists: true } });
+  const files = [];
+  messages.forEach((msg) => {
+    msg.attachments.forEach((att) => {
+      files.push({
+        messageId: msg.id,
+        channelId: msg.channelId,
+        senderName: msg.senderName,
+        fileName: att.name,
+        fileType: att.type,
+        fileData: att.data,
+        createdAt: msg.createdAt
+      });
+    });
+  });
+  res.json(files.reverse());
+}));
+
+// Fetch dashboard widgets stats
+app.get('/api/communication/stats', requireAuth, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  // Recent announcements (limit 5)
+  const announcements = await ChatMessage.find({ channelId: 'announcements' }).sort({ createdAt: -1 }).limit(5);
+
+  // Pending Tasks assigned to current user
+  const pendingTasks = await ChatMessage.find({
+    'task.assignedTo': user.id,
+    'task.status': { $ne: 'Completed' }
+  }).sort({ createdAt: -1 });
+
+  // Online count
+  const onlineCount = await User.countDocuments({ status: { $in: ['Online', 'Away'] } });
+
+  // Activity Feed
+  const recentMessages = await ChatMessage.find({ channelId: { $ne: 'announcements' } })
+    .sort({ createdAt: -1 })
+    .limit(10);
+
+  const activityFeed = recentMessages.map((m) => ({
+    id: m.id,
+    userName: m.senderName,
+    channelId: m.channelId,
+    type: m.task ? 'task' : (m.attachments.length > 0 ? 'file' : 'message'),
+    content: m.task ? `assigned task: "${m.task.title}"` : (m.attachments.length > 0 ? `shared a file: "${m.attachments[0].name}"` : m.content),
+    time: m.createdAt
+  }));
+
+  res.json({
+    announcements,
+    pendingTasks,
+    onlineCount,
+    activityFeed
+  });
+}));
+
 app.get("/", (req, res) => {
   res.json({
     status: "Backend Running",
@@ -2489,4 +3467,77 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => console.log(`Inventory API running at http://localhost:${PORT}`));
+const http = require('http');
+const { Server } = require('socket.io');
+
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+  },
+  maxHttpBufferSize: 1e8 // Increase limit to 100MB for base64 file transfers
+});
+
+io.on('connection', (socket) => {
+  console.log(`🔌 Client connected to Socket.IO: ${socket.id}`);
+
+  // Register online
+  socket.on('register', async (userId) => {
+    socket.userId = userId;
+    try {
+      await User.findOneAndUpdate({ id: userId }, { status: 'Online', lastSeen: new Date().toISOString() });
+      io.emit('userStatusChanged', { userId, status: 'Online', lastSeen: new Date().toISOString() });
+    } catch (err) {
+      console.error('Socket register error:', err);
+    }
+  });
+
+  // Change user status manually
+  socket.on('changeStatus', async ({ userId, status }) => {
+    try {
+      const lastSeen = new Date().toISOString();
+      await User.findOneAndUpdate({ id: userId }, { status, lastSeen });
+      io.emit('userStatusChanged', { userId, status, lastSeen });
+    } catch (err) {
+      console.error('Socket changeStatus error:', err);
+    }
+  });
+
+  // Join channel room
+  socket.on('joinRoom', (channelId) => {
+    // Leave previous channel rooms
+    const rooms = Array.from(socket.rooms);
+    rooms.forEach((r) => {
+      if (r !== socket.id && r.startsWith('room_')) {
+        socket.leave(r);
+      }
+    });
+    socket.join(`room_${channelId}`);
+    console.log(`👤 Socket ${socket.id} joined room_${channelId}`);
+  });
+
+  // Typing indicators
+  socket.on('typing', ({ channelId, userId, userName, isTyping }) => {
+    socket.to(`room_${channelId}`).emit('typingStatus', { channelId, userId, userName, isTyping });
+  });
+
+  // Disconnect handler
+  socket.on('disconnect', async () => {
+    console.log(`🔌 Client disconnected: ${socket.id}`);
+    if (socket.userId) {
+      try {
+        const lastSeen = new Date().toISOString();
+        await User.findOneAndUpdate({ id: socket.userId }, { status: 'Offline', lastSeen });
+        io.emit('userStatusChanged', { userId: socket.userId, status: 'Offline', lastSeen });
+      } catch (err) {
+        console.error('Socket disconnect error:', err);
+      }
+    }
+  });
+});
+
+app.set('socketio', io);
+
+httpServer.listen(PORT, () => console.log(`Inventory API with Socket.IO running at http://localhost:${PORT}`));

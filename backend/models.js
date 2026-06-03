@@ -14,7 +14,62 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   role: { type: String, default: 'EMPLOYEE' },
   disabled: { type: Boolean, default: false },
-  createdAt: { type: String, default: () => new Date().toISOString() }
+  status: { type: String, default: 'Offline' },
+  lastSeen: { type: String, default: () => new Date().toISOString() },
+  createdAt: { type: String, default: () => new Date().toISOString() },
+  
+  // Custom Profile Fields
+  avatar: { type: String, default: '' },
+  displayName: { type: String, default: '' },
+  mobile: { type: String, default: '' },
+  alternateMobile: { type: String, default: '' },
+  email: { type: String, default: '' },
+  dob: { type: String, default: '' },
+  city: { type: String, default: '' },
+  state: { type: String, default: '' },
+  address: { type: String, default: '' },
+  bio: { type: String, default: '' },
+  emergencyContact: { type: String, default: '' },
+  socialLinks: {
+    type: {
+      linkedin: { type: String, default: '' },
+      twitter: { type: String, default: '' },
+      github: { type: String, default: '' }
+    },
+    default: {}
+  },
+  securityQuestions: {
+    type: [{
+      question: { type: String },
+      answer: { type: String }
+    }],
+    default: []
+  },
+  appearance: {
+    type: {
+      theme: { type: String, default: 'dark' }, // 'dark' | 'light' | 'system'
+      sidebar: { type: String, default: 'expanded' }, // 'expanded' | 'compact'
+      density: { type: String, default: 'comfortable' }, // 'comfortable' | 'compact'
+      accentColor: { type: String, default: 'red' }, // 'red' | 'blue' | 'green' | 'purple'
+      fontSize: { type: String, default: 'medium' } // 'small' | 'medium' | 'large'
+    },
+    default: {
+      theme: 'dark',
+      sidebar: 'expanded',
+      density: 'comfortable',
+      accentColor: 'red',
+      fontSize: 'medium'
+    }
+  },
+  activeSessions: {
+    type: [{
+      sessionId: { type: String },
+      device: { type: String },
+      ip: { type: String },
+      lastLogin: { type: String }
+    }],
+    default: []
+  }
 });
 const User = mongoose.model('User', userSchema);
 
@@ -122,20 +177,36 @@ const shopSchema = new mongoose.Schema({
 });
 const Shop = mongoose.model('Shop', shopSchema);
 
+const returnItemSchema = new mongoose.Schema({
+  productId: { type: String, required: true },
+  productName: { type: String, required: true },
+  sku: { type: String, default: '' },
+  category: { type: String, default: 'General' },
+  qty: { type: Number, required: true, default: 1 },
+  condition: { type: String, required: true },
+  reason: { type: String, default: '' },
+  notes: { type: String, default: '' }
+}, { _id: false });
+
 // Return Model
 const returnSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
-  productId: { type: String, required: true },
-  productName: { type: String, required: true },
   platform: { type: String, required: true },
   shopId: { type: String },
   shopName: { type: String },
   action: { type: String, default: 'return' },
-  qty: { type: Number, default: 1 },
   date: { type: String, default: () => getSystemLocalDate() },
-  condition: { type: String, required: true },
   notes: { type: String, default: '' },
-  createdAt: { type: String, default: () => new Date().toISOString() }
+  items: { type: [returnItemSchema], default: [] },
+  
+  // Legacy support
+  productId: { type: String },
+  productName: { type: String },
+  qty: { type: Number },
+  condition: { type: String },
+  
+  createdAt: { type: String, default: () => new Date().toISOString() },
+  updatedAt: { type: String, default: () => new Date().toISOString() }
 });
 const Return = mongoose.model('Return', returnSchema);
 
@@ -155,6 +226,116 @@ const auditLogSchema = new mongoose.Schema({
 }, { timestamps: true });
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 
+// Replacement Model
+const replacementSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  
+  // Shop details
+  shopId: { type: String, default: '' },
+  shopName: { type: String, required: true },
+  contactPerson: { type: String, default: '' },
+  mobile: { type: String, default: '' },
+  cityState: { type: String, default: '' },
+  dealerCode: { type: String, default: '' },
+  
+  // Product details
+  productId: { type: String, required: true },
+  productName: { type: String, required: true },
+  productCategory: { type: String, default: 'General' },
+  sku: { type: String, default: '' },
+  batchNumber: { type: String, default: '' },
+  qty: { type: Number, required: true, default: 1 },
+  invoiceNumber: { type: String, default: '' },
+  invoiceDate: { type: String, default: '' },
+  
+  // Reason & Condition
+  reason: { type: String, required: true },
+  condition: { type: String, required: true },
+  
+  // Evidence
+  productImages: { type: [String], default: [] },
+  invoiceCopy: { type: [String], default: [] },
+  damageProof: { type: [String], default: [] },
+  additionalDocs: { type: [String], default: [] },
+  
+  // Approval & Processing
+  status: { type: String, enum: ['Pending', 'Under Review', 'Approved', 'Rejected', 'Dispatched', 'Completed'], default: 'Pending' },
+  approvalRemarks: { type: String, default: '' },
+  approvedBy: { type: String, default: '' },
+  dispatchDate: { type: String, default: '' },
+  trackingNumber: { type: String, default: '' },
+  courierPartner: { type: String, default: '' },
+  
+  // Financial Details
+  productValue: { type: Number, default: 0 },
+  replacementCost: { type: Number, default: 0 },
+  recoveryAmount: { type: Number, default: 0 },
+  netLoss: { type: Number, default: 0 },
+  
+  // Stock Tracking
+  stockAdjusted: { type: Boolean, default: false },
+  
+  // Metadata
+  date: { type: String, default: () => getSystemLocalDate() },
+  createdAt: { type: String, default: () => new Date().toISOString() },
+  updatedAt: { type: String, default: () => new Date().toISOString() }
+});
+const Replacement = mongoose.model('Replacement', replacementSchema);
+
+// ChatChannel Schema
+const chatChannelSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  type: { type: String, enum: ['group', 'announcement', 'department'], default: 'group' },
+  description: { type: String, default: '' },
+  members: { type: [String], default: [] },
+  createdBy: { type: String, default: 'system' },
+  createdAt: { type: String, default: () => new Date().toISOString() }
+});
+const ChatChannel = mongoose.model('ChatChannel', chatChannelSchema);
+
+// ChatMessage Schema
+const chatMessageSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  channelId: { type: String, required: true },
+  senderId: { type: String, required: true },
+  senderName: { type: String, required: true },
+  senderRole: { type: String, required: true },
+  content: { type: String, default: '' },
+  attachments: {
+    type: [{
+      name: { type: String },
+      type: { type: String },
+      data: { type: String }
+    }],
+    default: []
+  },
+  replyTo: { type: String, default: '' },
+  edited: { type: Boolean, default: false },
+  deleted: { type: Boolean, default: false },
+  pinned: { type: Boolean, default: false },
+  urgent: { type: Boolean, default: false },
+  mentions: { type: [String], default: [] },
+  readers: { type: [String], default: [] },
+  task: {
+    id: { type: String },
+    title: { type: String },
+    assignedTo: { type: String },
+    assignedToName: { type: String },
+    status: { type: String, enum: ['Pending', 'In Progress', 'Completed'] },
+    history: {
+      type: [{
+        status: { type: String },
+        updatedBy: { type: String },
+        time: { type: String }
+      }],
+      default: []
+    }
+  },
+  createdAt: { type: String, default: () => new Date().toISOString() }
+});
+const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
+
 module.exports = {
   User,
   Product,
@@ -163,6 +344,10 @@ module.exports = {
   Shop,
   Return,
   Setting,
-  AuditLog
+  AuditLog,
+  Replacement,
+  ChatChannel,
+  ChatMessage
 };
+
 
