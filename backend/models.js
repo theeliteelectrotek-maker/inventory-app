@@ -351,6 +351,122 @@ const passwordChangeRequestSchema = new mongoose.Schema({
 }, { collection: 'password_change_requests' });
 const PasswordChangeRequest = mongoose.model('PasswordChangeRequest', passwordChangeRequestSchema);
 
+// Supplier Model
+const supplierSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  factoryName: { type: String, required: true },
+  ownerName: { type: String, required: true },
+  mobile: { type: String, required: true },
+  gstNumber: { type: String, default: '' },
+  address: { type: String, required: true },
+  gstBalance: { type: Number, default: 0 },
+  nonGstBalance: { type: Number, default: 0 },
+  archived: { type: Boolean, default: false },
+  createdAt: { type: String, default: () => new Date().toISOString() },
+  updatedAt: { type: String, default: () => new Date().toISOString() }
+});
+const Supplier = mongoose.model('Supplier', supplierSchema);
+
+// Purchase Model
+const purchaseSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  invoiceNumber: { type: String, required: true },
+  purchaseDate: { type: String, default: () => getSystemLocalDate() },
+  supplierId: { type: String, required: true },
+  supplierName: { type: String, required: true },
+  gstType: { type: String, enum: ['GST', 'Non-GST'], default: 'GST' },
+  paymentType: { type: String, enum: ['Cash', 'Bank Transfer', 'UPI', 'Credit'], default: 'Credit' },
+  dueDate: { type: String, default: '' },
+  transportCharges: { type: Number, default: 0 },
+  loadingCharges: { type: Number, default: 0 },
+  otherExpenses: { type: Number, default: 0 },
+  items: {
+    type: [{
+      productId: { type: String, required: true },
+      productName: { type: String, required: true },
+      qty: { type: Number, required: true },
+      rate: { type: Number, required: true },
+      gstPercent: { type: Number, default: 0 },
+      discount: { type: Number, default: 0 },
+      amount: { type: Number, required: true }
+    }],
+    default: []
+  },
+  subtotal: { type: Number, default: 0 },
+  gstAmount: { type: Number, default: 0 },
+  expenses: { type: Number, default: 0 },
+  grandTotal: { type: Number, default: 0 },
+  paidAmount: { type: Number, default: 0 },
+  remainingAmount: { type: Number, default: 0 },
+  invoiceFile: { type: String, default: '' }, // base64
+  invoiceFileName: { type: String, default: '' },
+  invoiceFileType: { type: String, default: '' },
+  grnStatus: { type: String, enum: ['Pending', 'Partially Received', 'Completed'], default: 'Pending' },
+  createdBy: { type: String, default: '' },
+  createdAt: { type: String, default: () => new Date().toISOString() },
+  updatedAt: { type: String, default: () => new Date().toISOString() }
+});
+const Purchase = mongoose.model('Purchase', purchaseSchema);
+
+// GRN Model
+const grnSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  purchaseId: { type: String, required: true },
+  invoiceNumber: { type: String, required: true },
+  arrivalDate: { type: String, default: () => getSystemLocalDate() },
+  factoryId: { type: String, required: true },
+  factoryName: { type: String, required: true },
+  vehicleNumber: { type: String, default: '' },
+  driverName: { type: String, default: '' },
+  itemsReceived: {
+    type: [{
+      productId: { type: String, required: true },
+      productName: { type: String, required: true },
+      qtyOrdered: { type: Number, required: true },
+      qtyReceived: { type: Number, default: 0 },
+      shortage: { type: Number, default: 0 },
+      excess: { type: Number, default: 0 },
+      damage: { type: Number, default: 0 }
+    }],
+    default: []
+  },
+  status: { type: String, enum: ['Pending', 'Partially Received', 'Completed'], default: 'Pending' },
+  notes: { type: String, default: '' },
+  createdBy: { type: String, default: '' },
+  createdAt: { type: String, default: () => new Date().toISOString() }
+});
+const GRN = mongoose.model('GRN', grnSchema);
+
+// SupplierPayment Model
+const supplierPaymentSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  supplierId: { type: String, required: true },
+  supplierName: { type: String, required: true },
+  date: { type: String, default: () => getSystemLocalDate() },
+  amount: { type: Number, required: true },
+  paymentMethod: { type: String, default: 'Cash' },
+  referenceNumber: { type: String, default: '' },
+  category: { type: String, enum: ['GST', 'Non-GST'], default: 'GST', required: true },
+  balanceAfterPayment: { type: Number, default: 0 },
+  notes: { type: String, default: '' },
+  receiptFile: { type: String, default: '' }, // base64
+  receiptFileName: { type: String, default: '' },
+  createdBy: { type: String, default: '' },
+  createdAt: { type: String, default: () => new Date().toISOString() }
+});
+const SupplierPayment = mongoose.model('SupplierPayment', supplierPaymentSchema);
+
+// PurchaseAuditLog Model
+const purchaseAuditLogSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  userId: { type: String, required: true },
+  userName: { type: String, required: true },
+  action: { type: String, required: true },
+  timestamp: { type: String, default: () => new Date().toISOString() },
+  details: { type: String, default: '' }
+});
+const PurchaseAuditLog = mongoose.model('PurchaseAuditLog', purchaseAuditLogSchema);
+
 module.exports = {
   User,
   Product,
@@ -363,7 +479,12 @@ module.exports = {
   Replacement,
   ChatChannel,
   ChatMessage,
-  PasswordChangeRequest
+  PasswordChangeRequest,
+  Supplier,
+  Purchase,
+  GRN,
+  SupplierPayment,
+  PurchaseAuditLog
 };
 
 

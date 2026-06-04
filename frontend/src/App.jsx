@@ -16,6 +16,7 @@ import AdminPanel from './pages/AdminPanel';
 import AdminPasswordRequests from './pages/AdminPasswordRequests';
 import Settings from './pages/Settings';
 import CommunicationHub from './pages/CommunicationHub';
+import PurchasesFactories from './pages/PurchasesFactories';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -99,6 +100,7 @@ export default function App() {
               <Route path="communication" element={<CommunicationHub />} />
               <Route path="admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
               <Route path="admin/password-requests" element={<AdminRoute><AdminPasswordRequests /></AdminRoute>} />
+              <Route path="purchases-factories" element={<PurchasesFactories />} />
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

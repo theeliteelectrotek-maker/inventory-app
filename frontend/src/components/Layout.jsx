@@ -6,7 +6,8 @@ import SessionTimeoutManager from './SessionTimeoutManager';
 import { io } from 'socket.io-client';
 import {
   LayoutDashboard, Package, ShoppingCart, Store,
-  LogOut, Menu, Building2, Undo2, BarChart3, Database, Settings, ArrowLeftRight, MessageSquare, KeyRound
+  LogOut, Menu, Building2, Undo2, BarChart3, Database, Settings, ArrowLeftRight, MessageSquare, KeyRound,
+  Factory
 } from 'lucide-react';
 import logo from '../logo.png';
 
@@ -18,6 +19,7 @@ const nav = [
   { to: '/online-sales', label: 'Online Sales', icon: ShoppingCart },
   { to: '/shops', label: 'Customer Management', icon: Building2 },
   { to: '/offline-sales', label: 'Offline Sales', icon: Store },
+  { to: '/purchases-factories', label: 'Purchases & Factory', icon: Factory },
   { to: '/returns', label: 'Returns', icon: Undo2 },
   { to: '/replacements', label: 'Replacement Management', icon: ArrowLeftRight },
   { to: '/communication', label: 'Team Communication', icon: MessageSquare },

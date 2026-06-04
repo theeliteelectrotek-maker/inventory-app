@@ -146,5 +146,27 @@ export const api = {
   getMyPasswordChangeRequests: () => request('GET', '/profile/password-change-requests'),
   approvePasswordChangeRequest: (id, adminNote) => request('POST', `/admin/password-change-requests/${id}/approve`, { adminNote }),
   rejectPasswordChangeRequest: (id, adminNote) => request('POST', `/admin/password-change-requests/${id}/reject`, { adminNote }),
+
+  // Purchases & Factory Management
+  getSuppliers: () => request('GET', '/purchases/suppliers'),
+  getArchivedSuppliers: () => request('GET', '/purchases/suppliers?archived=true'),
+  addSupplier: (s) => request('POST', '/purchases/suppliers', s),
+  updateSupplier: (id, s) => request('PUT', `/purchases/suppliers/${id}`, s),
+  deleteSupplier: (id, reason) => request('DELETE', `/purchases/suppliers/${id}?reason=${encodeURIComponent(reason || '')}`),
+  deleteSupplierPermanent: (id, reason) => request('DELETE', `/purchases/suppliers/${id}?permanent=true&reason=${encodeURIComponent(reason || '')}`),
+  deleteSupplierForce: (id, reason) => request('DELETE', `/purchases/suppliers/${id}?force=true&reason=${encodeURIComponent(reason || '')}`),
+  restoreSupplier: (id) => request('POST', `/purchases/suppliers/${id}/restore`),
+  getPurchases: () => request('GET', '/purchases'),
+  addPurchase: (p) => request('POST', '/purchases', p),
+  deletePurchase: (id, reason) => request('DELETE', `/purchases/${id}?reason=${encodeURIComponent(reason || '')}`),
+  getGRNs: () => request('GET', '/purchases/grns'),
+  updateGRN: (id, g) => request('PUT', `/purchases/grns/${id}`, g),
+  getSupplierPayments: () => request('GET', '/purchases/payments'),
+  addSupplierPayment: (p) => request('POST', '/purchases/payments', p),
+  updateSupplierPayment: (id, p) => request('PUT', `/purchases/payments/${id}`, p),
+  deleteSupplierPayment: (id, reason) => request('DELETE', `/purchases/payments/${id}?reason=${encodeURIComponent(reason || '')}`),
+  getSupplierLedger: (id) => request('GET', `/purchases/suppliers/${id}/ledger`),
+  getPurchaseStats: () => request('GET', '/purchases/stats'),
+  getPurchaseAuditLogs: () => request('GET', '/purchases/audit-logs'),
 };
 
