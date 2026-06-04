@@ -7,7 +7,7 @@ import {
   History, Save, QrCode, AlertCircle, Eye, RefreshCw, X, ShieldAlert,
   Mail, Phone, FileText, CheckCircle2, ChevronRight, HelpCircle,
   Sun, Moon, Monitor, User, Palette, Lock, MapPin, Calendar, Globe,
-  Trash2, KeyRound, Smartphone, Laptop, ShieldCheck, UserCog
+  Trash2, KeyRound, Smartphone, Laptop, ShieldCheck, UserCog, XCircle, Clock
 } from 'lucide-react';
 
 export default function Settings() {
@@ -98,6 +98,9 @@ export default function Settings() {
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
+  const [myPasswordRequests, setMyPasswordRequests] = useState([]);
+  const [loadingPasswordRequests, setLoadingPasswordRequests] = useState(false);
+
   const [securityQuestions, setSecurityQuestions] = useState([
     { question: 'What was the name of your first school?', answer: '' },
     { question: 'What is your mother\'s maiden name?', answer: '' }
@@ -137,6 +140,8 @@ export default function Settings() {
     if (isAdmin) {
       fetchCompanySettings();
       fetchEmployees();
+    } else {
+      fetchMyPasswordRequests();
     }
     fetchMyProfile();
     fetchSessions();
@@ -283,6 +288,18 @@ export default function Settings() {
     }
   };
 
+  const fetchMyPasswordRequests = async () => {
+    try {
+      setLoadingPasswordRequests(true);
+      const data = await api.getMyPasswordChangeRequests();
+      setMyPasswordRequests(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingPasswordRequests(false);
+    }
+  };
+
   // --- Handlers ---
 
   const handleSaveCompany = async (e) => {
@@ -411,10 +428,14 @@ export default function Settings() {
       return;
     }
     try {
-      await api.changeMyPassword(passwordChange.currentPassword, passwordChange.newPassword);
-      setPasswordSuccess('Password changed successfully!');
+      const res = await api.changeMyPassword(passwordChange.currentPassword, passwordChange.newPassword);
+      setPasswordSuccess(res.message || 'Password changed successfully!');
       setPasswordChange({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => setPasswordSuccess(''), 4000);
+      setTimeout(() => setPasswordSuccess(''), 5050);
+      
+      if (!isAdmin) {
+        fetchMyPasswordRequests();
+      }
     } catch (err) {
       console.error(err);
       setPasswordError(err.message || 'Failed to update password.');
@@ -1633,7 +1654,9 @@ export default function Settings() {
             <div>
               <div className="flex items-center gap-2 border-b border-slate-900 pb-3 mb-4">
                 <KeyRound className="text-[#EF4444]" size={18} />
-                <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Change Password</h3>
+                <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
+                  {isAdmin ? 'Change Password' : 'Request Password Change'}
+                </h3>
               </div>
 
               <form onSubmit={handleUpdatePassword} className="space-y-4">
@@ -1649,6 +1672,41 @@ export default function Settings() {
                     {passwordSuccess}
                   </div>
                 )}
+
+                {/* Employee specific pending/approved/rejected notification banner */}
+                {!isAdmin && myPasswordRequests.length > 0 && (() => {
+                  const latest = myPasswordRequests[0];
+                  if (latest.status === 'pending') {
+                    return (
+                      <div className="bg-amber-955/20 border-l-4 border-amber-500 p-3 rounded-lg text-xs font-bold text-amber-400 flex items-start gap-2 mb-4">
+                        <Clock size={14} className="shrink-0 mt-0.5" />
+                        <div>Your password change request is awaiting administrator approval.</div>
+                      </div>
+                    );
+                  } else if (latest.status === 'approved') {
+                    return (
+                      <div className="bg-emerald-955/20 border-l-4 border-emerald-500 p-3 rounded-lg text-xs font-bold text-emerald-400 flex items-start gap-2 mb-4">
+                        <CheckCircle2 size={14} className="shrink-0 mt-0.5" />
+                        <div>Your password change request has been approved.</div>
+                      </div>
+                    );
+                  } else if (latest.status === 'rejected') {
+                    return (
+                      <div className="bg-rose-955/20 border-l-4 border-rose-500 p-3 rounded-lg text-xs font-bold text-rose-400 flex flex-col gap-1 mb-4">
+                        <div className="flex items-start gap-2">
+                          <XCircle size={14} className="shrink-0 mt-0.5" />
+                          <div>Your password change request has been rejected.</div>
+                        </div>
+                        {latest.admin_note && (
+                          <div className="text-[10px] text-rose-350 italic pl-6 mt-0.5 font-semibold">
+                            Admin Note: {latest.admin_note}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Current Password</label>
@@ -1692,7 +1750,7 @@ export default function Settings() {
                     className="w-full bg-[#EF4444] hover:bg-red-600 text-white font-bold py-2 px-3 rounded-xl shadow transition-colors text-xs flex items-center justify-center gap-1.5"
                   >
                     <Save size={13} />
-                    {passwordSaving ? 'Updating...' : 'Change Password'}
+                    {passwordSaving ? 'Updating...' : (isAdmin ? 'Change Password' : 'Request Password Change')}
                   </button>
                 </div>
               </form>
@@ -1769,6 +1827,64 @@ export default function Settings() {
                 </div>
               </form>
             </div>
+
+            {/* Password Change Requests History (Employee Only) */}
+            {!isAdmin && (
+              <div className="bg-slate-900/40 dark:bg-[#020617]/35 rounded-3xl p-6 border border-slate-900/80 shadow-xl space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-900 pb-3 mb-2">
+                  <History className="text-[#EF4444]" size={18} />
+                  <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Password Request History</h3>
+                </div>
+
+                {loadingPasswordRequests ? (
+                  <div className="py-8 text-center text-slate-505 font-bold text-xs flex items-center justify-center gap-2">
+                    <RefreshCw className="animate-spin text-red-500" size={14} />
+                    Fetching request history...
+                  </div>
+                ) : myPasswordRequests.length === 0 ? (
+                  <p className="text-xs text-slate-500 font-semibold">No password change requests submitted yet.</p>
+                ) : (
+                  <div className="border border-slate-900 rounded-2xl overflow-hidden overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-slate-950/80 border-b border-slate-900 text-slate-400 uppercase font-extrabold text-[9px] tracking-wider">
+                        <tr>
+                          <th className="px-4 py-2.5">Requested Date</th>
+                          <th className="px-4 py-2.5">Status</th>
+                          <th className="px-4 py-2.5">Reviewed At</th>
+                          <th className="px-4 py-2.5">Admin Note</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-900/40 text-slate-350 bg-slate-950/20 font-medium">
+                        {myPasswordRequests.map((req) => (
+                          <tr key={req.id} className="hover:bg-slate-955/40">
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {new Date(req.requested_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                                req.status === 'pending'
+                                  ? 'bg-amber-955/10 text-amber-450 border-amber-900/30'
+                                  : req.status === 'approved'
+                                  ? 'bg-emerald-955/10 text-emerald-400 border-emerald-900/30'
+                                  : 'bg-rose-955/10 text-rose-450 border-rose-900/30'
+                              }`}>
+                                {req.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {req.reviewed_at ? new Date(req.reviewed_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                            </td>
+                            <td className="px-4 py-3 max-w-[150px] truncate" title={req.admin_note}>
+                              {req.admin_note || <span className="text-slate-600">—</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Active Sessions Logs */}
             <div className="bg-slate-900/40 dark:bg-[#020617]/35 rounded-3xl p-6 border border-slate-900/80 shadow-xl space-y-4">

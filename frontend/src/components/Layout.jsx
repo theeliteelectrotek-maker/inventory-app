@@ -6,7 +6,7 @@ import SessionTimeoutManager from './SessionTimeoutManager';
 import { io } from 'socket.io-client';
 import {
   LayoutDashboard, Package, ShoppingCart, Store,
-  LogOut, Menu, Building2, Undo2, BarChart3, Database, Settings, ArrowLeftRight, MessageSquare
+  LogOut, Menu, Building2, Undo2, BarChart3, Database, Settings, ArrowLeftRight, MessageSquare, KeyRound
 } from 'lucide-react';
 import logo from '../logo.png';
 
@@ -239,6 +239,7 @@ export default function Layout() {
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'admin' || user?.username === 'admin';
   if (isAdmin) {
     allowedNav.push({ to: '/admin', label: 'Admin Panel', icon: Database });
+    allowedNav.push({ to: '/admin/password-requests', label: 'Password Change Requests', icon: KeyRound, isSubItem: true });
   }
 
   const isCompactSidebar = user?.appearance?.sidebar === 'compact';
@@ -257,7 +258,7 @@ export default function Layout() {
 
       {/* Nav */}
       <nav className={`flex-1 space-y-1 overflow-y-auto scrollbar-thin w-full transition-all duration-300 ${isCompactSidebar ? 'px-2 py-4' : 'px-3 py-4'}`}>
-        {allowedNav.map(({ to, label, icon: Icon, exact }) => (
+        {allowedNav.map(({ to, label, icon: Icon, exact, isSubItem }) => (
           <NavLink
             key={to}
             to={to}
@@ -266,7 +267,9 @@ export default function Layout() {
             title={isCompactSidebar ? label : ''}
             className={({ isActive }) => {
               let baseClass = `relative flex items-center rounded-lg text-sm font-medium transition-all ${
-                isCompactSidebar ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'
+                isCompactSidebar 
+                  ? 'justify-center p-2.5' 
+                  : (isSubItem ? 'gap-3 pl-8 pr-3 py-2' : 'gap-3 px-3 py-2.5')
               } ${
                 isActive
                   ? 'bg-red-600 text-white shadow-md'
@@ -288,8 +291,8 @@ export default function Layout() {
               return baseClass;
             }}
           >
-            <Icon size={18} className="shrink-0" />
-            {!isCompactSidebar && <span className="flex-1">{label}</span>}
+            <Icon size={isSubItem ? 15 : 18} className="shrink-0" />
+            {!isCompactSidebar && <span className={`flex-1 ${isSubItem ? 'text-xs text-slate-350 font-semibold' : ''}`}>{label}</span>}
             
             {label === 'Team Communication' && (
               <>

@@ -13,6 +13,7 @@ import Returns from './pages/Returns';
 import Replacements from './pages/Replacements';
 import Analytics from './pages/Analytics';
 import AdminPanel from './pages/AdminPanel';
+import AdminPasswordRequests from './pages/AdminPasswordRequests';
 import Settings from './pages/Settings';
 import CommunicationHub from './pages/CommunicationHub';
 
@@ -97,6 +98,7 @@ export default function App() {
               <Route path="replacements" element={<Replacements />} />
               <Route path="communication" element={<CommunicationHub />} />
               <Route path="admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+              <Route path="admin/password-requests" element={<AdminRoute><AdminPasswordRequests /></AdminRoute>} />
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -336,6 +336,21 @@ const chatMessageSchema = new mongoose.Schema({
 });
 const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
 
+// PasswordChangeRequest Model
+const passwordChangeRequestSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  employee_id: { type: String, required: true },
+  employee_name: { type: String, required: true },
+  current_password_hash: { type: String, required: true },
+  new_password_hash: { type: String, required: true },
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  requested_at: { type: String, default: () => new Date().toISOString() },
+  reviewed_at: { type: String, default: '' },
+  reviewed_by_admin_id: { type: String, default: '' },
+  admin_note: { type: String, default: '' }
+}, { collection: 'password_change_requests' });
+const PasswordChangeRequest = mongoose.model('PasswordChangeRequest', passwordChangeRequestSchema);
+
 module.exports = {
   User,
   Product,
@@ -347,7 +362,9 @@ module.exports = {
   AuditLog,
   Replacement,
   ChatChannel,
-  ChatMessage
+  ChatMessage,
+  PasswordChangeRequest
 };
+
 
 

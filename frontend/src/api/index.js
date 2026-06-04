@@ -140,5 +140,11 @@ export const api = {
   getEmployeeProfile: (id) => request('GET', `/admin/employees/${id}/profile`),
   updateEmployeeProfile: (id, data) => request('PUT', `/admin/employees/${id}/profile`, data),
   updateEmployeeAvatar: (id, avatar) => request('PUT', `/admin/employees/${id}/avatar`, { avatar }),
+
+  // Password Change Requests
+  getPasswordChangeRequests: () => request('GET', '/admin/password-change-requests'),
+  getMyPasswordChangeRequests: () => request('GET', '/profile/password-change-requests'),
+  approvePasswordChangeRequest: (id, adminNote) => request('POST', `/admin/password-change-requests/${id}/approve`, { adminNote }),
+  rejectPasswordChangeRequest: (id, adminNote) => request('POST', `/admin/password-change-requests/${id}/reject`, { adminNote }),
 };
 
