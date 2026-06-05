@@ -66,7 +66,11 @@ export default function SessionTimeoutManager() {
       const lastActivity = lastActivityStr ? parseInt(lastActivityStr, 10) : Date.now();
       const elapsed = Date.now() - lastActivity;
 
-      if (elapsed >= INACTIVITY_LIMIT) {
+      const rememberMe = localStorage.getItem('tee_remember_me') === 'true';
+      const inactivityLimit = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 60 * 60 * 1000;
+      const warningThreshold = rememberMe ? inactivityLimit - 5 * 60 * 1000 : 55 * 60 * 1000;
+
+      if (elapsed >= inactivityLimit) {
         // Log out immediately
         localStorage.setItem(
           'tee_session_expired_msg',
@@ -76,11 +80,11 @@ export default function SessionTimeoutManager() {
         navigate('/login', {
           state: { message: 'Session expired due to inactivity. Please login again.' }
         });
-      } else if (elapsed >= WARNING_THRESHOLD) {
+      } else if (elapsed >= warningThreshold) {
         // Show warning popup
         const remainingSeconds = Math.max(
           0,
-          Math.ceil((INACTIVITY_LIMIT - elapsed) / 1000)
+          Math.ceil((inactivityLimit - elapsed) / 1000)
         );
         setTimeLeft(remainingSeconds);
         setShowWarning(true);

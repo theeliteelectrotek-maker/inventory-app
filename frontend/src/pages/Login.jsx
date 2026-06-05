@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Eye, EyeOff, Loader2, ShieldCheck, ShieldAlert, AlertTriangle,
-  ChevronLeft, ChevronRight, Package, BarChart3, Users, Undo2, ArrowLeftRight
+  ChevronLeft, ChevronRight, Package, BarChart3, Users, Undo2, ArrowLeftRight, Lock
 } from 'lucide-react';
 import logo from '../logo.png';
 
@@ -11,38 +11,38 @@ import logo from '../logo.png';
 const PRODUCTS = [
   {
     id: 1,
-    name: 'TEE Premium Ding-Dong Bell',
+    name: 'TEE Stereo Musical Ding-Dong Bell',
     category: 'Bells & Buzzers',
-    description: 'Elegant stereophonic musical door bell designed with high-quality copper windings and dust-proof premium polymer casing.',
-    specs: ['Pure Copper Coil', 'Stereo Ding-Dong Tone', 'AC 240V Rated', 'Modular Fit']
+    description: 'Elegant door bell designed with high-quality copper windings and dust-proof modular casing.',
+    specs: ['Stereo Ding-Dong Tone', 'Modular Fit', 'AC 240V Rated', 'Pure Copper Coil']
   },
   {
     id: 2,
-    name: 'TEE Neo-Touch Modular Switches',
-    category: 'Premium Switches',
-    description: 'Ultra-sleek polycarbonate switches with sparking arc-shield technology, heavy silver contacts, and smooth feather-touch click feedback.',
-    specs: ['Sparking Arc Shield', 'Silver Cadmium Contacts', '10 Lakh Click Tested', 'Flame Retardant']
+    name: 'TEE High-Decibel Modular Buzzer',
+    category: 'Bells & Buzzers',
+    description: 'Premium modular warning buzzer with loud acoustic resonance and heavy-duty flame-retardant housing.',
+    specs: ['95dB Loud Sound', 'Sleek Design', 'Continuous Rating', 'Shock Safe']
   },
   {
     id: 3,
-    name: 'TEE SafeGuard MCB (Miniature Circuit Breakers)',
-    category: 'Circuit Protection',
-    description: 'High-breaking capacity miniature circuit breaker engineered to protect homes and shops against overloads and short circuit faults.',
-    specs: ['10kA Breaking Cap', 'IP20 Touch Proof', 'Magnetic Arc Extinguisher', 'Bi-metal Trip Mech']
+    name: 'TEE Red Round LED Indicator Light',
+    category: 'LED Indicators',
+    description: 'Super-bright neon modular indicators with low power draw and ultra-long operational lifespan.',
+    specs: ['High-Intensity LED', 'Wide 240V Range', 'Touch Proof IP20', '50,000 Hrs Life']
   },
   {
     id: 4,
-    name: 'TEE Flexi-Cord Spike Guard & Extension Board',
-    category: 'Extension Boards',
-    description: 'Heavy-duty multi-plug board with built-in thermal overload protection, child safety shutters, and high-conductivity brass bars.',
-    specs: ['Thermal Overload Reset', 'Child Safety Shutters', '6A Multi-Sockets', 'High-Grade Brass Bar']
+    name: 'TEE SafeLine MCB Changeover Switch',
+    category: 'MCB Changeover Switches',
+    description: 'Heavy duty changeover switch engineered for smooth load transfer between grid power and backup generators.',
+    specs: ['63A Rating', 'Arc-Chute Chamber', 'Flame-Retardant Cover', 'Dual Source Fit']
   },
   {
     id: 5,
-    name: 'TEE Premium Ceiling Rose & Pendant Holders',
-    category: 'Electrical Accessories',
-    description: 'Flame-retardant electrical accessories featuring high durability brass terminals and glossy dust-repellent premium finish.',
-    specs: ['Heavy Brass Terminals', 'Urea Formaldehyde Mold', '100% Shock Safe', 'Screw-less Clamping']
+    name: 'TEE Power-Pro Spike Guard Extension Board',
+    category: 'Power Strips',
+    description: 'Heavy duty power strips featuring multi-plug sockets, thermal overload protection, and child safety shutters.',
+    specs: ['Child Safety Shutters', 'Thermal Reset Switch', 'High-Conductivity Brass', '6A Multi-Sockets']
   }
 ];
 
@@ -292,7 +292,7 @@ function ProductCarousel() {
       <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-red-500/30 to-transparent" />
 
       {/* Slide Content */}
-      <div className="min-h-[140px] flex flex-col justify-between relative z-10">
+      <div key={index} className="animate-fadeIn min-h-[140px] flex flex-col justify-between relative z-10">
         <div>
           <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest bg-red-950/30 border border-red-500/20 px-2 py-0.5 rounded">
             {PRODUCTS[index].category}
@@ -379,11 +379,31 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [form, setForm] = useState({ username: '', password: '' });
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('tee_remember_me') === 'true';
+  });
+
+  const [form, setForm] = useState(() => {
+    const savedUser = localStorage.getItem('tee_remembered_username') || '';
+    return { username: savedUser, password: '' };
+  });
+
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [expiredMessage, setExpiredMessage] = useState('');
+
+  const usernameRef = useRef(null);
+  const passwordRef = useRef(null);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('tee_remembered_username');
+    if (savedUser) {
+      passwordRef.current?.focus();
+    } else {
+      usernameRef.current?.focus();
+    }
+  }, []);
 
   // Check for expired session messages
   useEffect(() => {
@@ -411,6 +431,13 @@ export default function Login() {
       await login(form.username, form.password);
       // Reset activity timestamp on login success
       localStorage.setItem('tee_last_activity', Date.now().toString());
+      if (rememberMe) {
+        localStorage.setItem('tee_remember_me', 'true');
+        localStorage.setItem('tee_remembered_username', form.username);
+      } else {
+        localStorage.removeItem('tee_remember_me');
+        localStorage.removeItem('tee_remembered_username');
+      }
       navigate('/');
     } catch (err) {
       setError(err.message || 'Authentication failed. Please verify credentials.');
@@ -429,17 +456,17 @@ export default function Login() {
         <CircuitTraces />
 
         {/* Brand Header */}
-        <div className="flex items-center gap-3 relative z-10">
-          <img src={logo} alt="TEE Logo" className="h-9 w-auto object-contain" />
+        <div className="flex items-center gap-3.5 relative z-10">
+          <img src={logo} alt="TEE Logo" style={{ filter: 'brightness(0) invert(1)' }} className="h-12 w-auto object-contain" />
           <span className="font-extrabold text-sm tracking-widest text-slate-200 uppercase">
             The Elite Electrotek ERP
           </span>
         </div>
 
         {/* Carousel & Telemetry Stats Showcase Area */}
-        <div className="my-auto py-6 relative z-10 max-w-2xl w-full">
+        <div className="my-auto py-6 relative z-10 max-w-2xl w-full animate-fadeIn">
           <span className="text-[11px] font-black text-red-500 uppercase tracking-widest bg-red-950/30 border border-red-500/20 px-3 py-1 rounded mb-4 inline-block">
-            India\'s Smart Electrical Distribution Platform
+            India's Smart Electrical Distribution Platform
           </span>
           <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-slate-100 mb-4 leading-tight">
             Powering Modern <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-400">Electrical Businesses</span>
@@ -468,22 +495,22 @@ export default function Login() {
           <CircuitTraces />
         </div>
 
-        <div className="w-full max-w-md relative z-10 animate-fade-in">
+        <div className="w-full max-w-md relative z-10 animate-fadeIn">
           {/* Card glow behind */}
-          <div className="absolute -inset-2 bg-gradient-to-r from-red-600 to-red-900 rounded-2xl blur-2xl opacity-[0.07] pointer-events-none" />
+          <div className="absolute -inset-2 bg-gradient-to-r from-red-600 to-red-900 rounded-2xl blur-3xl opacity-[0.08] pointer-events-none" />
 
           {/* Premium Glassmorphism Card */}
-          <div className="bg-slate-900/40 backdrop-blur-md rounded-2xl border border-slate-800/80 p-8 shadow-2xl relative overflow-hidden">
+          <div className="bg-[#0B0F19]/65 border border-white/[0.08] rounded-3xl p-8 shadow-[0_30px_70px_-15px_rgba(0,0,0,0.8)] backdrop-blur-2xl transition-all duration-500 hover:border-red-500/25 hover:shadow-[0_0_50px_rgba(239,68,68,0.12)] relative overflow-hidden group">
             
             {/* Logo Watermark grid inside the card */}
             <div 
-              className="absolute inset-0 opacity-[0.015] pointer-events-none z-0 bg-repeat bg-center" 
+              className="absolute inset-0 opacity-[0.012] pointer-events-none z-0 bg-repeat bg-center" 
               style={{ backgroundImage: `url(${logo})`, backgroundSize: '70px 70px' }} 
             />
             
             {/* Version Badge */}
             <div className="flex justify-center mb-6 relative z-10">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-red-950/30 text-red-400 border border-red-500/20 tracking-wider uppercase shadow-[0_0_12px_rgba(239,68,68,0.1)]">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-red-950/30 text-red-400 border border-red-500/20 tracking-wider uppercase shadow-[0_0_12px_rgba(239,68,68,0.15)]">
                 <span className="w-1 h-1 rounded-full bg-red-500 animate-ping" />
                 TEE ERP Enterprise Edition
               </span>
@@ -491,15 +518,16 @@ export default function Login() {
 
             {/* Header / Prominent Original TEE Logo */}
             <div className="text-center mb-8 relative z-10">
-              {/* Restored Original Logo with brand red glow */}
-              <div className="relative flex items-center justify-center w-24 h-24 mx-auto mb-4 group">
-                <div className="absolute inset-0 rounded-full bg-red-600/15 blur-xl group-hover:bg-red-600/25 transition-all duration-500" />
+              {/* Restored Original Logo with brand red glow and White Contrast */}
+              <div className="relative flex items-center justify-center w-28 h-28 mx-auto mb-4 group">
+                <div className="absolute inset-0 rounded-full bg-red-650/15 blur-xl group-hover:bg-red-500/25 transition-all duration-500 shadow-[0_0_35px_rgba(239,68,68,0.25)]" />
                 <div className="absolute inset-2 rounded-full border border-dashed border-red-500/10 animate-[spin_25s_linear_infinite]" />
                 
                 <img 
                   src={logo} 
                   alt="TEE Logo" 
-                  className="h-14 w-auto object-contain relative z-10 transition-transform duration-300 group-hover:scale-105" 
+                  style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 10px rgba(239, 68, 68, 0.45))' }}
+                  className="h-20 w-auto object-contain relative z-10 transition-transform duration-300 group-hover:scale-105" 
                 />
               </div>
 
@@ -523,11 +551,12 @@ export default function Login() {
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
+            <form onSubmit={handleSubmit} className="space-y-4.5 relative z-10">
               
               {/* Floating label Username */}
               <div className="relative">
                 <input
+                  ref={usernameRef}
                   name="username"
                   value={form.username}
                   onChange={handleChange}
@@ -544,6 +573,7 @@ export default function Login() {
               {/* Floating label Password */}
               <div className="relative">
                 <input
+                  ref={passwordRef}
                   name="password"
                   type={showPass ? 'text' : 'password'}
                   value={form.password}
@@ -565,22 +595,70 @@ export default function Login() {
                 </button>
               </div>
 
-              {/* Sign In Button */}
+              {/* Remember Me Option */}
+              <div className="flex items-center justify-between mt-2 mb-4">
+                <label className="inline-flex items-center gap-2 cursor-pointer select-none group/checkbox">
+                  <input 
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all duration-200 ${
+                    rememberMe 
+                      ? 'bg-red-600 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.35)]' 
+                      : 'border-slate-800 bg-slate-950/40 group-hover/checkbox:border-slate-600'
+                  }`}>
+                    {rememberMe && (
+                      <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-xs font-semibold text-slate-400 group-hover/checkbox:text-slate-200 transition-colors">
+                    Remember Me
+                  </span>
+                </label>
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                  30-Day Session
+                </span>
+              </div>
+
+              {/* Sign In Button with loading text/spinner */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-red-650/15 hover:shadow-red-650/25 active:scale-[0.99] flex items-center justify-center gap-2"
+                className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-red-650/15 hover:shadow-red-650/25 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
               >
-                {loading && <Loader2 size={16} className="animate-spin" />}
-                Sign In
+                {loading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Authenticating...</span>
+                  </>
+                ) : (
+                  <span>Sign In</span>
+                )}
               </button>
             </form>
-          </div>
 
-          {/* Security Messaging Footer */}
-          <div className="mt-6 flex items-center justify-center gap-2 text-slate-500 text-[10px] font-semibold tracking-wider uppercase relative z-10 font-sans">
-            <ShieldCheck size={14} className="text-slate-500/80" />
-            <span>Secure Access - Protected by Enterprise Authentication</span>
+            {/* Security Badges Section */}
+            <div className="mt-6 pt-6 border-t border-slate-900/60 space-y-2.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+                <Lock size={14} className="text-red-500" />
+                <span>🔒 Secure Enterprise Authentication</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 bg-slate-950/40 px-2.5 py-1.5 rounded-lg border border-slate-900/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Role-Based Access Control
+                </div>
+                <div className="flex items-center gap-1.5 bg-slate-950/40 px-2.5 py-1.5 rounded-lg border border-slate-900/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Protected Business Data
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 

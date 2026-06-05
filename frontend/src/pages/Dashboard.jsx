@@ -4,7 +4,7 @@ import { api } from '../api';
 import {
   Package, ShoppingCart, Store, Clock, IndianRupee, Loader2, Building2,
   AlertTriangle, CheckCircle2, Activity, TrendingUp, Plus, ShieldAlert,
-  ArrowUpRight, RotateCcw, AlertCircle, User, Users
+  ArrowUpRight, RotateCcw, AlertCircle, User, Users, Tag
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import KPICardValue from '../components/KPICardValue';
