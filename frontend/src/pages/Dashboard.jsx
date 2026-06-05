@@ -406,6 +406,57 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* PIECE & BOX SELLING TELEMETRY */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Pieces Sold */}
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-purple-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
+          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
+            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Pieces Sold</span>
+            <p className="text-2xl font-extrabold text-slate-900 dark:text-[#F8FAFC] leading-none mt-1">{(stats.totalPiecesSold || 0).toLocaleString('en-IN')}</p>
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1">Single unit sales</span>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 text-purple-500 flex items-center justify-center shrink-0">
+            <Tag size={20} />
+          </div>
+        </div>
+
+        {/* Boxes Sold */}
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-pink-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
+          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
+            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Boxes Sold</span>
+            <p className="text-2xl font-extrabold text-slate-900 dark:text-[#F8FAFC] leading-none mt-1">{(stats.totalBoxesSold || 0).toLocaleString('en-IN')}</p>
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1">Box packaging sales</span>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-pink-50 dark:bg-pink-950/30 border border-pink-100 dark:border-pink-900/50 text-pink-500 flex items-center justify-center shrink-0">
+            <Package size={20} />
+          </div>
+        </div>
+
+        {/* Revenue from Pieces */}
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-emerald-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
+          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
+            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Piece Sales Revenue</span>
+            <KPICardValue value={stats.revenueFromPieceSales} className="text-slate-900 dark:text-[#F8FAFC] leading-none text-2xl" />
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1">Income from piece items</span>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
+            <IndianRupee size={20} />
+          </div>
+        </div>
+
+        {/* Revenue from Boxes */}
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-blue-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
+          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
+            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Box Sales Revenue</span>
+            <KPICardValue value={stats.revenueFromBoxSales} className="text-slate-900 dark:text-[#F8FAFC] leading-none text-2xl" />
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1">Income from box items</span>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 text-blue-500 flex items-center justify-center shrink-0">
+            <IndianRupee size={20} />
+          </div>
+        </div>
+      </div>
+
       {/* ROW 2: Transaction Tables Split */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Sales */}

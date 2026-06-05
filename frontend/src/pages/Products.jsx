@@ -9,7 +9,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import KPICardValue from '../components/KPICardValue';
 
-const empty = { name: '', sku: '', description: '', qty: '', costPrice: '', offlinePrice: '', amazonPrice: '', flipkartPrice: '', meeshoPrice: '', category: 'General' };
+const empty = { name: '', sku: '', description: '', qty: '', costPrice: '', offlinePrice: '', amazonPrice: '', flipkartPrice: '', meeshoPrice: '', category: 'General', piecesPerBox: '', boxCostPrice: '', boxSellingPrice: '', pieceSellingPrice: '' };
 
 function Modal({ title, onClose, children }) {
   return (
@@ -68,6 +68,14 @@ export default function Products() {
   const [stockFilter, setStockFilter] = useState('all'); // 'all' | 'lowStock' | 'outOfStock' | 'highMargin' | 'bestSeller'
   const [platformFilter, setPlatformFilter] = useState('all'); // 'all' | 'amazon' | 'flipkart' | 'meesho' | 'offline'
 
+  useEffect(() => {
+    const p = Number(form.piecesPerBox);
+    const bc = Number(form.boxCostPrice);
+    if (p > 0 && bc > 0) {
+      setForm(f => ({ ...f, costPrice: String(Math.round((bc / p) * 100) / 100) }));
+    }
+  }, [form.piecesPerBox, form.boxCostPrice]);
+
   function load() {
     setLoading(true);
     Promise.all([api.getProducts(), api.getOnlineSales(), api.getOfflineSales()])
@@ -98,7 +106,11 @@ export default function Products() {
       amazonPrice: p.amazonPrice ?? p.onlinePrice ?? 0,
       flipkartPrice: p.flipkartPrice ?? 0,
       meeshoPrice: p.meeshoPrice ?? 0,
-      category: p.category || 'General'
+      category: p.category || 'General',
+      piecesPerBox: p.piecesPerBox ?? '',
+      boxCostPrice: p.boxCostPrice ?? 0,
+      boxSellingPrice: p.boxSellingPrice ?? 0,
+      pieceSellingPrice: p.pieceSellingPrice ?? 0
     });
     setEditing(p);
     setError('');
@@ -126,7 +138,11 @@ export default function Products() {
         amazonPrice: Number(form.amazonPrice) || 0,
         flipkartPrice: Number(form.flipkartPrice) || 0,
         meeshoPrice: Number(form.meeshoPrice) || 0,
-        category: form.category || 'General'
+        category: form.category || 'General',
+        piecesPerBox: form.piecesPerBox ? Number(form.piecesPerBox) : null,
+        boxCostPrice: Number(form.boxCostPrice) || 0,
+        boxSellingPrice: Number(form.boxSellingPrice) || 0,
+        pieceSellingPrice: Number(form.pieceSellingPrice) || 0
       };
       if (editing) {
         const diff = Number(form.qty) - editing.totalQty;
@@ -573,94 +589,71 @@ export default function Products() {
         {/* Sticky Header Table Container */}
         <div className="max-h-[520px] overflow-y-auto border border-slate-200 dark:border-[#1E293B] rounded-2xl scrollbar-thin">
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-[#94A3B8]">
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-[#94A3B8]">
               <Package size={42} className="mb-2 opacity-30" />
               <p className="text-sm font-semibold">No products match the selected criteria</p>
             </div>
           ) : (
             <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-slate-50/80 dark:bg-[#1E293B] border-b border-slate-200 dark:border-[#1E293B] text-slate-505 dark:text-[#94A3B8] uppercase font-bold text-xs sticky top-0 z-10 backdrop-blur-md">
+              <thead className="bg-slate-50/80 dark:bg-[#1E293B] border-b border-slate-200 dark:border-[#1E293B] text-slate-550 dark:text-[#94A3B8] uppercase font-bold text-xs sticky top-0 z-10 backdrop-blur-md">
                 <tr>
-                  <th className="px-6 py-3.5">Product Details</th>
-                  <th className="px-6 py-3.5">Stock Level</th>
-                  <th className="px-6 py-3.5">Cost Price</th>
-                  <th className="px-6 py-3.5">Platform Selling Prices</th>
-                  <th className="px-6 py-3.5">Branded Margins</th>
-                  <th className="px-6 py-3.5">Attributes</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
+                  <th className="px-4 py-3">Product Details</th>
+                  <th className="px-4 py-3">Stock Level</th>
+                  <th className="px-4 py-3 text-center">Pieces/Box</th>
+                  <th className="px-4 py-3 text-right">Box Cost</th>
+                  <th className="px-4 py-3 text-right">Piece Cost</th>
+                  <th className="px-4 py-3 text-right">Box Selling Price</th>
+                  <th className="px-4 py-3 text-right">Piece Selling Price</th>
+                  <th className="px-4 py-3">Platform Prices</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-[#1E293B] bg-white dark:bg-[#111827] font-semibold text-slate-705 dark:text-[#CBD5E1]">
                 {filtered.map((p) => {
-                  const cp = p.costPrice || 0;
-                  const amazonMargin = (p.amazonPrice || 0) - cp;
-                  const flipkartMargin = (p.flipkartPrice || 0) - cp;
-                  const meeshoMargin = (p.meeshoPrice || 0) - cp;
-                  const offlineMargin = (p.offlinePrice || p.unitPrice || 0) - cp;
-                  
-                  const badges = getProductBadges(p);
-
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-[#172554] transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
+                    <tr key={p.id} className="hover:bg-slate-550/50 dark:hover:bg-[#172554] transition-colors text-xs">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
                           <ProductThumbnail productName={p.name} />
-                          <div className="space-y-0.5 truncate max-w-[200px]">
+                          <div className="space-y-0.5 truncate max-w-[150px]">
                             <p className="font-bold text-slate-800 dark:text-[#F8FAFC] truncate" title={p.name}>{p.name}</p>
                             <p className="text-[10px] text-slate-400 dark:text-[#94A3B8] font-mono tracking-wider">{p.sku || 'NO SKU'}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="space-y-1">
-                          <p className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-sm">{p.availableQty} units</p>
+                          <p className="font-extrabold text-slate-900 dark:text-[#F8FAFC]">{p.availableQty} units</p>
                           <div>{stockBadge(p.availableQty)}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-extrabold text-slate-900 dark:text-[#F8FAFC] whitespace-nowrap">
+                      <td className="px-4 py-3 text-center font-bold text-slate-900 dark:text-[#CBD5E1]">
+                        {p.piecesPerBox || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-[#F8FAFC]">
+                        {p.boxCostPrice ? fmt(p.boxCostPrice) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right font-extrabold text-slate-900 dark:text-[#F8FAFC]">
                         {fmt(p.costPrice)}
                       </td>
-                      <td className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-[#94A3B8]">
-                        <div className="space-y-1">
-                          <p className="flex justify-between gap-3"><span>Amazon:</span> <span className="font-extrabold text-slate-800 dark:text-[#F8FAFC]">{fmt(p.amazonPrice)}</span></p>
-                          <p className="flex justify-between gap-3"><span>Flipkart:</span> <span className="font-extrabold text-slate-800 dark:text-[#F8FAFC]">{fmt(p.flipkartPrice)}</span></p>
-                          <p className="flex justify-between gap-3"><span>Meesho:</span> <span className="font-extrabold text-slate-800 dark:text-[#F8FAFC]">{fmt(p.meeshoPrice)}</span></p>
-                          <p className="flex justify-between gap-3"><span>Offline:</span> <span className="font-extrabold text-slate-800 dark:text-[#F8FAFC]">{fmt(p.offlinePrice || p.unitPrice)}</span></p>
+                      <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-[#F8FAFC]">
+                        {p.boxSellingPrice ? fmt(p.boxSellingPrice) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-slate-900 dark:text-[#F8FAFC]">
+                        {p.pieceSellingPrice ? fmt(p.pieceSellingPrice) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-[10px] text-slate-500 dark:text-[#94A3B8]">
+                        <div className="space-y-0.5">
+                          <div className="flex justify-between gap-1"><span>AMZ:</span> <span className="font-bold">{fmt(p.amazonPrice)}</span></div>
+                          <div className="flex justify-between gap-1"><span>FLK:</span> <span className="font-bold">{fmt(p.flipkartPrice)}</span></div>
+                          <div className="flex justify-between gap-1"><span>MSH:</span> <span className="font-bold">{fmt(p.meeshoPrice)}</span></div>
+                          <div className="flex justify-between gap-1"><span>OFF:</span> <span className="font-bold">{fmt(p.offlinePrice || p.unitPrice)}</span></div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-xs font-semibold">
-                        <div className="space-y-1">
-                          <p className="flex justify-between gap-3">
-                            <span className="text-slate-400 dark:text-[#94A3B8]">Amazon:</span> 
-                            <span className={`font-extrabold ${amazonMargin >= 0 ? 'text-green-600 dark:text-[#10B981]' : 'text-red-500 dark:text-[#EF4444]'}`}>{fmt(amazonMargin)}</span>
-                          </p>
-                          <p className="flex justify-between gap-3">
-                            <span className="text-slate-400 dark:text-[#94A3B8]">Flipkart:</span> 
-                            <span className={`font-extrabold ${flipkartMargin >= 0 ? 'text-green-600 dark:text-[#10B981]' : 'text-red-500 dark:text-[#EF4444]'}`}>{fmt(flipkartMargin)}</span>
-                          </p>
-                          <p className="flex justify-between gap-3">
-                            <span className="text-slate-400 dark:text-[#94A3B8]">Meesho:</span> 
-                            <span className={`font-extrabold ${meeshoMargin >= 0 ? 'text-green-600 dark:text-[#10B981]' : 'text-red-500 dark:text-[#EF4444]'}`}>{fmt(meeshoMargin)}</span>
-                          </p>
-                          <p className="flex justify-between gap-3">
-                            <span className="text-slate-400 dark:text-[#94A3B8]">Offline:</span> 
-                            <span className={`font-extrabold ${offlineMargin >= 0 ? 'text-green-600 dark:text-[#10B981]' : 'text-red-500 dark:text-[#EF4444]'}`}>{fmt(offlineMargin)}</span>
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1 max-w-[150px]">
-                          {badges.map((b, bIdx) => (
-                            <span key={bIdx} className={`px-2 py-0.5 rounded-lg text-[9px] font-black border ${b.className} whitespace-nowrap`}>
-                              {b.text}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button onClick={() => openEdit(p)} title="Edit General Info" className="p-2 rounded-xl text-slate-400 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#1E293B] hover:text-slate-700 dark:hover:text-[#F8FAFC] transition-all"><Pencil size={14} /></button>
-                          <button onClick={() => handleDelete(p.id)} disabled={user?.role === 'EMPLOYEE'} className="p-2 rounded-xl text-slate-400 dark:text-[#CBD5E1] hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-550 dark:hover:text-[#EF4444] transition-all disabled:opacity-40 disabled:cursor-not-allowed"><Trash2 size={14} /></button>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => openEdit(p)} title="Edit General Info" className="p-1.5 rounded-lg text-slate-400 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#1E293B] hover:text-slate-700 dark:hover:text-[#F8FAFC] transition-all"><Pencil size={12} /></button>
+                          <button onClick={() => handleDelete(p.id)} disabled={user?.role === 'EMPLOYEE'} className="p-1.5 rounded-lg text-slate-400 dark:text-[#CBD5E1] hover:bg-red-55 dark:hover:bg-red-950/30 hover:text-red-550 dark:hover:text-[#EF4444] transition-all disabled:opacity-40 disabled:cursor-not-allowed"><Trash2 size={12} /></button>
                         </div>
                       </td>
                     </tr>
@@ -698,19 +691,48 @@ export default function Products() {
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Quantity *</label>
+                  <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Quantity (Pieces) *</label>
                   <input required type="number" min="0" value={form.qty} onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
                     className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500 font-semibold text-center" placeholder="100" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide font-sans">Cost Price (₹) *</label>
-                  <input required type="number" min="0" value={form.costPrice} onChange={(e) => setForm((f) => ({ ...f, costPrice: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500 font-semibold text-center" placeholder="0" />
+                  <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide font-sans">Cost Price / Piece (₹) *</label>
+                  <input required type="number" step="any" min="0" value={form.costPrice} onChange={(e) => setForm((f) => ({ ...f, costPrice: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-808 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500 font-semibold text-center" placeholder="0" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide font-sans">Offline Price (₹) *</label>
+                  <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide font-sans">Offline Price / Piece (₹) *</label>
                   <input required type="number" min="0" value={form.offlinePrice} onChange={(e) => setForm((f) => ({ ...f, offlinePrice: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500 font-semibold text-center" placeholder="0" />
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-808 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-550 font-semibold text-center" placeholder="0" />
+                </div>
+              </div>
+
+              {/* Packaging System section */}
+              <div className="p-4 bg-slate-50 dark:bg-[#0F172A]/40 border border-slate-200 dark:border-[#1E293B] rounded-2xl space-y-4">
+                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block">Box & Piece Selling System</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Pieces Per Box</label>
+                    <input type="number" min="1" value={form.piecesPerBox} onChange={(e) => setForm((f) => ({ ...f, piecesPerBox: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#111827] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-550 font-semibold text-center" placeholder="e.g. 10" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Box Cost Price (₹)</label>
+                    <input type="number" min="0" value={form.boxCostPrice} onChange={(e) => setForm((f) => ({ ...f, boxCostPrice: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#111827] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-550 font-semibold text-center" placeholder="e.g. 200" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Box Selling Price (₹)</label>
+                    <input type="number" min="0" value={form.boxSellingPrice} onChange={(e) => setForm((f) => ({ ...f, boxSellingPrice: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#111827] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-550 font-semibold text-center" placeholder="e.g. 300" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Piece Selling Price (₹)</label>
+                    <input type="number" min="0" value={form.pieceSellingPrice} onChange={(e) => setForm((f) => ({ ...f, pieceSellingPrice: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#111827] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-550 font-semibold text-center" placeholder="e.g. 35" />
+                  </div>
                 </div>
               </div>
 

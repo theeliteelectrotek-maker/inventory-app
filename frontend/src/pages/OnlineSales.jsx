@@ -3,7 +3,8 @@ import { api } from '../api';
 import { 
   Plus, Trash2, ShoppingCart, X, Loader2, Search, PlusCircle, 
   TrendingUp, TrendingDown, ArrowUpRight, Percent, Award, 
-  ShoppingBag, Layers, IndianRupee, RotateCcw, Calendar, Download 
+  ShoppingBag, Layers, IndianRupee, RotateCcw, Calendar, Download,
+  XCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useIsDarkMode } from '../context/ThemeContext';
@@ -36,7 +37,7 @@ const formatFriendlyDate = (dateStr) => {
 
 const today = () => formatDateYYYYMMDD(new Date());
 
-const emptyItem = { productId: '', qty: 1, amount: '' };
+const emptyItem = { productId: '', qty: 1, amount: '', saleType: 'Piece' };
 const emptyForm = () => ({ items: [{ ...emptyItem }], platform: '', orderId: '', date: today(), notes: '' });
 
 function Modal({ onClose, children }) {
@@ -384,8 +385,14 @@ export default function OnlineSales() {
   }
   useEffect(load, []);
 
-  function getPlatformPrice(product, platform) {
+  function getEffectivePrice(product, platform, saleType) {
     if (!product) return 0;
+    if (saleType === 'Box') {
+      return product.boxSellingPrice || 0;
+    }
+    if (product.pieceSellingPrice > 0) {
+      return product.pieceSellingPrice;
+    }
     if (platform === 'amazon') return product.amazonPrice !== undefined ? product.amazonPrice : (product.onlinePrice ?? product.unitPrice ?? 0);
     if (platform === 'flipkart') return product.flipkartPrice !== undefined ? product.flipkartPrice : (product.onlinePrice ?? product.unitPrice ?? 0);
     if (platform === 'meesho') return product.meeshoPrice !== undefined ? product.meeshoPrice : (product.onlinePrice ?? product.unitPrice ?? 0);
@@ -397,9 +404,9 @@ export default function OnlineSales() {
       const items = f.items.map((item) => {
         if (!item.productId) return item;
         const p = products.find((x) => x.id === item.productId);
-        const platformPrice = getPlatformPrice(p, platformId);
+        const effectivePrice = getEffectivePrice(p, platformId, item.saleType);
         const qty = Number(item.qty) || 1;
-        return { ...item, amount: platformPrice ? String(platformPrice * qty) : item.amount };
+        return { ...item, amount: effectivePrice ? String(effectivePrice * qty) : item.amount };
       });
       return { ...f, platform: platformId, items };
     });
@@ -407,11 +414,11 @@ export default function OnlineSales() {
 
   function handleItemProductChange(index, productId) {
     const p = products.find((x) => x.id === productId);
-    const platformPrice = getPlatformPrice(p, form.platform);
+    const effectivePrice = getEffectivePrice(p, form.platform, form.items[index].saleType);
     setForm((f) => {
       const items = [...f.items];
       const qty = Number(items[index].qty) || 1;
-      items[index] = { ...items[index], productId, amount: platformPrice ? String(platformPrice * qty) : '' };
+      items[index] = { ...items[index], productId, amount: effectivePrice ? String(effectivePrice * qty) : '' };
       return { ...f, items };
     });
   }
@@ -421,8 +428,19 @@ export default function OnlineSales() {
     setForm((f) => {
       const items = [...f.items];
       const p = products.find((x) => x.id === items[index].productId);
-      const platformPrice = getPlatformPrice(p, f.platform);
-      items[index] = { ...items[index], qty, amount: platformPrice ? String(platformPrice * qty) : items[index].amount };
+      const effectivePrice = getEffectivePrice(p, f.platform, items[index].saleType);
+      items[index] = { ...items[index], qty, amount: effectivePrice ? String(effectivePrice * qty) : items[index].amount };
+      return { ...f, items };
+    });
+  }
+
+  function handleItemSaleTypeChange(index, saleType) {
+    setForm((f) => {
+      const items = [...f.items];
+      const p = products.find((x) => x.id === items[index].productId);
+      const effectivePrice = getEffectivePrice(p, f.platform, saleType);
+      const qty = Number(items[index].qty) || 1;
+      items[index] = { ...items[index], saleType, amount: effectivePrice ? String(effectivePrice * qty) : items[index].amount };
       return { ...f, items };
     });
   }
@@ -458,6 +476,8 @@ export default function OnlineSales() {
         const payload = {
           productId: item.productId,
           qty: item.qty,
+          saleQty: item.qty,
+          saleType: item.saleType || 'Piece',
           amount: item.amount,
           platform: form.platform,
           orderId: form.orderId,
@@ -484,11 +504,30 @@ export default function OnlineSales() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('Delete this sale? Stock will be restored.')) return;
-    await api.deleteOnlineSale(id);
     const sale = sales.find((s) => s.id === id);
+    const confirmMsg = sale?.status === 'Cancelled' 
+      ? 'Delete this cancelled sale record?' 
+      : 'Delete this sale? Stock will be restored.';
+    if (!confirm(confirmMsg)) return;
+    await api.deleteOnlineSale(id);
     setSales((ss) => ss.filter((s) => s.id !== id));
-    if (sale) setProducts((ps) => ps.map((p) => p.id === sale.productId ? { ...p, availableQty: p.availableQty + sale.qty } : p));
+    if (sale && sale.status !== 'Cancelled') {
+      setProducts((ps) => ps.map((p) => p.id === sale.productId ? { ...p, availableQty: p.availableQty + sale.qty } : p));
+    }
+  }
+
+  async function handleCancel(id) {
+    if (!confirm("Are you sure you want to cancel this order? Stock will be returned to inventory.")) return;
+    try {
+      const result = await api.cancelOnlineSale(id);
+      const updatedSale = result.sale;
+      if (updatedSale) {
+        setSales((ss) => ss.map((s) => s.id === id ? { ...s, ...updatedSale } : s));
+        setProducts((ps) => ps.map((p) => p.id === updatedSale.productId ? { ...p, availableQty: p.availableQty + updatedSale.qty } : p));
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to cancel the sale.');
+    }
   }
 
   // --- Date presets handler ---
@@ -550,6 +589,10 @@ export default function OnlineSales() {
 
   // --- Filtered Sales for current range ---
   const filteredSales = sales.filter(s => {
+    return s.status !== 'Cancelled' && s.date >= appliedRange.start && s.date <= appliedRange.end;
+  });
+
+  const filteredSalesForLedger = sales.filter(s => {
     return s.date >= appliedRange.start && s.date <= appliedRange.end;
   });
 
@@ -703,7 +746,7 @@ export default function OnlineSales() {
   const recentOrders = [...filteredSales].slice(0, 5);
 
   // --- Full History Filter & Search for the Ledger table ---
-  const filtered = filteredSales.filter((s) => {
+  const filtered = filteredSalesForLedger.filter((s) => {
     const matchPlatform = filter === 'all' || s.platform === filter;
     const matchSearch = !search || s.productName.toLowerCase().includes(search.toLowerCase()) || s.orderId.toLowerCase().includes(search.toLowerCase());
     return matchPlatform && matchSearch;
@@ -713,18 +756,19 @@ export default function OnlineSales() {
 
   // --- EXPORTS ---
   const exportToCSV = () => {
-    if (filteredSales.length === 0) {
+    if (filteredSalesForLedger.length === 0) {
       alert("No data available to export in the selected range.");
       return;
     }
-    const headers = ['Date', 'Product Name', 'Marketplace', 'Order ID', 'Qty', 'Amount (INR)'];
-    const rows = filteredSales.map(s => [
+    const headers = ['Date', 'Product Name', 'Marketplace', 'Order ID', 'Qty', 'Amount (INR)', 'Status'];
+    const rows = filteredSalesForLedger.map(s => [
       s.date,
       `"${s.productName.replace(/"/g, '""')}"`,
       s.platform,
       s.orderId || '',
       s.qty,
-      s.amount
+      s.amount,
+      s.status || 'Active'
     ]);
     const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1481,9 +1525,24 @@ export default function OnlineSales() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-slate-500 dark:text-[#94A3B8] font-mono">{s.orderId || '—'}</td>
-                      <td className="px-4 py-3 text-slate-707 dark:text-[#CBD5E1] font-bold">{s.qty}</td>
+                      <td className="px-4 py-3 text-slate-707 dark:text-[#CBD5E1] font-bold">
+                        {s.saleType === 'Box' ? `${s.saleQty} Box${s.saleQty > 1 ? 'es' : ''} (${s.qty} pcs)` : `${s.qty} Piece${s.qty > 1 ? 's' : ''}`}
+                      </td>
                       <td className="px-4 py-3 font-black text-slate-800 dark:text-[#F8FAFC]">₹{s.amount}</td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right flex items-center justify-end gap-1.5">
+                        {s.status === 'Cancelled' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200 dark:border-red-900/50">
+                            Cancelled
+                          </span>
+                        ) : (
+                          <button 
+                            onClick={() => handleCancel(s.id)} 
+                            title="Cancel Order"
+                            className="p-1.5 rounded-lg text-slate-400 dark:text-[#CBD5E1] hover:bg-red-55 dark:hover:bg-red-950/30 hover:text-red-500 dark:hover:text-[#EF4444] transition-all"
+                          >
+                            <XCircle size={13} />
+                          </button>
+                        )}
                         <button 
                           onClick={() => handleDelete(s.id)} 
                           disabled={user?.role === 'EMPLOYEE'} 
@@ -1536,8 +1595,9 @@ export default function OnlineSales() {
 
               {/* Desktop Headers */}
               {form.items.length > 0 && (
-                <div className="hidden md:grid md:grid-cols-[61%_15%_24%] gap-4 pr-12 pl-4 text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider">
+                <div className="hidden md:grid md:grid-cols-[45%_20%_15%_20%] gap-4 pr-12 pl-4 text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider">
                   <div>Product *</div>
+                  <div>Sale Type *</div>
                   <div>Qty *</div>
                   <div>Amount (₹) *</div>
                 </div>
@@ -1549,7 +1609,7 @@ export default function OnlineSales() {
                   return (
                     <div key={idx} className="p-4 border border-slate-200 dark:border-[#1E293B] rounded-2xl bg-slate-50/30 dark:bg-[#0F172A]/30 space-y-3 animate-fadeIn">
                       <div className="flex items-center gap-3">
-                        <div className="grid grid-cols-1 md:grid-cols-[61%_15%_24%] gap-4 flex-1 items-start">
+                        <div className="grid grid-cols-1 md:grid-cols-[45%_20%_15%_20%] gap-4 flex-1 items-start">
                           <div>
                             <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1.5 md:hidden">Product *</label>
                             <SearchableSelect
@@ -1563,10 +1623,27 @@ export default function OnlineSales() {
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1.5 md:hidden">Qty *</label>
-                            <input required type="number" min="1" max={selProd?.availableQty || 9999} value={item.qty}
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1.5 md:hidden">Sale Type *</label>
+                            <select
+                              value={item.saleType || 'Piece'}
+                              onChange={(e) => handleItemSaleTypeChange(idx, e.target.value)}
+                              className="w-full h-[42px] px-3 py-2 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500"
+                            >
+                              <option value="Piece">Piece</option>
+                              {selProd?.piecesPerBox > 0 && <option value="Box">Box</option>}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1.5 md:hidden">{item.saleType === 'Box' ? 'Boxes *' : 'Qty *'}</label>
+                            <input required type="number" min="1" max={item.saleType === 'Box' ? Math.floor(selProd?.availableQty / (selProd?.piecesPerBox || 1)) : (selProd?.availableQty || 9999)} value={item.qty}
                               onChange={(e) => handleItemQtyChange(idx, e.target.value)}
                               className="w-full h-[42px] px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm text-center bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="1" />
+                            {selProd && item.saleType === 'Box' && (
+                              <span className="block text-[10px] text-slate-400 font-medium mt-1 text-center">
+                                (= {item.qty * (selProd.piecesPerBox || 1)} pcs)
+                              </span>
+                            )}
                           </div>
 
                           <div>
@@ -1590,15 +1667,15 @@ export default function OnlineSales() {
                           <div className="flex items-center gap-1.5">
                             <span className="font-medium text-slate-400">Stock Available:</span>
                             <span className={`font-semibold ${selProd.availableQty < 20 ? 'text-yellow-600 dark:text-[#F59E0B]' : 'text-slate-700 dark:text-[#F8FAFC]'}`}>
-                              {selProd.availableQty} units
+                              {selProd.availableQty} units {selProd.piecesPerBox > 0 && `(${Math.floor(selProd.availableQty / selProd.piecesPerBox)} boxes)`}
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5 mt-1 sm:mt-0">
                             <span className="font-medium text-slate-400">
-                              {form.platform ? `${PLATFORMS.find(p => p.id === form.platform)?.label} Price:` : 'Platform Price:'}
+                              {item.saleType === 'Box' ? 'Box Price:' : (form.platform ? `${PLATFORMS.find(p => p.id === form.platform)?.label} Price:` : 'Platform Price:')}
                             </span>
                             <span className="font-bold text-red-650 dark:text-[#EF4444]">
-                              ₹{getPlatformPrice(selProd, form.platform)}
+                              ₹{getEffectivePrice(selProd, form.platform, item.saleType)}
                             </span>
                           </div>
                         </div>

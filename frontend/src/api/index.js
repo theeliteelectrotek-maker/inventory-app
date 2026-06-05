@@ -63,6 +63,7 @@ export const api = {
   getOnlineSales: () => request('GET', '/online-sales'),
   addOnlineSale: (s) => request('POST', '/online-sales', s),
   deleteOnlineSale: (id) => request('DELETE', `/online-sales/${id}`),
+  cancelOnlineSale: (id) => request('POST', `/online-sales/${id}/cancel`),
 
   // Offline Sales
   getOfflineSales: () => request('GET', '/offline-sales'),

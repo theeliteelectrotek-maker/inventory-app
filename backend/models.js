@@ -89,6 +89,10 @@ const productSchema = new mongoose.Schema({
   flipkartPrice: { type: Number, default: 0 },
   meeshoPrice: { type: Number, default: 0 },
   category: { type: String, default: 'General' },
+  piecesPerBox: { type: Number, default: null },
+  boxCostPrice: { type: Number, default: 0 },
+  boxSellingPrice: { type: Number, default: 0 },
+  pieceSellingPrice: { type: Number, default: 0 },
   createdAt: { type: String, default: () => new Date().toISOString() },
   updatedAt: { type: String, default: () => new Date().toISOString() }
 });
@@ -105,9 +109,27 @@ const onlineSaleSchema = new mongoose.Schema({
   orderId: { type: String, default: '' },
   date: { type: String, default: () => getSystemLocalDate() },
   notes: { type: String, default: '' },
+  status: { type: String, default: 'Completed' },
+  cancelledBy: { type: String, default: '' },
+  cancelledAt: { type: String, default: '' },
+  cancelDate: { type: String, default: '' },
+  saleType: { type: String, enum: ['Piece', 'Box'], default: 'Piece' },
+  saleQty: { type: Number, default: 0 },
   createdAt: { type: String, default: () => new Date().toISOString() }
 });
 const OnlineSale = mongoose.model('OnlineSale', onlineSaleSchema);
+
+const onlineSaleCancelLogSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  saleId: { type: String, required: true },
+  productName: { type: String, required: true },
+  qty: { type: Number, required: true },
+  platform: { type: String, required: true },
+  orderDate: { type: String, required: true },
+  cancelDate: { type: String, default: () => getSystemLocalDate() },
+  cancelledBy: { type: String, required: true }
+});
+const OnlineSaleCancelLog = mongoose.model('OnlineSaleCancelLog', onlineSaleCancelLogSchema);
 
 // Offline Sale Model
 const transactionSchema = new mongoose.Schema({
@@ -139,7 +161,9 @@ const offlineItemSchema = new mongoose.Schema({
   productName: { type: String, required: true },
   qty: { type: Number, required: true },
   amount: { type: Number, default: 0 },
-  date: { type: String, default: () => getSystemLocalDate() }
+  date: { type: String, default: () => getSystemLocalDate() },
+  saleType: { type: String, enum: ['Piece', 'Box'], default: 'Piece' },
+  saleQty: { type: Number, default: 0 }
 }, { _id: false });
 
 const offlineSaleSchema = new mongoose.Schema({
@@ -489,7 +513,8 @@ module.exports = {
   Purchase,
   GRN,
   SupplierPayment,
-  PurchaseAuditLog
+  PurchaseAuditLog,
+  OnlineSaleCancelLog
 };
 
 

@@ -12,7 +12,7 @@ import SearchableSelect from '../components/SearchableSelect';
 import { useLocation } from 'react-router-dom';
 import KPICardValue from '../components/KPICardValue';
 
-const emptyItem = { productId: '', qty: '', amount: '' };
+const emptyItem = { productId: '', qty: '', amount: '', saleType: 'Piece' };
 const today = () => {
   const d = new Date();
   const year = d.getFullYear();
@@ -173,12 +173,12 @@ const renderProductOption = (opt) => {
   );
 };
 
-function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange, onRemove, showRemove, isGst, loading }) {
+function ItemRow({ item, products, onProductChange, onQtyChange, onSaleTypeChange, onAmountChange, onRemove, showRemove, isGst, loading }) {
   const selProd = products.find((p) => p.id === item.productId);
   return (
     <div className="space-y-2 p-4 sm:p-0 border border-slate-100 dark:border-[#1E293B] sm:border-0 rounded-2xl sm:rounded-none bg-slate-50/50 dark:bg-[#1E293B]/30 sm:bg-transparent">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <div className="flex-1">
+        <div className="flex-1 min-w-[200px]">
           <SearchableSelect
             value={item.productId}
             onChange={onProductChange}
@@ -190,15 +190,24 @@ function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange,
             className="w-full"
           />
         </div>
-        <div className="flex items-center gap-3">
-          <input type="number" min="1" max={selProd?.availableQty || 9999} value={item.qty}
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+          <select
+            value={item.saleType || 'Piece'}
+            onChange={(e) => onSaleTypeChange && onSaleTypeChange(e.target.value)}
+            className="w-full sm:w-28 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] font-medium text-slate-707 dark:text-[#CBD5E1]"
+          >
+            <option value="Piece">Piece</option>
+            {selProd?.piecesPerBox > 0 && <option value="Box">Box</option>}
+          </select>
+
+          <input type="number" min="1" max={item.saleType === 'Box' ? Math.floor(selProd?.availableQty / (selProd?.piecesPerBox || 1)) : (selProd?.availableQty || 9999)} value={item.qty}
             onChange={(e) => onQtyChange(e.target.value)}
-            className="w-full sm:w-24 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC] text-center" placeholder="Qty" />
+            className="w-full sm:w-20 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC] text-center" placeholder={item.saleType === 'Box' ? 'Boxes' : 'Qty'} />
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 dark:text-[#94A3B8]">₹</span>
             <input type="number" min="0" value={item.amount}
               onChange={(e) => onAmountChange(e.target.value)}
-              className="w-full sm:w-32 pl-7 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" placeholder="Amount" />
+              className="w-full sm:w-28 pl-7 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" placeholder="Amount" />
           </div>
           {showRemove && (
             <button type="button" onClick={onRemove}
@@ -211,8 +220,11 @@ function ItemRow({ item, products, onProductChange, onQtyChange, onAmountChange,
       {selProd && (
         <p className="text-xs text-slate-400 dark:text-[#94A3B8] pl-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-1 bg-slate-50 dark:bg-[#1E293B]/50 p-2 rounded-lg border border-slate-100 dark:border-[#334155]">
           <span>
-            📍 Stock: <span className="font-semibold text-slate-700 dark:text-[#CBD5E1]">{selProd.availableQty} units</span>
-            &nbsp;· Base Price: <span className="font-semibold text-rose-600 dark:text-[#EF4444]">₹{selProd.offlinePrice ?? selProd.unitPrice ?? 0}</span>
+            📍 Stock: <span className="font-semibold text-slate-700 dark:text-[#CBD5E1]">{selProd.availableQty} units {selProd.piecesPerBox > 0 && `(${Math.floor(selProd.availableQty / selProd.piecesPerBox)} boxes)`}</span>
+            &nbsp;· {item.saleType === 'Box' ? 'Box Price:' : 'Base Price:'} <span className="font-semibold text-rose-600 dark:text-[#EF4444]">₹{getEffectiveOfflinePrice(selProd, item.saleType)}</span>
+            {item.saleType === 'Box' && (
+              <span className="font-semibold text-slate-500"> (= {Number(item.qty || 0) * (selProd.piecesPerBox || 1)} pcs)</span>
+            )}
           </span>
           {item.amount && (
             <span className={`self-start sm:self-auto text-[10px] font-bold px-2 py-0.5 rounded-full border ${isGst ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-[#10B981] dark:border-emerald-900/50' : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-[#1E293B] dark:text-[#CBD5E1] dark:border-[#334155]'}`}>
@@ -728,7 +740,9 @@ export default function OfflineSales() {
             ${item.productName}
           </td>
           <td style="padding: 10px 12px; font-family: monospace; color: #475569;">${item.productId || '—'}</td>
-          <td style="padding: 10px 12px; font-weight: bold; color: #1e293b; text-align: center;">${item.qty}</td>
+          <td style="padding: 10px 12px; font-weight: bold; color: #1e293b; text-align: center;">
+            ${item.saleType === 'Box' ? `${item.saleQty} Box${item.saleQty > 1 ? 'es' : ''} (${item.qty} pcs)` : `${item.qty} Piece${item.qty > 1 ? 's' : ''}`}
+          </td>
           <td style="padding: 10px 12px; font-weight: bold; color: #1e293b; text-align: right;">₹${Math.round(itemBasePrice).toLocaleString('en-IN')}</td>
           ${isGST ? `<td style="padding: 10px 12px; font-weight: bold; color: #1e293b; text-align: right;">18%</td>` : ''}
           <td style="padding: 10px 12px; font-weight: bold; text-align: right; color: #1e293b;">₹${Math.round(item.amount).toLocaleString('en-IN')}</td>
@@ -1015,9 +1029,20 @@ export default function OfflineSales() {
     setForm((f) => { const orders = [...f.orders]; orders[oi] = { ...orders[oi], date }; return { ...f, orders }; });
   }
 
+  function getEffectiveOfflinePrice(product, saleType) {
+    if (!product) return 0;
+    if (saleType === 'Box') {
+      return product.boxSellingPrice || 0;
+    }
+    if (product.pieceSellingPrice > 0) {
+      return product.pieceSellingPrice;
+    }
+    return product.offlinePrice ?? product.unitPrice ?? 0;
+  }
+
   function handleItemProductChange(oi, ii, productId) {
     const p = products.find((x) => x.id === productId);
-    const unitPrice = p ? (p.offlinePrice ?? p.unitPrice ?? 0) : 0;
+    const unitPrice = getEffectiveOfflinePrice(p, form.orders[oi].items[ii].saleType);
     setForm((f) => {
       const orders = [...f.orders];
       const items = [...orders[oi].items];
@@ -1035,10 +1060,25 @@ export default function OfflineSales() {
       const orders = [...f.orders];
       const items = [...orders[oi].items];
       const p = products.find((x) => x.id === items[ii].productId);
-      const unitPrice = p ? (p.offlinePrice ?? p.unitPrice ?? 0) : 0;
+      const unitPrice = getEffectiveOfflinePrice(p, items[ii].saleType);
       const baseAmount = unitPrice * Number(qty);
       const finalAmount = orders[oi].gst ? Math.round(baseAmount * 1.18) : baseAmount;
       items[ii] = { ...items[ii], qty, amount: finalAmount ? String(finalAmount) : items[ii].amount };
+      orders[oi] = { ...orders[oi], items };
+      return { ...f, orders };
+    });
+  }
+
+  function handleItemSaleTypeChange(oi, ii, saleType) {
+    setForm((f) => {
+      const orders = [...f.orders];
+      const items = [...orders[oi].items];
+      const p = products.find((x) => x.id === items[ii].productId);
+      const unitPrice = getEffectiveOfflinePrice(p, saleType);
+      const qty = Number(items[ii].qty) || 1;
+      const baseAmount = unitPrice * qty;
+      const finalAmount = orders[oi].gst ? Math.round(baseAmount * 1.18) : baseAmount;
+      items[ii] = { ...items[ii], saleType, amount: finalAmount ? String(finalAmount) : items[ii].amount };
       orders[oi] = { ...orders[oi], items };
       return { ...f, orders };
     });
@@ -1104,7 +1144,7 @@ export default function OfflineSales() {
   // ── Edit new-item handlers ─────────────────────────────────
   function handleEditItemProductChange(idx, productId) {
     const p = products.find((x) => x.id === productId);
-    const unitPrice = p ? (p.offlinePrice ?? p.unitPrice ?? 0) : 0;
+    const unitPrice = getEffectiveOfflinePrice(p, editNewItems[idx].saleType);
     setEditNewItems((items) => {
       const updated = [...items];
       const qty = Number(updated[idx].qty) || 1;
@@ -1124,10 +1164,23 @@ export default function OfflineSales() {
     setEditNewItems((items) => {
       const updated = [...items];
       const p = products.find((x) => x.id === updated[idx].productId);
-      const unitPrice = p ? (p.offlinePrice ?? p.unitPrice ?? 0) : 0;
+      const unitPrice = getEffectiveOfflinePrice(p, updated[idx].saleType);
       const baseAmount = unitPrice * Number(qty);
       const finalAmount = editGst ? Math.round(baseAmount * 1.18) : baseAmount;
       updated[idx] = { ...updated[idx], qty, amount: finalAmount ? String(finalAmount) : updated[idx].amount };
+      return updated;
+    });
+  }
+
+  function handleEditItemSaleTypeChange(idx, saleType) {
+    setEditNewItems((items) => {
+      const updated = [...items];
+      const p = products.find((x) => x.id === updated[idx].productId);
+      const unitPrice = getEffectiveOfflinePrice(p, saleType);
+      const qty = Number(updated[idx].qty) || 1;
+      const baseAmount = unitPrice * qty;
+      const finalAmount = editGst ? Math.round(baseAmount * 1.18) : baseAmount;
+      updated[idx] = { ...updated[idx], saleType, amount: finalAmount ? String(finalAmount) : updated[idx].amount };
       return updated;
     });
   }
@@ -1190,7 +1243,12 @@ export default function OfflineSales() {
   async function handleSubmit(e) {
     e.preventDefault();
     const allItems = form.orders.flatMap((o) =>
-      o.items.filter((i) => i.productId && i.qty).map((i) => ({ ...i, date: o.date }))
+      o.items.filter((i) => i.productId && i.qty).map((i) => ({
+        ...i,
+        saleQty: i.qty,
+        saleType: i.saleType || 'Piece',
+        date: o.date
+      }))
     );
     if (allItems.length === 0) { setError('Add at least one product.'); return; }
     
@@ -1287,7 +1345,11 @@ export default function OfflineSales() {
   async function handleUpdatePayment(e) {
     e.preventDefault();
     setSaving(true); setEditError('');
-    const validNewItems = editNewItems.filter((i) => i.productId && i.qty);
+    const validNewItems = editNewItems.filter((i) => i.productId && i.qty).map((i) => ({
+      ...i,
+      saleQty: i.qty,
+      saleType: i.saleType || 'Piece'
+    }));
     const validNewTxns = editNewTxns.filter((t) => t.amount);
     try {
       const updated = await api.updateOfflineSale(editModal.id, {
@@ -1304,7 +1366,10 @@ export default function OfflineSales() {
         setProducts((ps) => {
           let result = [...ps];
           for (const item of validNewItems) {
-            result = result.map((p) => p.id === item.productId ? { ...p, availableQty: p.availableQty - Number(item.qty) } : p);
+            const product = result.find(p => p.id === item.productId);
+            const piecesPerBox = product ? (product.piecesPerBox || 1) : 1;
+            const deductQty = item.saleType === 'Box' ? Number(item.qty) * piecesPerBox : Number(item.qty);
+            result = result.map((p) => p.id === item.productId ? { ...p, availableQty: p.availableQty - deductQty } : p);
           }
           return result;
         });
@@ -2098,7 +2163,9 @@ export default function OfflineSales() {
                                     <div key={i} className="flex justify-between items-center text-xs text-slate-700 dark:text-[#CBD5E1]">
                                       <span className="font-semibold text-slate-900 dark:text-[#F8FAFC]">{item.productName}</span>
                                       <div className="space-x-3 text-slate-500 dark:text-[#94A3B8] font-medium">
-                                        <span>×{item.qty} units</span>
+                                        <span>
+                                          {item.saleType === 'Box' ? `${item.saleQty} Box${item.saleQty > 1 ? 'es' : ''} (${item.qty} pcs)` : `${item.qty} Piece${item.qty > 1 ? 's' : ''}`}
+                                        </span>
                                         <span className="text-slate-800 dark:text-[#F8FAFC] font-bold">{fmt(item.amount)}</span>
                                       </div>
                                     </div>
@@ -2483,6 +2550,7 @@ export default function OfflineSales() {
                       <ItemRow key={ii} item={item} products={products}
                         onProductChange={(v) => handleItemProductChange(oi, ii, v)}
                         onQtyChange={(v) => handleItemQtyChange(oi, ii, v)}
+                        onSaleTypeChange={(v) => handleItemSaleTypeChange(oi, ii, v)}
                         onAmountChange={(v) => handleItemAmountChange(oi, ii, v)}
                         onRemove={() => removeItemFromOrder(oi, ii)}
                         showRemove={order.items.length > 1}
@@ -2605,7 +2673,7 @@ export default function OfflineSales() {
                           <div key={i} className="flex items-center justify-between px-4 py-3 text-xs border-t border-slate-50 dark:border-[#334155]">
                             <span className="text-slate-800 dark:text-[#F8FAFC] font-bold">{item.productName}</span>
                             <div className="flex items-center gap-3 text-slate-500 dark:text-[#94A3B8]">
-                              <span>×{item.qty} units</span>
+                              <span>{item.saleType === 'Box' ? `${item.saleQty} Box${item.saleQty > 1 ? 'es' : ''} (${item.qty} pcs)` : `${item.qty} Piece${item.qty > 1 ? 's' : ''}`}</span>
                               <span className="font-extrabold text-slate-800 dark:text-[#F8FAFC] flex items-center gap-1.5">
                                 {fmt(item.amount)}
                                 {editGst && <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-green-50 dark:bg-emerald-950/30 text-green-700 dark:text-[#10B981] border border-green-200 dark:border-emerald-900/50">GST</span>}
@@ -2661,15 +2729,25 @@ export default function OfflineSales() {
                                 className="w-full"
                               />
                             </div>
-                            <div className="flex items-center gap-3">
-                              <input type="number" min="1" max={selProd?.availableQty || 9999} value={item.qty}
+                            <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                              <select
+                                value={item.saleType || 'Piece'}
+                                onChange={(e) => handleEditItemSaleTypeChange(idx, e.target.value)}
+                                className="w-full sm:w-28 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#111827] font-medium text-slate-700 dark:text-[#CBD5E1]"
+                              >
+                                <option value="Piece">Piece</option>
+                                {selProd?.piecesPerBox > 0 && <option value="Box">Box</option>}
+                              </select>
+
+                              <input type="number" min="1" max={item.saleType === 'Box' ? Math.floor(selProd?.availableQty / (selProd?.piecesPerBox || 1)) : (selProd?.availableQty || 9999)} value={item.qty}
                                 onChange={(e) => handleEditItemQtyChange(idx, e.target.value)}
-                                className="w-full sm:w-20 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-center bg-white dark:bg-[#111827] text-slate-900 dark:text-[#F8FAFC]" placeholder="Qty" />
+                                className="w-full sm:w-20 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-center bg-white dark:bg-[#111827] text-slate-900 dark:text-[#F8FAFC]" placeholder={item.saleType === 'Box' ? 'Boxes' : 'Qty'} />
+
                               <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 dark:text-[#94A3B8]">₹</span>
                                 <input type="number" min="0" value={item.amount}
                                   onChange={(e) => handleEditItemAmountChange(idx, e.target.value)}
-                                  className="w-full sm:w-28 pl-7 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#111827] text-slate-900 dark:text-[#F8FAFC]" placeholder="Amt" />
+                                  className="w-full sm:w-28 pl-7 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444] bg-white dark:bg-[#111827] text-slate-900 dark:text-[#F8FAFC]" placeholder="Amt" />
                               </div>
                               <button type="button" onClick={() => removeEditItem(idx)}
                                 className="p-2 rounded-xl text-slate-400 dark:text-[#94A3B8] hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 dark:hover:text-[#EF4444] transition-colors flex-shrink-0">
@@ -2680,8 +2758,11 @@ export default function OfflineSales() {
                           {selProd && (
                             <p className="text-[11px] text-slate-400 dark:text-[#94A3B8] flex items-center justify-between mt-1">
                               <span>
-                                📍 Stock: <span className="font-semibold text-slate-650 dark:text-[#CBD5E1]">{selProd.availableQty} units</span>
-                                &nbsp;· Base Price: <span className="font-semibold text-rose-600 dark:text-[#EF4444]">₹{selProd.offlinePrice ?? selProd.unitPrice ?? 0}</span>
+                                📍 Stock: <span className="font-semibold text-slate-650 dark:text-[#CBD5E1]">{selProd.availableQty} units {selProd.piecesPerBox > 0 && `(${Math.floor(selProd.availableQty / selProd.piecesPerBox)} boxes)`}</span>
+                                &nbsp;· {item.saleType === 'Box' ? 'Box Price:' : 'Base Price:'} <span className="font-semibold text-rose-600 dark:text-[#EF4444]">₹{getEffectiveOfflinePrice(selProd, item.saleType)}</span>
+                                {item.saleType === 'Box' && (
+                                  <span className="font-semibold text-slate-500"> (= {Number(item.qty || 0) * (selProd.piecesPerBox || 1)} pcs)</span>
+                                )}
                               </span>
                               {item.amount && (
                                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${editGst ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-[#10B981] border border-emerald-200 dark:border-emerald-900/50' : 'bg-slate-100 dark:bg-[#111827] text-slate-500 dark:text-[#CBD5E1] border border-slate-200 dark:border-[#334155]'}`}>

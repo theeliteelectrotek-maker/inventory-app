@@ -11,7 +11,7 @@ const AdmZip = require('adm-zip');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 
-const { User, Product, OnlineSale, OfflineSale, Shop, Return, Setting, AuditLog, Replacement, ChatChannel, ChatMessage, PasswordChangeRequest, Supplier, Purchase, GRN, SupplierPayment, PurchaseAuditLog } = require('./models');
+const { User, Product, OnlineSale, OfflineSale, Shop, Return, Setting, AuditLog, Replacement, ChatChannel, ChatMessage, PasswordChangeRequest, Supplier, Purchase, GRN, SupplierPayment, PurchaseAuditLog, OnlineSaleCancelLog } = require('./models');
 
 function isBcryptHash(str) {
   return typeof str === 'string' && /^\$2[ayb]\$[0-9]{2}\$[./A-Za-z0-9]{53}$/.test(str);
@@ -721,7 +721,7 @@ app.get('/api/products', catchAsync(async (_req, res) => {
 }));
 
 app.post('/api/products', catchAsync(async (req, res) => {
-  const { name, sku, description, totalQty, costPrice, offlinePrice, amazonPrice, flipkartPrice, meeshoPrice, category } = req.body;
+  const { name, sku, description, totalQty, costPrice, offlinePrice, amazonPrice, flipkartPrice, meeshoPrice, category, piecesPerBox, boxCostPrice, boxSellingPrice, pieceSellingPrice } = req.body;
   if (!name || totalQty === undefined)
     return res.status(400).json({ message: 'Name and quantity required' });
   
@@ -736,7 +736,11 @@ app.post('/api/products', catchAsync(async (req, res) => {
     unitPrice: Number(offlinePrice) || 0,
     costPrice: costPrice !== undefined ? Number(costPrice) : (Number(offlinePrice) || 0),
     onlinePrice: Number(amazonPrice) || 0,
-    category: category || 'General'
+    category: category || 'General',
+    piecesPerBox: piecesPerBox !== undefined ? Number(piecesPerBox) : null,
+    boxCostPrice: boxCostPrice !== undefined ? Number(boxCostPrice) : 0,
+    boxSellingPrice: boxSellingPrice !== undefined ? Number(boxSellingPrice) : 0,
+    pieceSellingPrice: pieceSellingPrice !== undefined ? Number(pieceSellingPrice) : 0
   });
   await product.save();
   res.json(product);
@@ -781,38 +785,56 @@ app.get('/api/sales/online', getOnlineSalesHandler);
 app.get('/api/online-sales', getOnlineSalesHandler);
 
 const postOnlineSalesHandler = catchAsync(async (req, res) => {
-  const { productId, qty, platform, amount, orderId, date, notes } = req.body;
-  if (!productId || !qty || !platform)
+  const { productId, qty, platform, amount, orderId, date, notes, saleType, saleQty } = req.body;
+  if (!productId || !platform || (qty === undefined && saleQty === undefined))
     return res.status(400).json({ message: 'Product, quantity and platform required' });
   
   const product = await Product.findOne({ id: productId });
   if (!product) return res.status(404).json({ message: 'Product not found' });
-  if (product.availableQty < Number(qty))
+  
+  const resolvedSaleType = saleType || 'Piece';
+  const resolvedSaleQty = saleQty !== undefined ? Number(saleQty) : Number(qty);
+  
+  const deductQty = resolvedSaleType === 'Box'
+    ? resolvedSaleQty * (product.piecesPerBox || 1)
+    : resolvedSaleQty;
+
+  if (product.availableQty < deductQty)
     return res.status(400).json({ message: 'Insufficient stock' });
   
-  product.availableQty -= Number(qty);
-  product.totalQty -= Number(qty);
+  product.availableQty -= deductQty;
+  product.totalQty -= deductQty;
   product.updatedAt = new Date().toISOString();
   await product.save();
   
   const plat = platform.toLowerCase();
   let platPrice = 0;
-  if (plat === 'amazon') {
-    platPrice = product.amazonPrice !== undefined ? product.amazonPrice : (product.onlinePrice || product.unitPrice || 0);
-  } else if (plat === 'flipkart') {
-    platPrice = product.flipkartPrice !== undefined ? product.flipkartPrice : (product.onlinePrice || product.unitPrice || 0);
-  } else if (plat === 'meesho') {
-    platPrice = product.meeshoPrice !== undefined ? product.meeshoPrice : (product.onlinePrice || product.unitPrice || 0);
+  if (resolvedSaleType === 'Box') {
+    platPrice = product.boxSellingPrice || 0;
   } else {
-    platPrice = product.onlinePrice || product.unitPrice || 0;
+    if (product.pieceSellingPrice > 0) {
+      platPrice = product.pieceSellingPrice;
+    } else {
+      if (plat === 'amazon') {
+        platPrice = product.amazonPrice !== undefined ? product.amazonPrice : (product.onlinePrice || product.unitPrice || 0);
+      } else if (plat === 'flipkart') {
+        platPrice = product.flipkartPrice !== undefined ? product.flipkartPrice : (product.onlinePrice || product.unitPrice || 0);
+      } else if (plat === 'meesho') {
+        platPrice = product.meeshoPrice !== undefined ? product.meeshoPrice : (product.onlinePrice || product.unitPrice || 0);
+      } else {
+        platPrice = product.onlinePrice || product.unitPrice || 0;
+      }
+    }
   }
-  const saleAmount = amount !== undefined && amount !== null && Number(amount) > 0 ? Number(amount) : platPrice * Number(qty);
+  const saleAmount = amount !== undefined && amount !== null && Number(amount) > 0 ? Number(amount) : platPrice * resolvedSaleQty;
 
   const sale = new OnlineSale({
     id: uuidv4(), productId, productName: product.name,
-    platform, qty: Number(qty), amount: saleAmount,
+    platform, qty: deductQty, amount: saleAmount,
     orderId: orderId || '', date: normalizeToLocalYYYYMMDD(date || new Date()),
-    notes: notes || ''
+    notes: notes || '',
+    saleType: resolvedSaleType,
+    saleQty: resolvedSaleQty
   });
   await sale.save();
   
@@ -828,6 +850,34 @@ const deleteOnlineSalesHandler = catchAsync(async (req, res) => {
   const sale = await OnlineSale.findOneAndDelete({ id: req.params.id });
   if (!sale) return res.status(404).json({ message: 'Sale not found' });
   
+  if (sale.status !== 'Cancelled') {
+    const product = await Product.findOne({ id: sale.productId });
+    if (product) {
+      product.availableQty += sale.qty;
+      product.totalQty += sale.qty;
+      product.updatedAt = new Date().toISOString();
+      await product.save();
+    }
+  }
+  res.json({ message: sale.status === 'Cancelled' ? 'Deleted' : 'Deleted and stock restored' });
+});
+app.delete('/api/sales/online/:id', deleteOnlineSalesHandler);
+app.delete('/api/online-sales/:id', deleteOnlineSalesHandler);
+
+const cancelOnlineSalesHandler = catchAsync(async (req, res) => {
+  const sale = await OnlineSale.findOne({ id: req.params.id });
+  if (!sale) return res.status(404).json({ message: 'Sale not found' });
+  
+  if (sale.status === 'Cancelled') {
+    return res.status(400).json({ message: 'Order is already cancelled' });
+  }
+  
+  sale.status = 'Cancelled';
+  sale.cancelledBy = req.userObj ? (req.userObj.name || req.userObj.username) : 'System';
+  sale.cancelledAt = new Date().toISOString();
+  sale.cancelDate = getSystemLocalDate();
+  await sale.save();
+  
   const product = await Product.findOne({ id: sale.productId });
   if (product) {
     product.availableQty += sale.qty;
@@ -835,10 +885,39 @@ const deleteOnlineSalesHandler = catchAsync(async (req, res) => {
     product.updatedAt = new Date().toISOString();
     await product.save();
   }
-  res.json({ message: 'Deleted and stock restored' });
+  
+  const cancelLog = new OnlineSaleCancelLog({
+    id: uuidv4(),
+    saleId: sale.id,
+    productName: sale.productName,
+    qty: sale.qty,
+    platform: sale.platform,
+    orderDate: sale.date,
+    cancelDate: getSystemLocalDate(),
+    cancelledBy: req.userObj ? (req.userObj.name || req.userObj.username) : 'System'
+  });
+  await cancelLog.save();
+  
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: req.userObj ? `${req.userObj.name} (@${req.userObj.username})` : 'System',
+    time: new Date().toISOString(),
+    action: `Cancelled online order #${sale.orderId || sale.id} for ${sale.productName} (Qty: ${sale.qty}) on ${sale.platform}. Stock restored.`
+  });
+  await audit.save();
+  
+  res.json({ message: 'Order cancelled and stock restored', sale });
 });
-app.delete('/api/sales/online/:id', deleteOnlineSalesHandler);
-app.delete('/api/online-sales/:id', deleteOnlineSalesHandler);
+app.post('/api/sales/online/:id/cancel', requireAuth, cancelOnlineSalesHandler);
+app.post('/api/online-sales/:id/cancel', requireAuth, cancelOnlineSalesHandler);
+
+const getOnlineSaleCancellationsHandler = catchAsync(async (req, res) => {
+  const logs = await OnlineSaleCancelLog.find().sort({ cancelDate: -1, _id: -1 });
+  res.json(logs);
+});
+app.get('/api/sales/online/cancellations', requireAuth, getOnlineSaleCancellationsHandler);
+app.get('/api/online-sales/cancellations', requireAuth, getOnlineSaleCancellationsHandler);
+
 
 // OFFLINE SALES
 const getOfflineSalesHandler = catchAsync(async (_req, res) => {
@@ -859,15 +938,33 @@ const postOfflineSalesHandler = catchAsync(async (req, res) => {
   for (const item of items) {
     const product = products.find(p => p.id === item.productId);
     if (!product) return res.status(404).json({ message: `Product ${item.productId} not found` });
-    if (product.availableQty < Number(item.qty))
+    
+    const resolvedSaleType = item.saleType || 'Piece';
+    const resolvedSaleQty = item.saleQty !== undefined ? Number(item.saleQty) : Number(item.qty);
+    const deductQty = resolvedSaleType === 'Box'
+      ? resolvedSaleQty * (product.piecesPerBox || 1)
+      : resolvedSaleQty;
+
+    if (product.availableQty < deductQty)
       return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
   }
 
   for (const item of items) {
     const product = products.find(p => p.id === item.productId);
     item.productName = product.name; // Add product name for the OfflineSale schema validation
-    product.availableQty -= Number(item.qty);
-    product.totalQty -= Number(item.qty);
+    
+    const resolvedSaleType = item.saleType || 'Piece';
+    const resolvedSaleQty = item.saleQty !== undefined ? Number(item.saleQty) : Number(item.qty);
+    const deductQty = resolvedSaleType === 'Box'
+      ? resolvedSaleQty * (product.piecesPerBox || 1)
+      : resolvedSaleQty;
+
+    item.qty = deductQty;
+    item.saleQty = resolvedSaleQty;
+    item.saleType = resolvedSaleType;
+
+    product.availableQty -= deductQty;
+    product.totalQty -= deductQty;
     product.updatedAt = new Date().toISOString();
     await product.save();
   }
@@ -997,15 +1094,33 @@ const putOfflineSalesHandler = catchAsync(async (req, res) => {
     for (const item of newItems) {
       const product = products.find(p => p.id === item.productId);
       if (!product) return res.status(404).json({ message: `Product ${item.productId} not found` });
-      if (product.availableQty < Number(item.qty))
+      
+      const resolvedSaleType = item.saleType || 'Piece';
+      const resolvedSaleQty = item.saleQty !== undefined ? Number(item.saleQty) : Number(item.qty);
+      const deductQty = resolvedSaleType === 'Box'
+        ? resolvedSaleQty * (product.piecesPerBox || 1)
+        : resolvedSaleQty;
+        
+      if (product.availableQty < deductQty)
         return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
     }
     for (const item of newItems) {
       const product = products.find(p => p.id === item.productId);
       item.productName = product.name;
       item.date = normalizeToLocalYYYYMMDD(item.date || newItemsDate || new Date());
-      product.availableQty -= Number(item.qty);
-      product.totalQty -= Number(item.qty);
+      
+      const resolvedSaleType = item.saleType || 'Piece';
+      const resolvedSaleQty = item.saleQty !== undefined ? Number(item.saleQty) : Number(item.qty);
+      const deductQty = resolvedSaleType === 'Box'
+        ? resolvedSaleQty * (product.piecesPerBox || 1)
+        : resolvedSaleQty;
+
+      item.qty = deductQty;
+      item.saleQty = resolvedSaleQty;
+      item.saleType = resolvedSaleType;
+
+      product.availableQty -= deductQty;
+      product.totalQty -= deductQty;
       product.updatedAt = new Date().toISOString();
       await product.save();
       sale.items.push(item);
@@ -1542,7 +1657,7 @@ app.get('/api/analytics', catchAsync(async (req, res) => {
   };
 
   // 2. Fetch Sales and Returns in the range
-  const onlineSalesRaw = await OnlineSale.find({ date: { $gte: startDate, $lte: endDate } });
+  const onlineSalesRaw = await OnlineSale.find({ date: { $gte: startDate, $lte: endDate }, status: { $ne: 'Cancelled' } });
   const onlineSales = (customerType === 'all') ? onlineSalesRaw.map(s => {
     const sObj = s.toObject();
     if (!sObj.amount || sObj.amount <= 0) {
@@ -1577,6 +1692,12 @@ app.get('/api/analytics', catchAsync(async (req, res) => {
   let totalUnitsSold = 0;
   let totalUnitsReturned = 0;
 
+  // Piece vs Box Selling Analytics
+  let totalPiecesSold = 0;
+  let totalBoxesSold = 0;
+  let revenueFromPieceSales = 0;
+  let revenueFromBoxSales = 0;
+
   const platformStats = {
     amazon: { revenue: 0, productCost: 0, returnsValue: 0, unitsSold: 0, unitsReturned: 0 },
     flipkart: { revenue: 0, productCost: 0, returnsValue: 0, unitsSold: 0, unitsReturned: 0 },
@@ -1609,6 +1730,14 @@ app.get('/api/analytics', catchAsync(async (req, res) => {
     totalProductCost += cost;
     totalUnitsSold += s.qty;
 
+    if (s.saleType === 'Box') {
+      totalBoxesSold += (s.saleQty || 0);
+      revenueFromBoxSales += rev;
+    } else {
+      totalPiecesSold += s.qty;
+      revenueFromPieceSales += rev;
+    }
+
     const plat = s.platform ? s.platform.toLowerCase() : 'amazon';
     if (platformStats[plat]) {
       platformStats[plat].revenue += rev;
@@ -1632,6 +1761,14 @@ app.get('/api/analytics', catchAsync(async (req, res) => {
       totalRevenue += rev;
       totalProductCost += cost;
       totalUnitsSold += item.qty;
+
+      if (item.saleType === 'Box') {
+        totalBoxesSold += (item.saleQty || 0);
+        revenueFromBoxSales += rev;
+      } else {
+        totalPiecesSold += item.qty;
+        revenueFromPieceSales += rev;
+      }
 
       platformStats.offline.revenue += rev;
       platformStats.offline.productCost += cost;
@@ -1868,7 +2005,11 @@ app.get('/api/analytics', catchAsync(async (req, res) => {
       netProfit,
       unitsSold: totalUnitsSold,
       unitsReturned: totalUnitsReturned,
-      returnPercentage: totalUnitsSold > 0 ? ((totalUnitsReturned / totalUnitsSold) * 100) : 0
+      returnPercentage: totalUnitsSold > 0 ? ((totalUnitsReturned / totalUnitsSold) * 100) : 0,
+      totalPiecesSold,
+      totalBoxesSold,
+      revenueFromPieceSales,
+      revenueFromBoxSales
     },
     platforms: platformFinal,
     products: {
@@ -1896,7 +2037,7 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
   const totalIndividuals = dbShops.filter(s => s.type === 'individual' || s.type === 'walk-in').length;
   
   const products = await Product.find({});
-  const onlineSalesRaw = await OnlineSale.find({});
+  const onlineSalesRaw = await OnlineSale.find({ status: { $ne: 'Cancelled' } });
   const offlineSales = await OfflineSale.find({});
   const returns = await Return.find({});
 
@@ -2109,6 +2250,36 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
   // Bound to [10, 100]
   healthScore = Math.max(10, Math.min(100, Math.round(healthScore)));
 
+  // Piece/Box Selling statistics
+  let totalPiecesSold = 0;
+  let totalBoxesSold = 0;
+  let revenueFromPieceSales = 0;
+  let revenueFromBoxSales = 0;
+
+  onlineSales.forEach(s => {
+    const rev = s.amount || 0;
+    if (s.saleType === 'Box') {
+      totalBoxesSold += (s.saleQty || 0);
+      revenueFromBoxSales += rev;
+    } else {
+      totalPiecesSold += s.qty;
+      revenueFromPieceSales += rev;
+    }
+  });
+
+  offlineSales.forEach(s => {
+    (s.items || []).forEach(item => {
+      const rev = item.amount || 0;
+      if (item.saleType === 'Box') {
+        totalBoxesSold += (item.saleQty || 0);
+        revenueFromBoxSales += rev;
+      } else {
+        totalPiecesSold += item.qty;
+        revenueFromPieceSales += rev;
+      }
+    });
+  });
+
   res.json({
     totalProducts: products.length,
     lowStock: lowStockCount,
@@ -2133,7 +2304,13 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
     healthScore,
     dailyTrend,
     totalShops,
-    totalIndividuals
+    totalIndividuals,
+    
+    // Piece/Box Selling statistics
+    totalPiecesSold,
+    totalBoxesSold,
+    revenueFromPieceSales,
+    revenueFromBoxSales
   });
 }));
 
