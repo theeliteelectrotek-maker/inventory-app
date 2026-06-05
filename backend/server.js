@@ -490,9 +490,49 @@ async function runSupplierMigration() {
         await Supplier.updateOne({ id: s.id }, { $set: { ownerName: s.factoryName } });
       }
       console.log(`✅ Migration completed for ${suppliers.length} suppliers.`);
-    } else {
-      console.log('✅ Database is up-to-date. No supplier migration needed.');
     }
+
+    // Migrate opening balances if missing
+    const missingOpening = await Supplier.find({
+      $or: [
+        { openingGstBalance: { $exists: false } },
+        { openingNonGstBalance: { $exists: false } },
+        { gstAdvance: { $exists: false } },
+        { nonGstAdvance: { $exists: false } }
+      ]
+    });
+    if (missingOpening.length > 0) {
+      console.log(`🔍 Found ${missingOpening.length} suppliers missing opening or advance balances. Migrating...`);
+      for (const s of missingOpening) {
+        const setObj = {};
+        if (s.openingGstBalance === undefined) setObj.openingGstBalance = 0;
+        if (s.openingNonGstBalance === undefined) setObj.openingNonGstBalance = 0;
+        if (s.gstAdvance === undefined) setObj.gstAdvance = 0;
+        if (s.nonGstAdvance === undefined) setObj.nonGstAdvance = 0;
+        await Supplier.updateOne({ id: s.id }, { $set: setObj });
+        await recalculateSupplierBalances(s.id);
+      }
+      console.log(`✅ Supplier fields migration completed for ${missingOpening.length} suppliers.`);
+    }
+
+    // Migrate payments missing paymentType
+    const missingPaymentType = await SupplierPayment.find({
+      paymentType: { $exists: false }
+    });
+    if (missingPaymentType.length > 0) {
+      console.log(`🔍 Found ${missingPaymentType.length} payments missing paymentType. Migrating...`);
+      for (const p of missingPaymentType) {
+        await SupplierPayment.updateOne({ id: p.id }, { $set: { paymentType: 'Payment' } });
+      }
+      console.log(`✅ Payment migration completed.`);
+    }
+
+    // Force recalculate balances on startup to make sure new engine is in sync
+    const allSuppliers = await Supplier.find({});
+    for (const s of allSuppliers) {
+      await recalculateSupplierBalances(s.id);
+    }
+    console.log('✅ Supplier balance engine recalculated successfully.');
   } catch (err) {
     console.error('❌ Error during supplier migration:', err);
   }
@@ -3803,19 +3843,14 @@ const recalculateSupplierPurchases = async (supplierId, category) => {
   const purchases = await Purchase.find({ supplierId, gstType: category }).sort({ purchaseDate: 1, createdAt: 1 });
 
   for (const pur of purchases) {
-    if (pur.paymentType !== 'Credit') {
-      pur.paidAmount = pur.grandTotal;
-      pur.remainingAmount = 0;
-    } else {
-      pur.paidAmount = 0;
-      pur.remainingAmount = pur.grandTotal;
-    }
+    pur.paidAmount = 0;
+    pur.remainingAmount = pur.grandTotal;
   }
 
+  // Include ALL payments (both manual and auto-paid) in chronological order
   const payments = await SupplierPayment.find({
     supplierId,
-    category,
-    referenceNumber: { $not: /^AUTO-PAID-/ }
+    category
   }).sort({ date: 1, createdAt: 1 });
 
   for (const pay of payments) {
@@ -3825,9 +3860,9 @@ const recalculateSupplierPurchases = async (supplierId, category) => {
       if (pur.remainingAmount <= 0) continue;
 
       const toPay = Math.min(paymentLeft, pur.remainingAmount);
-      pur.remainingAmount -= toPay;
-      pur.paidAmount += toPay;
-      paymentLeft -= toPay;
+      pur.remainingAmount = Number((pur.remainingAmount - toPay).toFixed(2));
+      pur.paidAmount = Number((pur.paidAmount + toPay).toFixed(2));
+      paymentLeft = Number((paymentLeft - toPay).toFixed(2));
     }
   }
 
@@ -3846,18 +3881,32 @@ const recalculateSupplierBalances = async (supplierId) => {
 
   const gstPurchasesTotal = purchases.filter(p => p.gstType === 'GST').reduce((sum, p) => sum + p.grandTotal, 0);
   const gstPaymentsTotal = payments.filter(p => p.category === 'GST').reduce((sum, p) => sum + p.amount, 0);
-  supplier.gstBalance = Math.max(0, gstPurchasesTotal - gstPaymentsTotal);
+  const netGst = Number(((supplier.openingGstBalance || 0) + gstPurchasesTotal - gstPaymentsTotal).toFixed(2));
+  if (netGst >= 0) {
+    supplier.gstBalance = netGst;
+    supplier.gstAdvance = 0;
+  } else {
+    supplier.gstBalance = 0;
+    supplier.gstAdvance = Math.abs(netGst);
+  }
 
   const nonGstPurchasesTotal = purchases.filter(p => p.gstType === 'Non-GST').reduce((sum, p) => sum + p.grandTotal, 0);
   const nonGstPaymentsTotal = payments.filter(p => p.category === 'Non-GST').reduce((sum, p) => sum + p.amount, 0);
-  supplier.nonGstBalance = Math.max(0, nonGstPurchasesTotal - nonGstPaymentsTotal);
+  const netNonGst = Number(((supplier.openingNonGstBalance || 0) + nonGstPurchasesTotal - nonGstPaymentsTotal).toFixed(2));
+  if (netNonGst >= 0) {
+    supplier.nonGstBalance = netNonGst;
+    supplier.nonGstAdvance = 0;
+  } else {
+    supplier.nonGstBalance = 0;
+    supplier.nonGstAdvance = Math.abs(netNonGst);
+  }
 
   await supplier.save();
 
   // Recalculate balanceAfterPayment chronologically
   const allPayments = await SupplierPayment.find({ supplierId }).sort({ date: 1, createdAt: 1 });
-  let runningGst = 0;
-  let runningNonGst = 0;
+  let runningGst = supplier.openingGstBalance || 0;
+  let runningNonGst = supplier.openingNonGstBalance || 0;
 
   const ledgerEntries = [];
   purchases.forEach(p => {
@@ -3897,7 +3946,7 @@ const recalculateSupplierBalances = async (supplierId) => {
 
       await SupplierPayment.updateOne(
         { id: entry.id },
-        { $set: { balanceAfterPayment: Math.max(0, runningGst) + Math.max(0, runningNonGst) } }
+        { $set: { balanceAfterPayment: Number((runningGst + runningNonGst).toFixed(2)) } }
       );
     }
   }
@@ -3912,7 +3961,7 @@ app.get('/api/purchases/suppliers', requireAuth, catchAsync(async (req, res) => 
 }));
 
 app.post('/api/purchases/suppliers', requireAuth, catchAsync(async (req, res) => {
-  const { factoryName, ownerName, mobile, gstNumber, address } = req.body;
+  const { factoryName, ownerName, mobile, gstNumber, address, openingGstBalance, openingNonGstBalance } = req.body;
 
   if (!factoryName || !ownerName || !address) {
     return res.status(400).json({ message: 'Factory Name, Owner Name, and Address are required' });
@@ -3930,13 +3979,19 @@ app.post('/api/purchases/suppliers', requireAuth, catchAsync(async (req, res) =>
     mobile: cleanMobile,
     gstNumber: gstNumber || '',
     address,
+    openingGstBalance: Number(openingGstBalance) || 0,
+    openingNonGstBalance: Number(openingNonGstBalance) || 0,
     gstBalance: 0,
     nonGstBalance: 0
   });
 
   await supplier.save();
+  await recalculateSupplierBalances(supplier.id);
+
+  // Reload supplier to return updated balances
+  const savedSupplier = await Supplier.findOne({ id: supplier.id });
   await logPurchaseEvent(req.userObj, 'CREATE_SUPPLIER', `Created supplier ${factoryName}`);
-  res.status(201).json(supplier);
+  res.status(201).json(savedSupplier);
 }));
 
 app.put('/api/purchases/suppliers/:id', requireAuth, catchAsync(async (req, res) => {
@@ -3946,7 +4001,7 @@ app.put('/api/purchases/suppliers/:id', requireAuth, catchAsync(async (req, res)
     return res.status(404).json({ message: 'Supplier not found' });
   }
 
-  const { factoryName, ownerName, mobile, gstNumber, address } = req.body;
+  const { factoryName, ownerName, mobile, gstNumber, address, openingGstBalance, openingNonGstBalance } = req.body;
 
   if (mobile !== undefined) {
     const cleanMobile = String(mobile).replace(/\D/g, '');
@@ -3960,11 +4015,16 @@ app.put('/api/purchases/suppliers/:id', requireAuth, catchAsync(async (req, res)
   if (ownerName !== undefined) supplier.ownerName = ownerName;
   if (gstNumber !== undefined) supplier.gstNumber = gstNumber;
   if (address !== undefined) supplier.address = address;
+  if (openingGstBalance !== undefined) supplier.openingGstBalance = Number(openingGstBalance) || 0;
+  if (openingNonGstBalance !== undefined) supplier.openingNonGstBalance = Number(openingNonGstBalance) || 0;
 
   supplier.updatedAt = new Date().toISOString();
   await supplier.save();
+  await recalculateSupplierBalances(supplier.id);
+
+  const updatedSupplier = await Supplier.findOne({ id });
   await logPurchaseEvent(req.userObj, 'UPDATE_SUPPLIER', `Updated supplier ${supplier.factoryName}`);
-  res.json(supplier);
+  res.json(updatedSupplier);
 }));
 
 app.delete('/api/purchases/suppliers/:id', requireAuth, requireAdmin, catchAsync(async (req, res) => {
@@ -4040,13 +4100,20 @@ app.get('/api/purchases', requireAuth, catchAsync(async (req, res) => {
 
 app.post('/api/purchases', requireAuth, catchAsync(async (req, res) => {
   const {
-    invoiceNumber, purchaseDate, supplierId, supplierName, gstType, paymentType,
-    dueDate, transportCharges, loadingCharges, otherExpenses, items,
-    invoiceFile, invoiceFileName, invoiceFileType, autoAdjustStock
+    invoiceNumber, purchaseDate, supplierId, gstType,
+    grandTotal, paidAmount, invoiceFile, invoiceFileName, invoiceFileType
   } = req.body;
 
-  if (!invoiceNumber || !supplierId || !items || items.length === 0) {
-    return res.status(400).json({ message: 'Invoice Number, Supplier, and Product Items are required' });
+  if (!invoiceNumber || !supplierId || grandTotal === undefined || paidAmount === undefined || !gstType) {
+    return res.status(400).json({ message: 'Invoice Number, Supplier, Bill Amount, Paid Amount, and Category classification are required' });
+  }
+
+  const billAmount = Number(grandTotal) || 0;
+  const immediatePaid = Number(paidAmount) || 0;
+  const remainingAmount = Number((billAmount - immediatePaid).toFixed(2));
+
+  if (remainingAmount < 0) {
+    return res.status(400).json({ message: 'Outstanding Amount cannot be negative' });
   }
 
   const existing = await Purchase.findOne({ invoiceNumber, supplierId });
@@ -4059,142 +4126,187 @@ app.post('/api/purchases', requireAuth, catchAsync(async (req, res) => {
     return res.status(404).json({ message: 'Supplier not found' });
   }
 
-  let subtotal = 0;
-  let gstAmount = 0;
-  const processedItems = items.map(item => {
-    const qty = Number(item.qty) || 0;
-    const rate = Number(item.rate) || 0;
-    const discount = Number(item.discount) || 0;
-    const gstPercent = Number(item.gstPercent) || 0;
-
-    const baseAmount = (qty * rate) - discount;
-    const itemGst = gstType === 'GST' ? (baseAmount * gstPercent / 100) : 0;
-    const totalAmount = baseAmount + itemGst;
-
-    subtotal += baseAmount;
-    gstAmount += itemGst;
-
-    return {
-      productId: item.productId,
-      productName: item.productName,
-      qty,
-      rate,
-      gstPercent,
-      discount,
-      amount: totalAmount
-    };
-  });
-
-  const expenses = (Number(transportCharges) || 0) + (Number(loadingCharges) || 0) + (Number(otherExpenses) || 0);
-  const grandTotal = subtotal + gstAmount + expenses;
-
-  let paidAmount = 0;
-  if (paymentType === 'Cash' || paymentType === 'UPI' || paymentType === 'Bank Transfer') {
-    paidAmount = grandTotal;
-  }
-  const remainingAmount = grandTotal - paidAmount;
-
   const purchaseId = uuidv4();
   const purchase = new Purchase({
     id: purchaseId,
     invoiceNumber,
-    purchaseDate,
+    purchaseDate: purchaseDate || getSystemLocalDate(),
     supplierId,
-    supplierName,
+    supplierName: supplier.factoryName,
     gstType,
-    paymentType,
-    dueDate: dueDate || '',
-    transportCharges: Number(transportCharges) || 0,
-    loadingCharges: Number(loadingCharges) || 0,
-    otherExpenses: Number(otherExpenses) || 0,
-    items: processedItems,
-    subtotal,
-    gstAmount,
-    expenses,
-    grandTotal,
-    paidAmount,
-    remainingAmount,
+    paymentType: immediatePaid >= billAmount ? 'Cash' : 'Credit',
+    dueDate: '',
+    transportCharges: 0,
+    loadingCharges: 0,
+    otherExpenses: 0,
+    items: [],
+    subtotal: billAmount,
+    gstAmount: 0,
+    expenses: 0,
+    grandTotal: billAmount,
+    paidAmount: 0, // Will be computed by recalculateSupplierPurchases FIFO
+    remainingAmount: billAmount, // Will be computed by recalculateSupplierPurchases FIFO
     invoiceFile: invoiceFile || '',
     invoiceFileName: invoiceFileName || '',
     invoiceFileType: invoiceFileType || '',
-    grnStatus: autoAdjustStock ? 'Completed' : 'Pending',
+    grnStatus: 'Completed',
     createdBy: req.userObj.name || req.userObj.username
   });
 
   await purchase.save();
 
-  const grnItems = processedItems.map(item => ({
-    productId: item.productId,
-    productName: item.productName,
-    qtyOrdered: item.qty,
-    qtyReceived: autoAdjustStock ? item.qty : 0,
-    shortage: autoAdjustStock ? 0 : item.qty,
-    excess: 0,
-    damage: 0
-  }));
-
+  // Create a dummy completed GRN record with empty items to maintain compatibility
   const grn = new GRN({
     id: uuidv4(),
     purchaseId: purchaseId,
     invoiceNumber,
-    arrivalDate: purchaseDate,
+    arrivalDate: purchaseDate || getSystemLocalDate(),
     factoryId: supplierId,
-    factoryName: supplierName,
-    itemsReceived: grnItems,
-    status: autoAdjustStock ? 'Completed' : 'Pending',
+    factoryName: supplier.factoryName,
+    itemsReceived: [],
+    status: 'Completed',
     createdBy: req.userObj.name || req.userObj.username
   });
   await grn.save();
 
-  if (autoAdjustStock) {
-    for (const item of processedItems) {
-      const product = await Product.findOne({ id: item.productId });
-      if (product) {
-        product.availableQty += item.qty;
-        product.totalQty += item.qty;
-        await product.save();
-      }
-    }
-  }
-
-  if (gstType === 'GST') {
-    supplier.gstBalance += grandTotal;
-  } else {
-    supplier.nonGstBalance += grandTotal;
-  }
-
-  if (paidAmount > 0) {
+  if (immediatePaid > 0) {
     const payment = new SupplierPayment({
       id: uuidv4(),
       supplierId,
       supplierName: supplier.factoryName,
-      date: purchaseDate,
-      amount: paidAmount,
-      paymentMethod: paymentType,
+      date: purchaseDate || getSystemLocalDate(),
+      amount: immediatePaid,
+      paymentMethod: 'Cash', // Default to Cash for immediate payments
       referenceNumber: `AUTO-PAID-${invoiceNumber}`,
       category: gstType,
-      balanceAfterPayment: (supplier.gstBalance + supplier.nonGstBalance) - paidAmount,
+      balanceAfterPayment: 0, // Will be updated by recalculateSupplierBalances
       notes: `Auto-recorded instant payment for Invoice #${invoiceNumber}`,
       createdBy: req.userObj.name || req.userObj.username
     });
     await payment.save();
-
-    if (gstType === 'GST') {
-      supplier.gstBalance = Math.max(0, supplier.gstBalance - paidAmount);
-    } else {
-      supplier.nonGstBalance = Math.max(0, supplier.nonGstBalance - paidAmount);
-    }
   }
 
-  await supplier.save();
+  // CENTRALIZED RECALCULATION
+  await recalculateSupplierPurchases(supplierId, gstType);
+  await recalculateSupplierBalances(supplierId);
 
   await logPurchaseEvent(
     req.userObj,
     'CREATE_PURCHASE',
-    `Created purchase invoice #${invoiceNumber} for supplier ${supplierName}. Category: ${gstType}. Total: ₹${grandTotal}`
+    `Created purchase invoice #${invoiceNumber} for supplier ${supplier.factoryName}. Category: ${gstType}. Total: ₹${billAmount}, Paid Immediately: ₹${immediatePaid}`
   );
 
-  res.status(201).json(purchase);
+  // Reload purchase to return updated values
+  const savedPurchase = await Purchase.findOne({ id: purchaseId });
+  res.status(201).json(savedPurchase);
+}));
+
+app.put('/api/purchases/:id', requireAuth, requireAdmin, catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { invoiceNumber, purchaseDate, supplierId, gstType, grandTotal, paidAmount, invoiceFile, invoiceFileName, invoiceFileType, reason } = req.body;
+
+  if (!invoiceNumber || !supplierId || !gstType || grandTotal === undefined || paidAmount === undefined) {
+    return res.status(400).json({ message: 'Invoice Number, Supplier, Category, Bill Amount, and Paid Amount are required' });
+  }
+
+  const billAmount = Number(grandTotal);
+  const immediatePaid = Number(paidAmount);
+  if (immediatePaid > billAmount) {
+    return res.status(400).json({ message: 'Immediate payment cannot exceed total bill amount' });
+  }
+
+  const purchase = await Purchase.findOne({ id });
+  if (!purchase) {
+    return res.status(404).json({ message: 'Purchase record not found' });
+  }
+
+  const oldSupplierId = purchase.supplierId;
+  const oldGstType = purchase.gstType;
+  const oldInvoiceNumber = purchase.invoiceNumber;
+
+  const supplier = await Supplier.findOne({ id: supplierId });
+  if (!supplier) {
+    return res.status(404).json({ message: 'Supplier not found' });
+  }
+
+  // Update fields
+  purchase.invoiceNumber = invoiceNumber;
+  purchase.purchaseDate = purchaseDate || purchase.purchaseDate;
+  purchase.supplierId = supplierId;
+  purchase.supplierName = supplier.factoryName;
+  purchase.gstType = gstType;
+  purchase.grandTotal = billAmount;
+  purchase.subtotal = billAmount;
+  purchase.paidAmount = 0; // recalculated by recalculateSupplierPurchases FIFO
+  purchase.remainingAmount = billAmount; // recalculated by recalculateSupplierPurchases FIFO
+  
+  if (invoiceFile) {
+    purchase.invoiceFile = invoiceFile;
+    purchase.invoiceFileName = invoiceFileName;
+    purchase.invoiceFileType = invoiceFileType;
+  }
+
+  await purchase.save();
+
+  // Find/Update/Create/Delete associated AUTO-PAID payment
+  const oldAutoPayment = await SupplierPayment.findOne({ 
+    supplierId: oldSupplierId, 
+    referenceNumber: `AUTO-PAID-${oldInvoiceNumber}` 
+  });
+
+  if (immediatePaid > 0) {
+    if (oldAutoPayment) {
+      oldAutoPayment.supplierId = supplierId;
+      oldAutoPayment.supplierName = supplier.factoryName;
+      oldAutoPayment.date = purchaseDate || oldAutoPayment.date;
+      oldAutoPayment.amount = immediatePaid;
+      oldAutoPayment.category = gstType;
+      oldAutoPayment.referenceNumber = `AUTO-PAID-${invoiceNumber}`;
+      await oldAutoPayment.save();
+    } else {
+      const payment = new SupplierPayment({
+        id: uuidv4(),
+        supplierId,
+        supplierName: supplier.factoryName,
+        date: purchaseDate || getSystemLocalDate(),
+        amount: immediatePaid,
+        paymentMethod: 'Cash',
+        referenceNumber: `AUTO-PAID-${invoiceNumber}`,
+        category: gstType,
+        balanceAfterPayment: 0,
+        notes: `Auto-recorded instant payment for Invoice #${invoiceNumber}`,
+        createdBy: req.userObj.name || req.userObj.username
+      });
+      await payment.save();
+    }
+  } else {
+    // If immediatePaid is 0, delete any existing auto payment
+    if (oldAutoPayment) {
+      await SupplierPayment.deleteOne({ id: oldAutoPayment.id });
+    }
+  }
+
+  // CENTRALIZED RECALCULATION for new supplier/category
+  await recalculateSupplierPurchases(supplierId, gstType);
+  if (gstType !== oldGstType || supplierId !== oldSupplierId) {
+    await recalculateSupplierPurchases(supplierId, oldGstType);
+  }
+  await recalculateSupplierBalances(supplierId);
+
+  // If supplier was changed, recalculate for old supplier as well!
+  if (supplierId !== oldSupplierId) {
+    await recalculateSupplierPurchases(oldSupplierId, oldGstType);
+    await recalculateSupplierBalances(oldSupplierId);
+  }
+
+  await logPurchaseEvent(
+    req.userObj,
+    'EDIT_PURCHASE',
+    `Edited purchase invoice #${oldInvoiceNumber} -> #${invoiceNumber} for supplier ${supplier.factoryName}. Old Total: ₹${purchase.grandTotal}, New Total: ₹${billAmount}. Reason: ${reason || 'No reason provided'}`
+  );
+
+  const updatedPurchase = await Purchase.findOne({ id });
+  res.json(updatedPurchase);
 }));
 
 app.delete('/api/purchases/:id', requireAuth, requireAdmin, catchAsync(async (req, res) => {
@@ -4316,7 +4428,7 @@ app.get('/api/purchases/payments', requireAuth, catchAsync(async (req, res) => {
 }));
 
 app.post('/api/purchases/payments', requireAuth, catchAsync(async (req, res) => {
-  const { supplierId, date, amount, paymentMethod, referenceNumber, category, notes, receiptFile, receiptFileName } = req.body;
+  const { supplierId, date, amount, paymentMethod, referenceNumber, category, notes, receiptFile, receiptFileName, paymentType } = req.body;
 
   if (!supplierId || !amount || !category) {
     return res.status(400).json({ message: 'Supplier, Payment Amount, and GST/NON-GST category are required' });
@@ -4327,14 +4439,6 @@ app.post('/api/purchases/payments', requireAuth, catchAsync(async (req, res) => 
     return res.status(404).json({ message: 'Supplier not found' });
   }
 
-  if (category === 'GST') {
-    supplier.gstBalance = Math.max(0, supplier.gstBalance - Number(amount));
-  } else {
-    supplier.nonGstBalance = Math.max(0, supplier.nonGstBalance - Number(amount));
-  }
-
-  await supplier.save();
-
   const payment = new SupplierPayment({
     id: uuidv4(),
     supplierId,
@@ -4344,7 +4448,8 @@ app.post('/api/purchases/payments', requireAuth, catchAsync(async (req, res) => 
     paymentMethod: paymentMethod || 'Cash',
     referenceNumber: referenceNumber || '',
     category,
-    balanceAfterPayment: supplier.gstBalance + supplier.nonGstBalance,
+    paymentType: paymentType || 'Payment',
+    balanceAfterPayment: 0, // Will be computed by recalculateSupplierBalances
     notes: notes || '',
     receiptFile: receiptFile || '',
     receiptFileName: receiptFileName || '',
@@ -4353,16 +4458,9 @@ app.post('/api/purchases/payments', requireAuth, catchAsync(async (req, res) => 
 
   await payment.save();
 
-  let paymentLeft = Number(amount);
-  const purchases = await Purchase.find({ supplierId, gstType: category, remainingAmount: { $gt: 0 } }).sort({ purchaseDate: 1 });
-  for (const pur of purchases) {
-    if (paymentLeft <= 0) break;
-    const toPay = Math.min(paymentLeft, pur.remainingAmount);
-    pur.remainingAmount -= toPay;
-    pur.paidAmount += toPay;
-    await pur.save();
-    paymentLeft -= toPay;
-  }
+  // Centralized Recalculation
+  await recalculateSupplierPurchases(supplierId, category);
+  await recalculateSupplierBalances(supplierId);
 
   await logPurchaseEvent(
     req.userObj,
@@ -4370,12 +4468,14 @@ app.post('/api/purchases/payments', requireAuth, catchAsync(async (req, res) => 
     `Logged payment of ₹${amount} to ${supplier.factoryName}. Category: ${category}. Method: ${paymentMethod}`
   );
 
-  res.status(201).json(payment);
+  // Reload payment to return accurate balanceAfterPayment
+  const savedPayment = await SupplierPayment.findOne({ id: payment.id });
+  res.status(201).json(savedPayment);
 }));
 
 app.put('/api/purchases/payments/:id', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const { id } = req.params;
-  const { date, amount, paymentMethod, referenceNumber, category, notes, reason } = req.body;
+  const { date, amount, paymentMethod, referenceNumber, category, notes, paymentType, reason } = req.body;
 
   if (!amount || !category) {
     return res.status(400).json({ message: 'Payment Amount and GST/NON-GST category are required' });
@@ -4397,6 +4497,7 @@ app.put('/api/purchases/payments/:id', requireAuth, requireAdmin, catchAsync(asy
   payment.referenceNumber = referenceNumber || '';
   payment.category = category || payment.category;
   payment.notes = notes || '';
+  if (paymentType !== undefined) payment.paymentType = paymentType;
 
   await payment.save();
 
@@ -4458,23 +4559,14 @@ app.get('/api/purchases/suppliers/:id/ledger', requireAuth, catchAsync(async (re
 
   const ledgerEntries = [];
 
-  ledgerEntries.push({
-    date: supplier.createdAt ? supplier.createdAt.split('T')[0] : getSystemLocalDate(),
-    description: 'Opening Balance',
-    invoice: 'N/A',
-    debit: 0,
-    credit: 0,
-    category: 'GST',
-    type: 'opening'
-  });
-
   purchases.forEach(p => {
     ledgerEntries.push({
       date: p.purchaseDate,
+      createdAt: p.createdAt,
       description: `Purchase Invoice #${p.invoiceNumber} (${p.gstType})`,
       invoice: p.invoiceNumber,
-      debit: 0,
-      credit: p.grandTotal,
+      debit: p.grandTotal,
+      credit: 0,
       category: p.gstType,
       type: 'purchase',
       refId: p.id
@@ -4482,37 +4574,56 @@ app.get('/api/purchases/suppliers/:id/ledger', requireAuth, catchAsync(async (re
   });
 
   payments.forEach(pay => {
+    const isAdvance = pay.paymentType === 'Advance Payment';
     ledgerEntries.push({
       date: pay.date,
-      description: `Payment Reference: ${pay.referenceNumber || 'N/A'} - ${pay.paymentMethod}`,
-      invoice: 'N/A',
-      debit: pay.amount,
-      credit: 0,
+      createdAt: pay.createdAt,
+      description: isAdvance ? `Advance Payment - ${pay.paymentMethod}` : `Payment - ${pay.paymentMethod}`,
+      invoice: pay.referenceNumber || 'N/A',
+      debit: 0,
+      credit: pay.amount,
       category: pay.category,
-      type: 'payment',
+      type: isAdvance ? 'advance_payment' : 'payment',
+      paymentMethod: pay.paymentMethod,
       refId: pay.id
     });
   });
 
-  ledgerEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
+  ledgerEntries.sort((a, b) => {
+    const dDiff = new Date(a.date) - new Date(b.date);
+    if (dDiff !== 0) return dDiff;
+    return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+  });
 
-  let runningGst = 0;
-  let runningNonGst = 0;
+  const openingEntry = {
+    date: supplier.createdAt ? supplier.createdAt.split('T')[0] : getSystemLocalDate(),
+    description: 'Opening Balance',
+    invoice: 'N/A',
+    debit: (supplier.openingGstBalance || 0) + (supplier.openingNonGstBalance || 0),
+    credit: 0,
+    category: 'GST',
+    type: 'opening'
+  };
 
-  const ledger = ledgerEntries.map(entry => {
+  const allEntries = [openingEntry, ...ledgerEntries];
+
+  let runningGst = supplier.openingGstBalance || 0;
+  let runningNonGst = supplier.openingNonGstBalance || 0;
+
+  const ledger = allEntries.map(entry => {
     if (entry.type === 'purchase') {
-      if (entry.category === 'GST') runningGst += entry.credit;
-      else runningNonGst += entry.credit;
-    } else if (entry.type === 'payment') {
-      if (entry.category === 'GST') runningGst -= entry.debit;
-      else runningNonGst -= entry.debit;
+      if (entry.category === 'GST') runningGst += entry.debit;
+      else runningNonGst += entry.debit;
+    } else if (entry.type === 'payment' || entry.type === 'advance_payment') {
+      if (entry.category === 'GST') runningGst -= entry.credit;
+      else runningNonGst -= entry.credit;
     }
 
     return {
       ...entry,
-      gstBalance: runningGst,
-      nonGstBalance: runningNonGst,
-      balance: runningGst + runningNonGst
+      gstBalance: Number(runningGst.toFixed(2)),
+      nonGstBalance: Number(runningNonGst.toFixed(2)),
+      balance: Number((runningGst + runningNonGst).toFixed(2))
     };
   });
 
@@ -4524,8 +4635,12 @@ app.get('/api/purchases/suppliers/:id/ledger', requireAuth, catchAsync(async (re
       mobile: supplier.mobile,
       gstNumber: supplier.gstNumber,
       address: supplier.address,
+      openingGstBalance: supplier.openingGstBalance,
+      openingNonGstBalance: supplier.openingNonGstBalance,
       gstBalance: supplier.gstBalance,
-      nonGstBalance: supplier.nonGstBalance
+      nonGstBalance: supplier.nonGstBalance,
+      gstAdvance: supplier.gstAdvance || 0,
+      nonGstAdvance: supplier.nonGstAdvance || 0
     },
     ledger
   });
@@ -4554,6 +4669,10 @@ app.get('/api/purchases/stats', requireAuth, catchAsync(async (req, res) => {
   const totalFactories = activeSuppliers.length;
   const totalPurchaseValue = purchases.reduce((sum, p) => sum + p.grandTotal, 0);
   const outstandingVendorBalance = totalGstOutstanding + totalNonGstOutstanding;
+
+  const totalSupplierDue = activeSuppliers.reduce((sum, s) => sum + (s.gstBalance || 0) + (s.nonGstBalance || 0), 0);
+  const totalSupplierAdvance = activeSuppliers.reduce((sum, s) => sum + (s.gstAdvance || 0) + (s.nonGstAdvance || 0), 0);
+  const netSupplierExposure = Number((totalSupplierDue - totalSupplierAdvance).toFixed(2));
 
   const supplierPurchaseMap = {};
   purchases.forEach(p => {
@@ -4585,6 +4704,9 @@ app.get('/api/purchases/stats', requireAuth, catchAsync(async (req, res) => {
     totalFactories,
     totalPurchaseValue,
     outstandingVendorBalance,
+    totalSupplierDue,
+    totalSupplierAdvance,
+    netSupplierExposure,
     topSuppliers,
     alerts: alerts.slice(0, 10)
   });

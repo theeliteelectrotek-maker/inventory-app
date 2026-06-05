@@ -359,8 +359,12 @@ const supplierSchema = new mongoose.Schema({
   mobile: { type: String, required: true },
   gstNumber: { type: String, default: '' },
   address: { type: String, required: true },
+  openingGstBalance: { type: Number, default: 0 },
+  openingNonGstBalance: { type: Number, default: 0 },
   gstBalance: { type: Number, default: 0 },
   nonGstBalance: { type: Number, default: 0 },
+  gstAdvance: { type: Number, default: 0 },
+  nonGstAdvance: { type: Number, default: 0 },
   archived: { type: Boolean, default: false },
   createdAt: { type: String, default: () => new Date().toISOString() },
   updatedAt: { type: String, default: () => new Date().toISOString() }
@@ -447,6 +451,7 @@ const supplierPaymentSchema = new mongoose.Schema({
   paymentMethod: { type: String, default: 'Cash' },
   referenceNumber: { type: String, default: '' },
   category: { type: String, enum: ['GST', 'Non-GST'], default: 'GST', required: true },
+  paymentType: { type: String, enum: ['Payment', 'Advance Payment'], default: 'Payment' },
   balanceAfterPayment: { type: Number, default: 0 },
   notes: { type: String, default: '' },
   receiptFile: { type: String, default: '' }, // base64

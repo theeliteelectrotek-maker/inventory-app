@@ -57,36 +57,48 @@ export default function PurchasesFactories() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedSupplierProfile, setSelectedSupplierProfile] = useState(null);
+  const [supplierLedgerData, setSupplierLedgerData] = useState(null);
   const [editingSupplier, setEditingSupplier] = useState(null);
 
   // Deletion modals state
   const [supplierToDelete, setSupplierToDelete] = useState(null);
   const [paymentToDelete, setPaymentToDelete] = useState(null);
   const [paymentToEdit, setPaymentToEdit] = useState(null);
-  const [editPaymentForm, setEditPaymentForm] = useState({ date: '', amount: '', paymentMethod: 'Cash', referenceNumber: '', category: 'GST', notes: '', reason: '' });
+  const [editPaymentForm, setEditPaymentForm] = useState({ date: '', amount: '', paymentMethod: 'Cash', referenceNumber: '', category: 'GST', notes: '', paymentType: 'Payment', reason: '' });
   const [purchaseToDelete, setPurchaseToDelete] = useState(null);
   const [deleteReason, setDeleteReason] = useState('');
   const [showForceDeleteConfirm, setShowForceDeleteConfirm] = useState(false);
   const [typedSupplierName, setTypedSupplierName] = useState('');
 
+  const [purchaseToEdit, setPurchaseToEdit] = useState(null);
+  const [editPurchaseForm, setEditPurchaseForm] = useState({ invoiceNumber: '', purchaseDate: '', supplierId: '', gstType: 'GST', grandTotal: '', paidAmount: '', invoiceFile: '', invoiceFileName: '', invoiceFileType: '', reason: '' });
+
+  // Payment filters state
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [paymentSupplierFilter, setPaymentSupplierFilter] = useState('');
+  const [paymentCategoryFilter, setPaymentCategoryFilter] = useState('');
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState('');
+  const [paymentStartDate, setPaymentStartDate] = useState('');
+  const [paymentEndDate, setPaymentEndDate] = useState('');
+
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState('');
 
   // Forms state
-  const emptySupplier = { factoryName: '', ownerName: '', mobile: '', gstNumber: '', address: '' };
+  const emptySupplier = { factoryName: '', ownerName: '', mobile: '', gstNumber: '', address: '', openingGstBalance: 0, openingNonGstBalance: 0 };
   const [supplierForm, setSupplierForm] = useState(emptySupplier);
 
   const emptyPurchase = {
     invoiceNumber: '', purchaseDate: new Date().toISOString().split('T')[0], supplierId: '',
-    gstType: 'GST', paymentType: 'Credit', dueDate: '', transportCharges: 0, loadingCharges: 0, otherExpenses: 0,
-    items: [{ productId: '', qty: 1, rate: 0, gstPercent: 18, discount: 0 }],
-    invoiceFile: '', invoiceFileName: '', invoiceFileType: '', autoAdjustStock: true
+    gstType: 'GST', grandTotal: '', paidAmount: '',
+    invoiceFile: '', invoiceFileName: '', invoiceFileType: ''
   };
   const [purchaseForm, setPurchaseForm] = useState(emptyPurchase);
 
   const emptyPayment = {
     supplierId: '', date: new Date().toISOString().split('T')[0], amount: '',
-    paymentMethod: 'Cash', referenceNumber: '', category: 'GST', notes: '', receiptFile: '', receiptFileName: ''
+    paymentMethod: 'Cash', referenceNumber: '', category: 'GST', notes: '', receiptFile: '', receiptFileName: '',
+    paymentType: 'Payment'
   };
   const [paymentForm, setPaymentForm] = useState(emptyPayment);
 
@@ -170,10 +182,22 @@ export default function PurchasesFactories() {
       ownerName: s.ownerName,
       mobile: s.mobile,
       gstNumber: s.gstNumber || '',
-      address: s.address
+      address: s.address,
+      openingGstBalance: s.openingGstBalance || 0,
+      openingNonGstBalance: s.openingNonGstBalance || 0
     });
     setFormError('');
     setShowSupplierModal(true);
+  };
+
+  const openSupplierLedger = async (supplier) => {
+    try {
+      const data = await api.getSupplierLedger(supplier.id);
+      setSupplierLedgerData(data);
+      setSelectedSupplierProfile(supplier);
+    } catch (err) {
+      alert("Failed to load supplier ledger: " + err.message);
+    }
   };
 
   const handleSupplierArchive = async (id, reason) => {
@@ -252,6 +276,18 @@ export default function PurchasesFactories() {
     }
   };
 
+  const handlePurchaseEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!purchaseToEdit) return;
+    try {
+      await api.updatePurchase(purchaseToEdit.id, editPurchaseForm);
+      loadAllData();
+      setPurchaseToEdit(null);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const handlePurchaseDelete = async (id, reason) => {
     try {
       await api.deletePurchase(id, reason);
@@ -277,6 +313,13 @@ export default function PurchasesFactories() {
           invoiceFileName: file.name,
           invoiceFileType: file.type
         }));
+      } else if (formType === 'edit_purchase') {
+        setEditPurchaseForm(prev => ({
+          ...prev,
+          invoiceFile: reader.result,
+          invoiceFileName: file.name,
+          invoiceFileType: file.type
+        }));
       } else if (formType === 'payment') {
         setPaymentForm(prev => ({
           ...prev,
@@ -288,51 +331,31 @@ export default function PurchasesFactories() {
     reader.readAsDataURL(file);
   };
 
-  // Purchase Form helpers
-  const addPurchaseItemRow = () => {
-    setPurchaseForm(prev => ({
-      ...prev,
-      items: [...prev.items, { productId: '', qty: 1, rate: 0, gstPercent: 18, discount: 0 }]
-    }));
-  };
-
-  const removePurchaseItemRow = (idx) => {
-    const updated = [...purchaseForm.items];
-    updated.splice(idx, 1);
-    setPurchaseForm(prev => ({ ...prev, items: updated }));
-  };
-
-  const updatePurchaseItem = (idx, field, val) => {
-    const updated = [...purchaseForm.items];
-    updated[idx][field] = val;
-    setPurchaseForm(prev => ({ ...prev, items: updated }));
-  };
-
-  const getPurchaseTotals = () => {
-    let subtotal = 0;
-    let gstAmount = 0;
-    purchaseForm.items.forEach(it => {
-      const base = (Number(it.qty) || 0) * (Number(it.rate) || 0) - (Number(it.discount) || 0);
-      const gst = purchaseForm.gstType === 'GST' ? base * (Number(it.gstPercent) || 0) / 100 : 0;
-      subtotal += base;
-      gstAmount += gst;
-    });
-    const expenses = Number(purchaseForm.transportCharges || 0) + Number(purchaseForm.loadingCharges || 0) + Number(purchaseForm.otherExpenses || 0);
-    const grandTotal = subtotal + gstAmount + expenses;
-    return { subtotal, gstAmount, expenses, grandTotal };
-  };
-
-  const totals = getPurchaseTotals();
+  // Purchase Form calculations
+  const totalBillAmount = Number(purchaseForm.grandTotal) || 0;
+  const amountPaidImmediately = Number(purchaseForm.paidAmount) || 0;
+  const outstandingAmount = Number((totalBillAmount - amountPaidImmediately).toFixed(2));
 
   const handlePurchaseSubmit = async (e) => {
     e.preventDefault();
+    if (outstandingAmount < 0) {
+      setFormError('Outstanding amount cannot be negative');
+      return;
+    }
     setFormSaving(true);
     setFormError('');
     try {
       const selectedSup = suppliers.find(s => s.id === purchaseForm.supplierId);
       const payload = {
-        ...purchaseForm,
-        supplierName: selectedSup ? selectedSup.factoryName : ''
+        invoiceNumber: purchaseForm.invoiceNumber,
+        purchaseDate: purchaseForm.purchaseDate,
+        supplierId: purchaseForm.supplierId,
+        gstType: purchaseForm.gstType,
+        grandTotal: totalBillAmount,
+        paidAmount: amountPaidImmediately,
+        invoiceFile: purchaseForm.invoiceFile,
+        invoiceFileName: purchaseForm.invoiceFileName,
+        invoiceFileType: purchaseForm.invoiceFileType
       };
       await api.addPurchase(payload);
       setShowPurchaseModal(false);
@@ -446,6 +469,60 @@ export default function PurchasesFactories() {
 
   const formatRupees = (val) => `₹${Math.round(val || 0).toLocaleString('en-IN')}`;
 
+  const combinedTransactions = [
+    ...purchases.map(p => ({
+      id: p.id,
+      date: p.purchaseDate,
+      createdAt: p.createdAt,
+      supplierId: p.supplierId,
+      supplierName: p.supplierName,
+      paymentMethod: '—',
+      category: p.gstType,
+      amount: p.grandTotal,
+      referenceNumber: p.invoiceNumber,
+      createdBy: p.createdBy,
+      transactionType: 'Purchase',
+      notes: `Purchase Invoice #${p.invoiceNumber}`,
+      originalRecord: p
+    })),
+    ...payments.map(pay => ({
+      id: pay.id,
+      date: pay.date,
+      createdAt: pay.createdAt,
+      supplierId: pay.supplierId,
+      supplierName: pay.supplierName,
+      paymentMethod: pay.paymentMethod,
+      category: pay.category,
+      amount: pay.amount,
+      referenceNumber: pay.referenceNumber,
+      createdBy: pay.createdBy,
+      transactionType: pay.paymentType || 'Payment',
+      notes: pay.notes,
+      originalRecord: pay
+    }))
+  ];
+
+  combinedTransactions.sort((a, b) => {
+    const dDiff = new Date(b.date) - new Date(a.date);
+    if (dDiff !== 0) return dDiff;
+    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+  });
+
+  const filteredTransactions = combinedTransactions.filter(tx => {
+    const matchText = paymentSearch
+      ? tx.referenceNumber?.toLowerCase().includes(paymentSearch.toLowerCase()) ||
+        tx.notes?.toLowerCase().includes(paymentSearch.toLowerCase()) ||
+        tx.supplierName?.toLowerCase().includes(paymentSearch.toLowerCase())
+      : true;
+    const matchSupplier = paymentSupplierFilter ? tx.supplierId === paymentSupplierFilter : true;
+    const matchCategory = paymentCategoryFilter ? tx.category === paymentCategoryFilter : true;
+    const matchType = paymentTypeFilter ? tx.transactionType === paymentTypeFilter : true;
+    const matchStart = paymentStartDate ? tx.date >= paymentStartDate : true;
+    const matchEnd = paymentEndDate ? tx.date <= paymentEndDate : true;
+
+    return matchText && matchSupplier && matchCategory && matchType && matchStart && matchEnd;
+  });
+
   const mobileError = getMobileValidationError(supplierForm.mobile);
   const isSupplierFormInvalid = !supplierForm.factoryName || !supplierForm.ownerName || !supplierForm.address || !!mobileError || !supplierForm.mobile;
 
@@ -483,6 +560,7 @@ export default function PurchasesFactories() {
           { id: 'dashboard', label: '📊 Dashboard Overview' },
           { id: 'suppliers', label: '🏭 Suppliers Directory' },
           { id: 'purchases', label: '📄 Purchase Entries' },
+          { id: 'payments', label: '💸 Payment History' },
           { id: 'documents', label: '📂 Document Center' },
           { id: 'audit', label: '🔔 Activity Logs' }
         ].map((t) => (
@@ -528,9 +606,9 @@ export default function PurchasesFactories() {
               {/* KPI cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                  { label: 'Total GST Outstanding', val: formatRupees(stats.totalGstOutstanding), desc: 'Tax accounts payable balance', color: 'border-t-indigo-500' },
-                  { label: 'Total NON-GST Outstanding', val: formatRupees(stats.totalNonGstOutstanding), desc: 'Non-tax accounts payable balance', color: 'border-t-orange-500' },
-                  { label: "Today's Payments", val: formatRupees(stats.todayPayments), desc: 'Settlements cleared today', color: 'border-t-emerald-500' },
+                  { label: 'Total Supplier Due', val: formatRupees(stats.totalSupplierDue), desc: 'Gross outstanding liability', color: 'border-t-red-500' },
+                  { label: 'Total Supplier Advance', val: formatRupees(stats.totalSupplierAdvance), desc: 'Prepaid materials balance', color: 'border-t-emerald-500' },
+                  { label: 'Net Supplier Exposure', val: stats.netSupplierExposure < 0 ? `-${formatRupees(Math.abs(stats.netSupplierExposure))}` : formatRupees(stats.netSupplierExposure), desc: 'Net accounts payable exposure', color: 'border-t-indigo-500' },
                   { label: 'This Month Payments', val: formatRupees(stats.thisMonthPayments), desc: 'Gross payments this month', color: 'border-t-teal-500' }
                 ].map((c, i) => (
                   <div key={i} className={`bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 ${c.color} hover:shadow-md transition-all flex flex-col justify-between h-32`}>
@@ -598,6 +676,7 @@ export default function PurchasesFactories() {
                                           referenceNumber: pay.referenceNumber || '',
                                           category: pay.category,
                                           notes: pay.notes || '',
+                                          paymentType: pay.paymentType || 'Payment',
                                           reason: ''
                                         });
                                       }}
@@ -691,85 +770,207 @@ export default function PurchasesFactories() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {(showArchivedView ? filteredArchivedSuppliers : filteredSuppliers).map((s) => (
-                  <div key={s.id} onClick={() => setSelectedSupplierProfile(s)} className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 border border-slate-200 dark:border-[#334155] hover:border-red-500/50 dark:hover:border-red-500/55 cursor-pointer transition-all shadow-sm flex flex-col justify-between min-h-[220px]">
-                    <div>
-                      <div className="flex justify-between items-start gap-2">
-                        <div>
-                          <h4 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-sm uppercase flex items-center gap-1.5">
-                            {s.factoryName}
-                            {s.archived && <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20">Archived</span>}
-                          </h4>
-                          <p className="text-[10px] text-slate-400 dark:text-[#94A3B8] font-bold mt-0.5">Owner: {s.ownerName}</p>
-                        </div>
-                      </div>
+                {(showArchivedView ? filteredArchivedSuppliers : filteredSuppliers).map((s) => {
+                  const netDue = (s.gstBalance || 0) - (s.gstAdvance || 0) + (s.nonGstBalance || 0) - (s.nonGstAdvance || 0);
 
-                      <div className="mt-4 space-y-1.5 text-xs font-semibold text-slate-500 dark:text-[#CBD5E1]">
-                        <div className="flex items-center gap-2">
-                          <Phone size={12} className="text-slate-400" />
-                          <span>{s.mobile}</span>
+                  const sPurchases = purchases.filter(p => p.supplierId === s.id);
+                  const sPayments = payments.filter(p => p.supplierId === s.id);
+
+                  const lastPurchase = sPurchases.length > 0 
+                    ? [...sPurchases].sort((a, b) => new Date(b.purchaseDate) - new Date(a.purchaseDate) || new Date(b.createdAt) - new Date(a.createdAt))[0] 
+                    : null;
+
+                  const lastPayment = sPayments.length > 0
+                    ? [...sPayments].sort((a, b) => new Date(b.date) - new Date(a.date) || new Date(b.createdAt) - new Date(a.createdAt))[0]
+                    : null;
+
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={() => openSupplierLedger(s)}
+                      className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 border border-slate-200 dark:border-[#334155] hover:border-red-500/50 dark:hover:border-red-500/55 cursor-pointer transition-all shadow-sm flex flex-col justify-between min-h-[250px]"
+                    >
+                      <div>
+                        <div className="flex justify-between items-start gap-2">
+                          <div>
+                            <h4 className="font-extrabold text-slate-855 dark:text-[#F8FAFC] text-sm uppercase flex items-center gap-1.5">
+                              {s.factoryName}
+                              {s.archived && (
+                                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                  Archived
+                                </span>
+                              )}
+                            </h4>
+                            <p className="text-[10px] text-slate-400 dark:text-[#94A3B8] font-bold mt-0.5">Owner: {s.ownerName}</p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin size={12} className="text-slate-400" />
-                          <span className="truncate">{s.address}</span>
-                        </div>
-                        {s.gstNumber && (
-                          <div className="flex items-center gap-2">
-                            <Percent size={12} className="text-slate-400" />
-                            <span>GSTIN: <span className="uppercase font-bold">{s.gstNumber}</span></span>
+
+                        {/* Highly Prominent Net Due / Net Advance section */}
+                        {netDue >= 0 ? (
+                          <div className="mt-3 bg-red-500/5 dark:bg-red-500/10 p-3 rounded-xl border border-red-500/10 text-center animate-fadeIn">
+                            <span className="text-[9px] font-bold text-red-500 dark:text-red-400 uppercase tracking-widest block">Net Due</span>
+                            <span className="text-xl font-black text-red-550 dark:text-red-400 block mt-0.5">
+                              {formatRupees(netDue)}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="mt-3 bg-emerald-500/5 dark:bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/10 text-center animate-fadeIn">
+                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-455 uppercase tracking-widest block">Net Advance</span>
+                            <span className="text-xl font-black text-emerald-605 dark:text-emerald-450 block mt-0.5">
+                              {formatRupees(Math.abs(netDue))}
+                            </span>
                           </div>
                         )}
-                      </div>
-                    </div>
 
-                    {/* Split balances & controls */}
-                    <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3 mt-4">
-                      <div className="grid grid-cols-2 gap-4 flex-1">
-                        <div>
-                          <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase block">GST Balance</span>
-                          <span className="font-black text-xs text-indigo-500">{formatRupees(s.gstBalance)}</span>
+                        <div className="mt-3 space-y-1 text-[11px] font-semibold text-slate-500 dark:text-[#CBD5E1]">
+                          <div className="flex items-center gap-2">
+                            <Phone size={11} className="text-slate-400" />
+                            <span>{s.mobile}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <MapPin size={11} className="text-slate-400" />
+                            <span className="truncate">{s.address}</span>
+                          </div>
+                          {s.gstNumber && (
+                            <div className="flex items-center gap-2">
+                              <Percent size={11} className="text-slate-400" />
+                              <span>GSTIN: <span className="uppercase font-bold">{s.gstNumber}</span></span>
+                            </div>
+                          )}
                         </div>
-                        <div>
-                          <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase block">Non-GST Balance</span>
-                          <span className="font-black text-xs text-orange-500">{formatRupees(s.nonGstBalance)}</span>
+
+                        {/* Last Transactions section */}
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                          <div>
+                            <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase block">Last Purchase</span>
+                            {lastPurchase ? (
+                              <div className="mt-0.5 font-bold text-slate-705 dark:text-slate-300">
+                                <span className="block text-indigo-500 font-extrabold">{formatRupees(lastPurchase.grandTotal)}</span>
+                                <span className="text-[8px] text-slate-400 block">{lastPurchase.purchaseDate}</span>
+                              </div>
+                            ) : (
+                              <span className="text-[9px] text-slate-450 block italic mt-0.5">No purchases</span>
+                            )}
+                          </div>
+                          <div>
+                            <span className="text-[9px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase block">Last Payment</span>
+                            {lastPayment ? (
+                              <div className="mt-0.5 font-bold text-slate-705 dark:text-slate-305">
+                                <span className="block text-emerald-600 dark:text-emerald-455 font-extrabold">{formatRupees(lastPayment.amount)}</span>
+                                <span className="text-[8px] text-slate-400 block">{lastPayment.date} via {lastPayment.paymentMethod}</span>
+                              </div>
+                            ) : (
+                              <span className="text-[9px] text-slate-455 block italic mt-0.5">No payments</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex gap-1.5 items-center" onClick={(e) => e.stopPropagation()}>
-                        {!s.archived ? (
-                          <>
-                            <button onClick={() => openSupplierEdit(s)} className="p-2 rounded-lg text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-750 dark:hover:text-white transition-colors">
-                              <Pencil size={12} />
+
+                      {/* Balances Grid */}
+                      <div className="border-t border-slate-100 dark:border-slate-800 pt-3 mt-3">
+                        <div className="grid grid-cols-3 gap-2 text-[9px] leading-tight">
+                          <div>
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase block">Opening</span>
+                            <div className="space-y-0.5 mt-0.5 font-bold">
+                              <span className="text-indigo-400 block">GST: {formatRupees(s.openingGstBalance)}</span>
+                              <span className="text-orange-400 block">Non: {formatRupees(s.openingNonGstBalance)}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase block">Due</span>
+                            <div className="space-y-0.5 mt-0.5 font-bold">
+                              <span className="text-indigo-500 block">GST: {formatRupees(s.gstBalance)}</span>
+                              <span className="text-orange-500 block">Non: {formatRupees(s.nonGstBalance)}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase block">Advance</span>
+                            <div className="space-y-0.5 mt-0.5 font-bold">
+                              <span className="text-emerald-500 block">GST: {formatRupees(s.gstAdvance)}</span>
+                              <span className="text-teal-500 block">Non: {formatRupees(s.nonGstAdvance)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2.5 mt-2.5" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => openSupplierLedger(s)}
+                            className="px-2 py-1 bg-red-650 hover:bg-red-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm flex items-center gap-1"
+                          >
+                            📖 Ledger
+                          </button>
+                          
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => {
+                                setPaymentForm({
+                                  ...emptyPayment,
+                                  supplierId: s.id,
+                                  paymentType: 'Payment'
+                                });
+                                setFormError('');
+                                setShowPaymentModal(true);
+                              }}
+                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm"
+                              title="Record Payment"
+                            >
+                              ➕ Pay
                             </button>
-                            {isAdmin && (
-                              <button onClick={() => { setSupplierToDelete(s); setDeleteReason(''); }} className="p-2 rounded-lg text-slate-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-500 transition-colors">
-                                <Trash2 size={12} />
-                              </button>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            {isAdmin && (
+                            <button
+                              onClick={() => {
+                                setPaymentForm({
+                                  ...emptyPayment,
+                                  supplierId: s.id,
+                                  paymentType: 'Advance Payment'
+                                });
+                                setFormError('');
+                                setShowPaymentModal(true);
+                              }}
+                              className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm"
+                              title="Record Advance Payment"
+                            >
+                              ➕ Advance
+                            </button>
+                          </div>
+
+                          <div className="flex gap-1.5 items-center">
+                            {!s.archived ? (
                               <>
-                                <button
-                                  onClick={() => handleSupplierRestore(s.id)}
-                                  className="px-2.5 py-1.5 rounded-lg text-[9px] font-black text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all border border-emerald-500/20"
-                                >
-                                  Restore
+                                <button onClick={() => openSupplierEdit(s)} className="p-1 rounded text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-750 dark:hover:text-white transition-colors">
+                                  <Pencil size={11} />
                                 </button>
-                                <button
-                                  onClick={() => { setSupplierToDelete(s); setDeleteReason(''); }}
-                                  className="p-2 rounded-lg text-slate-400 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-500 transition-colors"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
+                                {isAdmin && (
+                                  <button onClick={() => { setSupplierToDelete(s); setDeleteReason(''); }} className="p-1 rounded text-slate-400 hover:bg-red-50 dark:hover:bg-red-955/20 hover:text-red-500 transition-colors">
+                                    <Trash2 size={11} />
+                                  </button>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                {isAdmin && (
+                                  <>
+                                    <button
+                                      onClick={() => handleSupplierRestore(s.id)}
+                                      className="px-1.5 py-0.5 rounded text-[8px] font-black text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all border border-emerald-500/20"
+                                    >
+                                      Restore
+                                    </button>
+                                    <button
+                                      onClick={() => { setSupplierToDelete(s); setDeleteReason(''); }}
+                                      className="p-1 rounded text-slate-400 hover:bg-red-50 dark:hover:bg-red-955/20 hover:text-red-500 transition-colors"
+                                    >
+                                      <Trash2 size={11} />
+                                    </button>
+                                  </>
+                                )}
                               </>
                             )}
-                          </>
-                        )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -793,21 +994,48 @@ export default function PurchasesFactories() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-[#334155] text-slate-500 dark:text-[#94A3B8] uppercase font-bold sticky top-0 z-10">
                     <tr>
-                      <th className="px-4 py-3">Invoice Details</th>
-                      <th className="px-4 py-3">Supplier Name</th>
-                      <th className="px-4 py-3">Classification / Pay Type</th>
-                      <th className="px-4 py-3">Invoice Total</th>
-                      <th className="px-4 py-3">Dues Outstanding</th>
+                      <th className="px-4 py-3">Date</th>
+                      <th className="px-4 py-3">Invoice Number</th>
+                      <th className="px-4 py-3">Supplier</th>
+                      <th className="px-4 py-3">GST / Non-GST</th>
+                      <th className="px-4 py-3">Bill Amount</th>
+                      <th className="px-4 py-3">Paid Amount</th>
+                      <th className="px-4 py-3">Outstanding Amount</th>
+                      <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-[#334155] bg-white dark:bg-[#1E293B] font-medium text-slate-605 dark:text-[#CBD5E1]">
                     {filteredPurchases.map((p) => {
+                      const outstanding = p.remainingAmount;
+                      const paid = p.paidAmount;
+
+                      let statusBadge = null;
+                      if (outstanding === 0) {
+                        statusBadge = (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-black bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                            Paid
+                          </span>
+                        );
+                      } else if (paid > 0 && outstanding > 0) {
+                        statusBadge = (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-black bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                            Partially Paid
+                          </span>
+                        );
+                      } else {
+                        statusBadge = (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-black bg-red-500/10 text-red-500 border border-red-500/20">
+                            Unpaid
+                          </span>
+                        );
+                      }
+
                       return (
                         <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                          <td className="px-4 py-3.5">
-                            <p className="font-extrabold text-slate-805 dark:text-[#F8FAFC] uppercase">Inv #{p.invoiceNumber}</p>
-                            <p className="text-[9px] text-slate-400 mt-0.5">Date: {p.purchaseDate}</p>
+                          <td className="px-4 py-3.5 whitespace-nowrap">{p.purchaseDate}</td>
+                          <td className="px-4 py-3.5 font-bold uppercase text-slate-850 dark:text-[#F8FAFC]">
+                            Inv #{p.invoiceNumber}
                           </td>
                           <td className="px-4 py-3.5 font-bold uppercase text-slate-700 dark:text-[#CBD5E1]">
                             {p.supplierName}
@@ -816,15 +1044,19 @@ export default function PurchasesFactories() {
                             <span className={`px-2 py-0.5 rounded text-[9px] font-black border ${
                               p.gstType === 'GST' ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' : 'bg-orange-500/10 text-orange-500 border-orange-500/20'
                             }`}>
-                              {p.gstType} • {p.paymentType}
+                              {p.gstType}
                             </span>
                           </td>
                           <td className="px-4 py-3.5 font-black text-slate-800 dark:text-[#F8FAFC]">
                             {formatRupees(p.grandTotal)}
                           </td>
+                          <td className="px-4 py-3.5 font-black text-emerald-600 dark:text-emerald-450">
+                            {formatRupees(p.paidAmount)}
+                          </td>
                           <td className={`px-4 py-3.5 font-black ${p.remainingAmount > 0 ? 'text-red-500' : 'text-slate-450'}`}>
                             {formatRupees(p.remainingAmount)}
                           </td>
+                          <td className="px-4 py-3.5 whitespace-nowrap">{statusBadge}</td>
                           <td className="px-4 py-3.5 text-right">
                             <div className="flex items-center justify-end gap-2">
                               {p.invoiceFile && (
@@ -833,9 +1065,34 @@ export default function PurchasesFactories() {
                                 </a>
                               )}
                               {isAdmin && (
-                                <button onClick={() => { setPurchaseToDelete(p); setDeleteReason(''); }} className="p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors">
-                                  <Trash2 size={13} />
-                                </button>
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setPurchaseToEdit(p);
+                                      setEditPurchaseForm({
+                                        invoiceNumber: p.invoiceNumber,
+                                        purchaseDate: p.purchaseDate,
+                                        supplierId: p.supplierId,
+                                        gstType: p.gstType,
+                                        grandTotal: p.grandTotal,
+                                        paidAmount: p.paidAmount || 0,
+                                        invoiceFile: p.invoiceFile || '',
+                                        invoiceFileName: p.invoiceFileName || '',
+                                        invoiceFileType: p.invoiceFileType || '',
+                                        reason: ''
+                                      });
+                                      setFormError('');
+                                    }}
+                                    className="p-1.5 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-550 transition-colors"
+                                    title="Edit Purchase"
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button onClick={() => { setPurchaseToDelete(p); setDeleteReason(''); }} className="p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors">
+                                    <Trash2 size={13} />
+                                  </button>
+                                </>
                               )}
                             </div>
                           </td>
@@ -848,7 +1105,210 @@ export default function PurchasesFactories() {
             </div>
           )}
 
-          {/* TAB 4: DOCUMENT CENTER */}
+          {/* TAB 3.5: PAYMENT HISTORY */}
+          {activeTab === 'payments' && (
+            <div className="space-y-4">
+              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white dark:bg-[#1E293B] p-4 rounded-xl border border-slate-200 dark:border-[#334155]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 w-full">
+                  {/* Search input */}
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={paymentSearch}
+                      onChange={(e) => setPaymentSearch(e.target.value)}
+                      placeholder="Search ref, notes..."
+                      className="w-full pl-9 pr-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-xs bg-white dark:bg-[#0F172A] text-slate-750 focus:outline-none focus:ring-2 focus:ring-[#EF4444]"
+                    />
+                  </div>
+
+                  {/* Supplier filter */}
+                  <div>
+                    <select
+                      value={paymentSupplierFilter}
+                      onChange={(e) => setPaymentSupplierFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-xs bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#CBD5E1] focus:outline-none"
+                    >
+                      <option value="">All Suppliers</option>
+                      {suppliers.map(s => (
+                        <option key={s.id} value={s.id}>{s.factoryName}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Transaction Type Filter */}
+                  <div>
+                    <select
+                      value={paymentTypeFilter}
+                      onChange={(e) => setPaymentTypeFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-xs bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#CBD5E1] focus:outline-none"
+                    >
+                      <option value="">All Types</option>
+                      <option value="Purchase">Purchase Bill</option>
+                      <option value="Payment">Payment</option>
+                      <option value="Advance Payment">Advance Payment</option>
+                    </select>
+                  </div>
+
+                  {/* GST Filter */}
+                  <div>
+                    <select
+                      value={paymentCategoryFilter}
+                      onChange={(e) => setPaymentCategoryFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-xs bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#CBD5E1] focus:outline-none"
+                    >
+                      <option value="">All Categories</option>
+                      <option value="GST">GST Only</option>
+                      <option value="Non-GST">Non-GST Only</option>
+                    </select>
+                  </div>
+
+                  {/* Date Start */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">From</span>
+                    <input
+                      type="date"
+                      value={paymentStartDate}
+                      onChange={(e) => setPaymentStartDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-xs bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Date End */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">To</span>
+                    <input
+                      type="date"
+                      value={paymentEndDate}
+                      onChange={(e) => setPaymentEndDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-xs bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-[#334155] rounded-2xl overflow-hidden shadow-sm">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-[#334155] text-slate-500 dark:text-[#94A3B8] uppercase font-bold sticky top-0 z-10">
+                    <tr>
+                      <th className="px-4 py-3">Date</th>
+                      <th className="px-4 py-3">Type</th>
+                      <th className="px-4 py-3">Supplier</th>
+                      <th className="px-4 py-3">Method</th>
+                      <th className="px-4 py-3">Category</th>
+                      <th className="px-4 py-3">Amount</th>
+                      <th className="px-4 py-3">Reference Number</th>
+                      <th className="px-4 py-3">Created By</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-[#334155] bg-white dark:bg-[#1E293B] font-medium text-slate-605 dark:text-[#CBD5E1]">
+                    {filteredTransactions.map((tx) => {
+                      const isPurchase = tx.transactionType === 'Purchase';
+                      const isAdvance = tx.transactionType === 'Advance Payment';
+
+                      return (
+                        <tr key={`${tx.transactionType}-${tx.id}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                          <td className="px-4 py-3.5 whitespace-nowrap">{tx.date}</td>
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-black border ${
+                              isPurchase ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' :
+                              isAdvance ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                            }`}>
+                              {tx.transactionType}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 font-bold uppercase text-slate-855 dark:text-[#F8FAFC]">
+                            {tx.supplierName}
+                          </td>
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded text-[9px] font-black bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-305 border border-slate-200 dark:border-slate-800">
+                              {tx.paymentMethod}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-black border ${
+                              tx.category === 'GST' ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' : 'bg-orange-500/10 text-orange-500 border-orange-500/20'
+                            }`}>
+                              {tx.category}
+                            </span>
+                          </td>
+                          <td className={`px-4 py-3.5 font-black ${isPurchase ? 'text-slate-705 dark:text-[#CBD5E1]' : 'text-emerald-600 dark:text-emerald-450'}`}>
+                            {formatRupees(tx.amount)}
+                          </td>
+                          <td className="px-4 py-3.5 truncate max-w-[150px] font-bold text-slate-500">
+                            {tx.referenceNumber || '—'}
+                          </td>
+                          <td className="px-4 py-3.5 text-slate-400">
+                            {tx.createdBy || 'System'}
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {isAdmin && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isPurchase) {
+                                        setPurchaseToEdit(tx.originalRecord);
+                                        setEditPurchaseForm({
+                                          invoiceNumber: tx.originalRecord.invoiceNumber,
+                                          purchaseDate: tx.originalRecord.purchaseDate,
+                                          supplierId: tx.originalRecord.supplierId,
+                                          gstType: tx.originalRecord.gstType,
+                                          grandTotal: tx.originalRecord.grandTotal,
+                                          paidAmount: tx.originalRecord.paidAmount || 0,
+                                          invoiceFile: tx.originalRecord.invoiceFile || '',
+                                          invoiceFileName: tx.originalRecord.invoiceFileName || '',
+                                          invoiceFileType: tx.originalRecord.invoiceFileType || '',
+                                          reason: ''
+                                        });
+                                      } else {
+                                        setPaymentToEdit(tx.originalRecord);
+                                        setEditPaymentForm({
+                                          date: tx.originalRecord.date,
+                                          amount: tx.originalRecord.amount,
+                                          paymentMethod: tx.originalRecord.paymentMethod,
+                                          referenceNumber: tx.originalRecord.referenceNumber || '',
+                                          category: tx.originalRecord.category,
+                                          notes: tx.originalRecord.notes || '',
+                                          paymentType: tx.originalRecord.paymentType || 'Payment',
+                                          reason: ''
+                                        });
+                                      }
+                                    }}
+                                    className="p-1 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-550 transition-colors"
+                                    title={isPurchase ? "Edit Purchase" : "Edit Payment"}
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isPurchase) {
+                                        setPurchaseToDelete(tx.originalRecord);
+                                      } else {
+                                        setPaymentToDelete(tx.originalRecord);
+                                      }
+                                      setDeleteReason('');
+                                    }}
+                                    className="p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-505 transition-colors"
+                                    title={isPurchase ? "Delete Purchase" : "Delete Payment"}
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
           {activeTab === 'documents' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               
@@ -971,6 +1431,31 @@ export default function PurchasesFactories() {
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Opening GST Balance (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={supplierForm.openingGstBalance}
+                  onChange={(e) => setSupplierForm(prev => ({ ...prev, openingGstBalance: Number(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
+                  placeholder="e.g. 0"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Opening Non-GST Balance (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={supplierForm.openingNonGstBalance}
+                  onChange={(e) => setSupplierForm(prev => ({ ...prev, openingNonGstBalance: Number(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
+                  placeholder="e.g. 0"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Full Address *</label>
               <textarea
@@ -995,230 +1480,128 @@ export default function PurchasesFactories() {
         </Modal>
       )}
 
-      {/* MODAL 2: LOG NEW PURCHASE INVOICE */}
-      {showPurchaseModal && (
+          {showPurchaseModal && (
         <Modal title="Submit Purchase Invoice" onClose={() => setShowPurchaseModal(false)}>
           <form onSubmit={handlePurchaseSubmit} className="space-y-4 text-xs font-semibold text-slate-500">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Invoice Number *</label>
-                <input
-                  required
-                  value={purchaseForm.invoiceNumber}
-                  onChange={(e) => setPurchaseForm(prev => ({ ...prev, invoiceNumber: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
-                  placeholder="e.g. HAV-5592"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Invoice Date *</label>
-                <input
-                  required
-                  type="date"
-                  value={purchaseForm.purchaseDate}
-                  onChange={(e) => setPurchaseForm(prev => ({ ...prev, purchaseDate: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Factory/Supplier *</label>
-                <select
-                  required
-                  value={purchaseForm.supplierId}
-                  onChange={(e) => setPurchaseForm(prev => ({ ...prev, supplierId: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#CBD5E1]"
-                >
-                  <option value="">-- Select Supplier --</option>
-                  {suppliers.map(s => (
-                    <option key={s.id} value={s.id}>{s.factoryName}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Category Classification</label>
-                <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-slate-900 rounded-xl p-1">
-                  {['GST', 'Non-GST'].map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setPurchaseForm(prev => ({ ...prev, gstType: t }))}
-                      className={`py-1 rounded-lg text-[10px] font-black ${purchaseForm.gstType === t ? 'bg-[#EF4444] text-white shadow-sm' : 'text-slate-500'}`}
-                    >
-                      {t}
-                    </button>
-                  ))}
+            {/* SECTION A */}
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-[#334155] space-y-3">
+              <h4 className="text-[10px] font-black uppercase text-slate-808 dark:text-[#F8FAFC] tracking-wider border-b border-slate-200 dark:border-slate-800 pb-1">Section A: Details</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Invoice Number *</label>
+                  <input
+                    required
+                    value={purchaseForm.invoiceNumber}
+                    onChange={(e) => setPurchaseForm(prev => ({ ...prev, invoiceNumber: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
+                    placeholder="e.g. HAV-5592"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Invoice Date *</label>
+                  <input
+                    required
+                    type="date"
+                    value={purchaseForm.purchaseDate}
+                    onChange={(e) => setPurchaseForm(prev => ({ ...prev, purchaseDate: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
+                  />
                 </div>
               </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Payment Type</label>
-                <select
-                  value={purchaseForm.paymentType}
-                  onChange={(e) => setPurchaseForm(prev => ({ ...prev, paymentType: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#CBD5E1]"
-                >
-                  <option value="Credit">🏦 Credit (outstanding)</option>
-                  <option value="Cash">💵 Cash</option>
-                  <option value="UPI">⚡ UPI</option>
-                  <option value="Bank Transfer">🏦 Bank Transfer</option>
-                </select>
-              </div>
-            </div>
 
-            {purchaseForm.paymentType === 'Credit' && (
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Payment Due Date *</label>
-                <input
-                  required
-                  type="date"
-                  value={purchaseForm.dueDate}
-                  onChange={(e) => setPurchaseForm(prev => ({ ...prev, dueDate: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
-                />
-              </div>
-            )}
-
-            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
-              <div className="flex justify-between items-center mb-2">
-                <h4 className="text-[10px] font-black uppercase text-slate-800 dark:text-[#F8FAFC] tracking-wider">Purchase Line Items</h4>
-                <button type="button" onClick={addPurchaseItemRow} className="text-red-500 hover:text-red-650 flex items-center gap-1 font-bold">
-                  <Plus size={12} /> Add Item Line
-                </button>
-              </div>
-              <div className="space-y-3">
-                {purchaseForm.items.map((it, idx) => (
-                  <div key={idx} className="grid grid-cols-1 md:grid-cols-[40%_15%_15%_10%_12%_8%] gap-2 bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-105 dark:border-slate-800">
-                    <div>
-                      <select
-                        required
-                        value={it.productId}
-                        onChange={(e) => {
-                          const pObj = products.find(p => p.id === e.target.value);
-                          updatePurchaseItem(idx, 'productId', e.target.value);
-                          updatePurchaseItem(idx, 'productName', pObj ? pObj.name : '');
-                          updatePurchaseItem(idx, 'rate', pObj ? pObj.costPrice || pObj.unitPrice || 0 : 0);
-                        }}
-                        className="w-full px-2 py-1.5 border border-slate-200 dark:border-[#334155] rounded-lg bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#CBD5E1]"
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Factory/Supplier *</label>
+                  <select
+                    required
+                    value={purchaseForm.supplierId}
+                    onChange={(e) => setPurchaseForm(prev => ({ ...prev, supplierId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-850 dark:text-[#CBD5E1]"
+                  >
+                    <option value="">-- Select Supplier --</option>
+                    {suppliers.map(s => (
+                      <option key={s.id} value={s.id}>{s.factoryName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Category Classification *</label>
+                  <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-slate-900 rounded-xl p-1">
+                    {['GST', 'Non-GST'].map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setPurchaseForm(prev => ({ ...prev, gstType: t }))}
+                        className={`py-1.5 rounded-lg text-[10px] font-black transition-all ${purchaseForm.gstType === t ? 'bg-[#EF4444] text-white shadow-sm' : 'text-slate-500'}`}
                       >
-                        <option value="">-- Choose Product --</option>
-                        {products.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <input
-                        required
-                        type="number"
-                        min="1"
-                        value={it.qty}
-                        onChange={(e) => updatePurchaseItem(idx, 'qty', Number(e.target.value) || 0)}
-                        className="w-full px-2 py-1.5 border border-slate-200 dark:border-[#334155] rounded-lg bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
-                        placeholder="Qty"
-                      />
-                    </div>
-                    <div>
-                      <input
-                        required
-                        type="number"
-                        value={it.rate}
-                        onChange={(e) => updatePurchaseItem(idx, 'rate', Number(e.target.value) || 0)}
-                        className="w-full px-2 py-1.5 border border-slate-200 dark:border-[#334155] rounded-lg bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
-                        placeholder="Rate"
-                      />
-                    </div>
-                    <div>
-                      <input
-                        type="number"
-                        value={it.gstPercent}
-                        onChange={(e) => updatePurchaseItem(idx, 'gstPercent', Number(e.target.value) || 0)}
-                        className="w-full px-2 py-1.5 border border-slate-200 dark:border-[#334155] rounded-lg bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
-                        disabled={purchaseForm.gstType === 'Non-GST'}
-                      />
-                    </div>
-                    <div>
-                      <input
-                        type="number"
-                        value={it.discount}
-                        onChange={(e) => updatePurchaseItem(idx, 'discount', Number(e.target.value) || 0)}
-                        className="w-full px-2 py-1.5 border border-slate-200 dark:border-[#334155] rounded-lg bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
-                        placeholder="Disc"
-                      />
-                    </div>
-                    <div className="flex items-center justify-end">
-                      <button type="button" onClick={() => removePurchaseItemRow(idx)} disabled={purchaseForm.items.length === 1} className="p-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-500 disabled:opacity-30">
-                        <X size={12} />
+                        {t}
                       </button>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 border-t border-slate-100 dark:border-slate-800 pt-3">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Transport (₹)</label>
-                <input
-                  type="number"
-                  value={purchaseForm.transportCharges}
-                  onChange={(e) => setPurchaseForm(prev => ({ ...prev, transportCharges: Number(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
-                />
+            {/* SECTION B */}
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-[#334155] space-y-3">
+              <h4 className="text-[10px] font-black uppercase text-slate-808 dark:text-[#F8FAFC] tracking-wider border-b border-slate-200 dark:border-slate-800 pb-1">Section B: Financials</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Total Bill Amount (₹) *</label>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    value={purchaseForm.grandTotal}
+                    onChange={(e) => setPurchaseForm(prev => ({ ...prev, grandTotal: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-808 dark:text-[#F8FAFC] font-extrabold"
+                    placeholder="Enter total bill amount"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Amount Paid Immediately (₹) *</label>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    value={purchaseForm.paidAmount}
+                    onChange={(e) => setPurchaseForm(prev => ({ ...prev, paidAmount: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-808 dark:text-[#F8FAFC] font-extrabold"
+                    placeholder="Enter immediate paid amount"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Loading (₹)</label>
-                <input
-                  type="number"
-                  value={purchaseForm.loadingCharges}
-                  onChange={(e) => setPurchaseForm(prev => ({ ...prev, loadingCharges: Number(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
-                />
+            </div>
+
+            {/* SECTION C */}
+            <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+              <div className="flex justify-between items-center font-black">
+                <span className="text-[10px] uppercase text-slate-808 dark:text-[#F8FAFC] tracking-wider font-bold">Section C: Outstanding Amount</span>
+                <span className={`text-sm ${outstandingAmount > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                  {formatRupees(outstandingAmount)}
+                </span>
               </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Other exp (₹)</label>
-                <input
-                  type="number"
-                  value={purchaseForm.otherExpenses}
-                  onChange={(e) => setPurchaseForm(prev => ({ ...prev, otherExpenses: Number(e.target.value) || 0 }))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
-                />
-              </div>
+              <p className="text-[10px] text-slate-400">Formula: Outstanding = Total Bill Amount - Amount Paid Immediately</p>
+              {outstandingAmount < 0 && (
+                <p className="text-[10px] text-red-500 font-bold">⚠️ Outstanding amount cannot be negative. Immediate payment cannot exceed total bill.</p>
+              )}
             </div>
 
             <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
-              <label className="flex items-center gap-2 text-slate-700 dark:text-[#CBD5E1] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={purchaseForm.autoAdjustStock}
-                  onChange={(e) => setPurchaseForm(prev => ({ ...prev, autoAdjustStock: e.target.checked }))}
-                  className="text-red-500 rounded focus:ring-red-500"
-                />
-                <span>Auto-adjust stock immediately in inventory</span>
-              </label>
-
               <div className="flex items-center gap-2">
                 <label className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 dark:border-[#334155] rounded-xl bg-slate-50 dark:bg-slate-900 cursor-pointer text-slate-650 hover:bg-slate-100">
                   <Upload size={12} /> Invoice Copy
                   <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileChange(e, 'purchase')} className="hidden" />
                 </label>
-                <span className="text-[10px] text-slate-400 max-w-[120px] truncate">{purchaseForm.invoiceFileName || 'No file'}</span>
-              </div>
-            </div>
-
-            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2 text-xs">
-              <div className="flex justify-between font-black text-sm text-slate-805 dark:text-[#F8FAFC]">
-                <span>Grand Total:</span>
-                <span className="text-[#EF4444]">{formatRupees(totals.grandTotal)}</span>
+                <span className="text-[10px] text-slate-400 max-w-[150px] truncate">{purchaseForm.invoiceFileName || 'No file'}</span>
               </div>
             </div>
 
             {formError && <p className="text-red-500 text-xs font-bold bg-red-500/10 p-2.5 rounded-xl border border-red-500/20">{formError}</p>}
 
             <div className="flex gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <button type="button" onClick={() => setShowPurchaseModal(false)} className="flex-1 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-slate-750 dark:text-[#CBD5E1] hover:bg-slate-100 font-bold">Cancel</button>
-              <button type="submit" disabled={formSaving} className="flex-1 py-2.5 bg-[#EF4444] hover:bg-red-600 disabled:opacity-60 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-md">
+              <button type="button" onClick={() => setShowPurchaseModal(false)} className="flex-1 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-slate-755 dark:text-[#CBD5E1] hover:bg-slate-100 font-bold">Cancel</button>
+              <button type="submit" disabled={formSaving || outstandingAmount < 0 || !purchaseForm.grandTotal || purchaseForm.paidAmount === '' || !purchaseForm.supplierId} className="flex-1 py-2.5 bg-[#EF4444] hover:bg-red-600 disabled:opacity-60 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-md">
                 {formSaving && <Loader2 size={14} className="animate-spin" />} Submit Invoice
               </button>
             </div>
@@ -1270,29 +1653,44 @@ export default function PurchasesFactories() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Payment Type</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Transaction Type *</label>
+                <select
+                  value={paymentForm.paymentType}
+                  onChange={(e) => setPaymentForm(prev => ({ ...prev, paymentType: e.target.value }))}
+                  className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#CBD5E1]"
+                >
+                  <option value="Payment">Payment</option>
+                  <option value="Advance Payment">Advance Payment</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Payment Method</label>
                 <select
                   value={paymentForm.paymentMethod}
                   onChange={(e) => setPaymentForm(prev => ({ ...prev, paymentMethod: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#CBD5E1]"
+                  className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#CBD5E1]"
                 >
                   <option value="Cash">💵 Cash</option>
                   <option value="UPI">⚡ UPI</option>
-                  <option value="Cheque">✍️ Cheque</option>
                   <option value="Bank Transfer">🏦 Bank Transfer</option>
+                  <option value="Cheque">✍️ Cheque</option>
+                  <option value="RTGS">⚡ RTGS</option>
+                  <option value="NEFT">⚡ NEFT</option>
+                  <option value="IMPS">⚡ IMPS</option>
+                  <option value="Other">❓ Other</option>
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Payment Category *</label>
-                <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-slate-900 rounded-xl p-1">
+                <div className="grid grid-cols-2 gap-0.5 bg-slate-100 dark:bg-slate-900 rounded-xl p-0.5">
                   {['GST', 'Non-GST'].map(t => (
                     <button
                       key={t}
                       type="button"
                       onClick={() => setPaymentForm(prev => ({ ...prev, category: t }))}
-                      className={`py-1 rounded-lg text-[10px] font-black ${paymentForm.category === t ? 'bg-[#EF4444] text-white shadow-sm' : 'text-slate-500'}`}
+                      className={`py-1 rounded-lg text-[9px] font-black ${paymentForm.category === t ? 'bg-[#EF4444] text-white shadow-sm' : 'text-slate-500'}`}
                     >
                       {t}
                     </button>
@@ -1345,144 +1743,187 @@ export default function PurchasesFactories() {
         </Modal>
       )}
 
-      {/* MODAL 4: DETAILED SUPPLIER PROFILE & PAYMENT LEDGER VIEW */}
-      {selectedSupplierProfile && (
-        <Modal title={`Supplier Ledger Profile: ${selectedSupplierProfile.factoryName}`} onClose={() => setSelectedSupplierProfile(null)}>
+      {selectedSupplierProfile && supplierLedgerData && (
+        <Modal title={`Supplier Ledger: ${selectedSupplierProfile.factoryName}`} onClose={() => { setSelectedSupplierProfile(null); setSupplierLedgerData(null); }}>
           <div className="space-y-6 text-xs text-slate-600 dark:text-[#CBD5E1]">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <span className="text-[9px] font-bold text-slate-400 block uppercase">Factory Name</span>
+                <span className="text-[9px] font-bold text-slate-400 block uppercase font-mono">Factory Name</span>
                 <p className="text-sm font-extrabold text-slate-800 dark:text-[#F8FAFC] uppercase">{selectedSupplierProfile.factoryName}</p>
               </div>
               <div>
-                <span className="text-[9px] font-bold text-slate-400 block uppercase">Owner Name</span>
+                <span className="text-[9px] font-bold text-slate-400 block uppercase font-mono">Owner Name</span>
                 <p className="text-sm font-extrabold text-slate-800 dark:text-[#F8FAFC]">{selectedSupplierProfile.ownerName}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800 pt-3">
               <div>
-                <span className="text-[9px] font-bold text-slate-400 block uppercase">Mobile Phone</span>
+                <span className="text-[9px] font-bold text-slate-400 block uppercase font-mono">Mobile Phone</span>
                 <p className="font-extrabold text-slate-805 dark:text-[#F8FAFC]">{selectedSupplierProfile.mobile}</p>
               </div>
               <div>
-                <span className="text-[9px] font-bold text-slate-400 block uppercase">GSTIN Number</span>
+                <span className="text-[9px] font-bold text-slate-400 block uppercase font-mono">GSTIN Number</span>
                 <p className="font-extrabold text-slate-805 dark:text-[#F8FAFC] uppercase">{selectedSupplierProfile.gstNumber || 'Unregistered'}</p>
               </div>
             </div>
 
             <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
-              <span className="text-[9px] font-bold text-slate-400 block uppercase">Full Factory Address</span>
+              <span className="text-[9px] font-bold text-slate-400 block uppercase font-mono">Full Factory Address</span>
               <p className="font-semibold text-slate-705 dark:text-[#CBD5E1] bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 mt-1">{selectedSupplierProfile.address}</p>
             </div>
 
             {/* Split balances & stats */}
-            <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800 pt-3 text-center">
-              <div className="p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl">
-                <span className="text-[9px] font-bold text-indigo-500 block uppercase">GST Balance</span>
-                <span className="font-black text-sm text-indigo-500">{formatRupees(selectedSupplierProfile.gstBalance)}</span>
+            <div className="grid grid-cols-4 gap-2 border-t border-slate-100 dark:border-slate-800 pt-3 text-center">
+              <div className="p-2 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl">
+                <span className="text-[8px] font-bold text-red-500 block uppercase font-mono">GST Due</span>
+                <span className="font-black text-xs text-red-500">{formatRupees(selectedSupplierProfile.gstBalance)}</span>
               </div>
-              <div className="p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl">
-                <span className="text-[9px] font-bold text-orange-500 block uppercase">Non-GST Balance</span>
-                <span className="font-black text-sm text-orange-500">{formatRupees(selectedSupplierProfile.nonGstBalance)}</span>
+              <div className="p-2 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl">
+                <span className="text-[8px] font-bold text-orange-550 block uppercase font-mono">Non-GST Due</span>
+                <span className="font-black text-xs text-orange-550">{formatRupees(selectedSupplierProfile.nonGstBalance)}</span>
+              </div>
+              <div className="p-2 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl">
+                <span className="text-[8px] font-bold text-emerald-600 block uppercase font-mono">GST Advance</span>
+                <span className="font-black text-xs text-emerald-600">{formatRupees(selectedSupplierProfile.gstAdvance || 0)}</span>
+              </div>
+              <div className="p-2 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl">
+                <span className="text-[8px] font-bold text-teal-500 block uppercase font-mono">Non-GST Adv</span>
+                <span className="font-black text-xs text-teal-500">{formatRupees(selectedSupplierProfile.nonGstAdvance || 0)}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl">
-                <span className="text-[9px] font-bold text-slate-400 block uppercase">Total Purchases</span>
+                <span className="text-[9px] font-bold text-slate-400 block uppercase font-mono">Total Purchases</span>
                 <span className="font-black text-sm">{formatRupees(getSupplierProfileStats(selectedSupplierProfile.id).totalPurchases)}</span>
               </div>
               <div className="p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl">
-                <span className="text-[9px] font-bold text-slate-400 block uppercase">Total Payments</span>
+                <span className="text-[9px] font-bold text-slate-400 block uppercase font-mono">Total Payments</span>
                 <span className="font-black text-sm">{formatRupees(getSupplierProfileStats(selectedSupplierProfile.id).totalPayments)}</span>
               </div>
             </div>
 
+            {/* QUICK TRANSACTION ACTIONS */}
+            <div className="flex gap-2 justify-end pt-1" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => {
+                  setPurchaseForm({
+                    ...emptyPurchase,
+                    supplierId: selectedSupplierProfile.id
+                  });
+                  setFormError('');
+                  setShowPurchaseModal(true);
+                }}
+                className="px-3 py-1.5 bg-indigo-650 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm"
+              >
+                📄 Log Invoice
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentForm({
+                    ...emptyPayment,
+                    supplierId: selectedSupplierProfile.id,
+                    paymentType: 'Payment'
+                  });
+                  setFormError('');
+                  setShowPaymentModal(true);
+                }}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm"
+              >
+                ➕ Record Payment
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentForm({
+                    ...emptyPayment,
+                    supplierId: selectedSupplierProfile.id,
+                    paymentType: 'Advance Payment'
+                  });
+                  setFormError('');
+                  setShowPaymentModal(true);
+                }}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm"
+              >
+                ➕ Advance Payment
+              </button>
+            </div>
+
             {/* PAYMENT LEDGER TABLE */}
             <div className="border-t border-slate-100 dark:border-slate-800 pt-3 space-y-3">
-              <h4 className="text-[10px] font-black uppercase text-slate-800 dark:text-[#F8FAFC] tracking-wider">Payment Ledger History</h4>
+              <h4 className="text-[10px] font-black uppercase text-slate-800 dark:text-[#F8FAFC] tracking-wider">Chronological Outstanding Ledger</h4>
               
-              <div className="max-h-[220px] overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-xl scrollbar-thin">
+              <div className="max-h-[300px] overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-xl scrollbar-thin">
                 <table className="w-full text-left text-[11px] border-collapse">
                   <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-slate-500 font-bold sticky top-0 z-10">
                     <tr>
                       <th className="px-3 py-2">Date</th>
                       <th className="px-3 py-2">Type</th>
-                      <th className="px-3 py-2">GST/NON-GST</th>
-                      <th className="px-3 py-2">Amount</th>
                       <th className="px-3 py-2">Reference</th>
-                      <th className="px-3 py-2 text-right">Balance After</th>
-                      {isAdmin && <th className="px-3 py-2 text-right">Actions</th>}
+                      <th className="px-3 py-2">Description</th>
+                      <th className="px-3 py-2">Payment Method</th>
+                      <th className="px-3 py-2 text-right">Debit</th>
+                      <th className="px-3 py-2 text-right">Credit</th>
+                      <th className="px-3 py-2 text-right">Running Balance</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-[#1E293B] font-medium text-slate-600 dark:text-[#CBD5E1]">
-                    {getSupplierLedger(selectedSupplierProfile.id).map((entry, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-850">
-                        <td className="px-3 py-2">{entry.date}</td>
-                        <td className="px-3 py-2">{entry.type}</td>
-                        <td className="px-3 py-2">{entry.gstType}</td>
-                        <td className={`px-3 py-2 font-bold ${entry.isPayment ? 'text-green-600 dark:text-green-450' : 'text-red-500'}`}>
-                          {entry.isPayment ? '-' : '+'}{formatRupees(entry.amount)}
-                        </td>
-                        <td className="px-3 py-2 font-semibold text-slate-400">{entry.reference}</td>
-                        <td className="px-3 py-2 text-right font-extrabold text-slate-800 dark:text-[#F8FAFC]">{formatRupees(entry.balanceAfter)}</td>
-                        {isAdmin && (
-                          <td className="px-3 py-2 text-right">
-                            {entry.isPayment ? (
-                              (!entry.reference || !entry.reference.startsWith('AUTO-PAID-')) && (
-                                <div className="flex justify-end gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const pay = entry.rawObj;
-                                      setPaymentToEdit(pay);
-                                      setEditPaymentForm({
-                                        date: pay.date,
-                                        amount: pay.amount,
-                                        paymentMethod: pay.paymentMethod,
-                                        referenceNumber: pay.referenceNumber || '',
-                                        category: pay.category,
-                                        notes: pay.notes || '',
-                                        reason: ''
-                                      });
-                                    }}
-                                    className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-                                    title="Edit Payment"
-                                  >
-                                    ✏️
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => { setPaymentToDelete(entry.rawObj); setDeleteReason(''); }}
-                                    className="p-1 rounded hover:bg-red-500/10 text-red-500 transition-colors"
-                                    title="Delete Payment"
-                                  >
-                                    <Trash2 size={11} />
-                                  </button>
-                                </div>
-                              )
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => { setPurchaseToDelete(entry.rawObj); setDeleteReason(''); }}
-                                className="p-1 rounded hover:bg-red-500/10 text-red-500 transition-colors"
-                                title="Delete Purchase Invoice"
-                              >
-                                <Trash2 size={11} />
-                              </button>
-                            )}
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-[#1E293B] font-mono font-medium text-slate-605 dark:text-[#CBD5E1]">
+                    {supplierLedgerData.ledger.map((entry, idx) => {
+                      const debitAmount = entry.debit || 0;
+                      const creditAmount = entry.credit || 0;
+
+                      let entryType = 'Opening Balance';
+                      if (entry.type === 'purchase') entryType = 'Purchase';
+                      if (entry.type === 'payment') entryType = 'Payment';
+                      if (entry.type === 'advance_payment') entryType = 'Advance Payment';
+
+                      const method = entry.paymentMethod || '—';
+                      const balanceColor = entry.balance > 0 ? 'text-red-500' : entry.balance < 0 ? 'text-blue-500 dark:text-blue-400' : 'text-slate-400';
+                      const balStr = entry.balance < 0 ? `-${formatRupees(Math.abs(entry.balance))}` : formatRupees(entry.balance);
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-850">
+                          <td className="px-3 py-2 whitespace-nowrap">{entry.date}</td>
+                          <td className="px-3 py-2 font-sans font-bold uppercase text-[9px] whitespace-nowrap">
+                            <span className={`px-1.5 py-0.5 rounded ${
+                              entry.type === 'purchase' ? 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20' :
+                              entry.type === 'payment' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                              entry.type === 'advance_payment' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : 'bg-slate-500/10 text-slate-500'
+                            }`}>
+                              {entryType}
+                            </span>
                           </td>
-                        )}
-                      </tr>
-                    ))}
+                          <td className="px-3 py-2 font-semibold text-slate-400">{entry.invoice || 'N/A'}</td>
+                          <td className="px-3 py-2 font-sans font-semibold">{entry.description}</td>
+                          <td className="px-3 py-2 font-sans font-semibold whitespace-nowrap">{method}</td>
+                          <td className="px-3 py-2 text-right font-bold text-slate-700 dark:text-[#CBD5E1]">
+                            {debitAmount > 0 ? formatRupees(debitAmount) : '—'}
+                          </td>
+                          <td className="px-3 py-2 text-right font-bold text-emerald-600 dark:text-emerald-455">
+                            {creditAmount > 0 ? formatRupees(creditAmount) : '—'}
+                          </td>
+                          <td className={`px-3 py-2 text-right font-extrabold ${balanceColor}`}>
+                            {balStr}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </div>
 
             <div className="flex gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <button type="button" onClick={() => setSelectedSupplierProfile(null)} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-center shadow-md">Done</button>
+              <button
+                type="button"
+                onClick={() => { setSelectedSupplierProfile(null); setSupplierLedgerData(null); }}
+                className="flex-1 py-2.5 bg-[#EF4444] hover:bg-red-600 text-white font-bold rounded-xl text-center shadow-md"
+              >
+                Close Ledger
+              </button>
             </div>
           </div>
         </Modal>
@@ -1729,18 +2170,34 @@ export default function PurchasesFactories() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Payment Type *</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Transaction Type *</label>
+                <select
+                  value={editPaymentForm.paymentType}
+                  onChange={(e) => setEditPaymentForm(prev => ({ ...prev, paymentType: e.target.value }))}
+                  className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
+                >
+                  <option value="Payment">Payment</option>
+                  <option value="Advance Payment">Advance Payment</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Method *</label>
                 <select
                   value={editPaymentForm.paymentMethod}
                   onChange={(e) => setEditPaymentForm(prev => ({ ...prev, paymentMethod: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
+                  className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
                 >
                   <option value="Cash">Cash</option>
                   <option value="UPI">UPI</option>
-                  <option value="Cheque">Cheque</option>
                   <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="RTGS">RTGS</option>
+                  <option value="NEFT">NEFT</option>
+                  <option value="IMPS">IMPS</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
 
@@ -1749,7 +2206,7 @@ export default function PurchasesFactories() {
                 <select
                   value={editPaymentForm.category}
                   onChange={(e) => setEditPaymentForm(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
+                  className="w-full px-2.5 py-1.5 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
                 >
                   <option value="GST">GST Category</option>
                   <option value="Non-GST">Non-GST Category</option>
@@ -1798,6 +2255,148 @@ export default function PurchasesFactories() {
                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold rounded-xl shadow-md font-extrabold"
               >
                 Save Changes
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* MODAL 6.8: EDIT PURCHASE INVOICE */}
+      {purchaseToEdit && (
+        <Modal title="Edit Purchase Invoice" onClose={() => setPurchaseToEdit(null)}>
+          <form onSubmit={handlePurchaseEditSubmit} className="space-y-4 text-xs font-semibold text-slate-500">
+            {/* SECTION A */}
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-[#334155] space-y-3">
+              <h4 className="text-[10px] font-black uppercase text-slate-808 dark:text-[#F8FAFC] tracking-wider border-b border-slate-200 dark:border-slate-800 pb-1">Section A: Details</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Invoice Number *</label>
+                  <input
+                    required
+                    value={editPurchaseForm.invoiceNumber}
+                    onChange={(e) => setEditPurchaseForm(prev => ({ ...prev, invoiceNumber: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-808 dark:text-[#F8FAFC]"
+                    placeholder="e.g. HAV-5592"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Invoice Date *</label>
+                  <input
+                    required
+                    type="date"
+                    value={editPurchaseForm.purchaseDate}
+                    onChange={(e) => setEditPurchaseForm(prev => ({ ...prev, purchaseDate: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-808 dark:text-[#F8FAFC]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Factory/Supplier *</label>
+                  <select
+                    required
+                    value={editPurchaseForm.supplierId}
+                    onChange={(e) => setEditPurchaseForm(prev => ({ ...prev, supplierId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#CBD5E1]"
+                  >
+                    <option value="">-- Select Supplier --</option>
+                    {suppliers.map(s => (
+                      <option key={s.id} value={s.id}>{s.factoryName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Category Classification *</label>
+                  <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-slate-900 rounded-xl p-1">
+                    {['GST', 'Non-GST'].map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setEditPurchaseForm(prev => ({ ...prev, gstType: t }))}
+                        className={`py-1.5 rounded-lg text-[10px] font-black transition-all ${editPurchaseForm.gstType === t ? 'bg-[#EF4444] text-white shadow-sm' : 'text-slate-500'}`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION B */}
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-[#334155] space-y-3">
+              <h4 className="text-[10px] font-black uppercase text-slate-808 dark:text-[#F8FAFC] tracking-wider border-b border-slate-200 dark:border-slate-800 pb-1">Section B: Financials</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Total Bill Amount (₹) *</label>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    value={editPurchaseForm.grandTotal}
+                    onChange={(e) => setEditPurchaseForm(prev => ({ ...prev, grandTotal: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-808 dark:text-[#F8FAFC] font-extrabold"
+                    placeholder="Enter total bill amount"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Amount Paid Immediately (₹) *</label>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    value={editPurchaseForm.paidAmount}
+                    onChange={(e) => setEditPurchaseForm(prev => ({ ...prev, paidAmount: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-808 dark:text-[#F8FAFC] font-extrabold"
+                    placeholder="Enter immediate paid amount"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION C */}
+            <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+              <div className="flex justify-between items-center font-black">
+                <span className="text-[10px] uppercase text-slate-808 dark:text-[#F8FAFC] tracking-wider font-bold">Section C: Outstanding Amount</span>
+                <span className={`text-sm ${Number(editPurchaseForm.grandTotal || 0) - Number(editPurchaseForm.paidAmount || 0) > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                  {formatRupees(Number(editPurchaseForm.grandTotal || 0) - Number(editPurchaseForm.paidAmount || 0))}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">Formula: Outstanding = Total Bill Amount - Amount Paid Immediately</p>
+              {Number(editPurchaseForm.grandTotal || 0) - Number(editPurchaseForm.paidAmount || 0) < 0 && (
+                <p className="text-[10px] text-red-500 font-bold">⚠️ Outstanding amount cannot be negative. Immediate payment cannot exceed total bill.</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Reason for Edit *</label>
+              <input
+                type="text"
+                required
+                value={editPurchaseForm.reason}
+                onChange={(e) => setEditPurchaseForm(prev => ({ ...prev, reason: e.target.value }))}
+                className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-808 dark:text-[#F8FAFC]"
+                placeholder="e.g. Typo in bill amount / Category correction"
+              />
+            </div>
+
+            <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 dark:border-[#334155] rounded-xl bg-slate-50 dark:bg-slate-900 cursor-pointer text-slate-650 hover:bg-slate-100">
+                  <Upload size={12} /> Invoice Copy
+                  <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileChange(e, 'edit_purchase')} className="hidden" />
+                </label>
+                <span className="text-[10px] text-slate-400 max-w-[150px] truncate">{editPurchaseForm.invoiceFileName || 'No file'}</span>
+              </div>
+            </div>
+
+            {formError && <p className="text-red-500 text-xs font-bold bg-red-500/10 p-2.5 rounded-xl border border-red-500/20">{formError}</p>}
+
+            <div className="flex gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button type="button" onClick={() => setPurchaseToEdit(null)} className="flex-1 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-slate-755 dark:text-[#CBD5E1] hover:bg-slate-100 font-bold">Cancel</button>
+              <button type="submit" disabled={formSaving || (Number(editPurchaseForm.grandTotal || 0) - Number(editPurchaseForm.paidAmount || 0) < 0) || !editPurchaseForm.grandTotal || editPurchaseForm.paidAmount === '' || !editPurchaseForm.supplierId || !editPurchaseForm.reason?.trim()} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-md">
+                {formSaving && <Loader2 size={14} className="animate-spin" />} Save Changes
               </button>
             </div>
           </form>

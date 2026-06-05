@@ -158,6 +158,7 @@ export const api = {
   restoreSupplier: (id) => request('POST', `/purchases/suppliers/${id}/restore`),
   getPurchases: () => request('GET', '/purchases'),
   addPurchase: (p) => request('POST', '/purchases', p),
+  updatePurchase: (id, p) => request('PUT', `/purchases/${id}`, p),
   deletePurchase: (id, reason) => request('DELETE', `/purchases/${id}?reason=${encodeURIComponent(reason || '')}`),
   getGRNs: () => request('GET', '/purchases/grns'),
   updateGRN: (id, g) => request('PUT', `/purchases/grns/${id}`, g),
