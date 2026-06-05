@@ -587,35 +587,28 @@ const requireAuth = catchAsync(async (req, res, next) => {
     return res.status(401).json({ message: 'User not found or account disabled' });
   }
   req.userObj = user;
+  req.user = {
+    ...user.toObject(),
+    role: user.role ? user.role.toLowerCase() : ''
+  };
   req.sessionId = sessionId;
   next();
 });
 
 // RBAC requireAdmin middleware
-const requireAdmin = catchAsync(async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(403).json({ message: 'Access Denied. Administrator privileges required.' });
+function requireAdmin(req, res, next) {
+  if (req.user?.role !== "admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Access Denied - Admin Only"
+    });
   }
-  const token = authHeader.substring(7);
-  const parts = token.split('_');
-  if (parts[0] !== 'token' || !parts[1]) {
-    return res.status(403).json({ message: 'Access Denied. Administrator privileges required.' });
-  }
-  const userId = parts[1];
-  const sessionId = parts[2];
-  const user = await User.findOne({ id: userId });
-  if (!user || (user.role !== 'ADMIN' && user.role !== 'admin' && user.username !== 'admin')) {
-    return res.status(403).json({ message: 'Access Denied. Administrator privileges required.' });
-  }
-  
-  req.userObj = user;
-  req.sessionId = sessionId;
   next();
-});
+}
+
 
 // Admin action audit logger endpoint
-app.post('/api/admin/log-action', requireAdmin, catchAsync(async (req, res) => {
+app.post('/api/admin/log-action', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const { action } = req.body;
   const user = req.userObj;
   
@@ -2267,7 +2260,7 @@ function setupPDFPageDecorations(doc, reportTitle, subtitle) {
 }
 
 // 1. DATA EXPORT API
-app.get('/api/export', requireAdmin, catchAsync(async (req, res) => {
+app.get('/api/export', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const user = req.userObj;
   const audit = new AuditLog({
     id: uuidv4(),
@@ -2549,7 +2542,7 @@ app.get('/api/export', requireAdmin, catchAsync(async (req, res) => {
 }));
 
 // 2. DATA IMPORT PREVIEW API
-app.post('/api/import/preview', requireAdmin, catchAsync(async (req, res) => {
+app.post('/api/import/preview', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const user = req.userObj;
   const audit = new AuditLog({
     id: uuidv4(),
@@ -2730,7 +2723,7 @@ app.post('/api/import/preview', requireAdmin, catchAsync(async (req, res) => {
 }));
 
 // 3. DATA IMPORT CONFIRM API
-app.post('/api/import/confirm', requireAdmin, catchAsync(async (req, res) => {
+app.post('/api/import/confirm', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const user = req.userObj;
   const audit = new AuditLog({
     id: uuidv4(),
@@ -2850,7 +2843,7 @@ app.post('/api/import/confirm', requireAdmin, catchAsync(async (req, res) => {
 }));
 
 // 4. DOWNLOAD FULL BACKUP ZIP API
-app.get('/api/backup/download', requireAdmin, catchAsync(async (req, res) => {
+app.get('/api/backup/download', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const user = req.userObj;
   const audit = new AuditLog({
     id: uuidv4(),
@@ -2893,7 +2886,7 @@ app.get('/api/backup/download', requireAdmin, catchAsync(async (req, res) => {
 }));
 
 // 5. GET LAST BACKUP STATUS API
-app.get('/api/backup/status', requireAdmin, catchAsync(async (req, res) => {
+app.get('/api/backup/status', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const user = req.userObj;
   const audit = new AuditLog({
     id: uuidv4(),
@@ -2913,7 +2906,7 @@ app.get('/api/backup/status', requireAdmin, catchAsync(async (req, res) => {
 }));
 
 // 6. RESTORE COMPLETE DATABASE FROM ZIP
-app.post('/api/backup/restore', requireAdmin, catchAsync(async (req, res) => {
+app.post('/api/backup/restore', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const user = req.userObj;
   const audit = new AuditLog({
     id: uuidv4(),
@@ -3007,7 +3000,7 @@ app.get('/api/settings/company', catchAsync(async (req, res) => {
   }
 }));
 
-app.put('/api/settings/company', requireAdmin, catchAsync(async (req, res) => {
+app.put('/api/settings/company', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const user = req.userObj;
   const profileValue = req.body;
   
@@ -3029,12 +3022,12 @@ app.put('/api/settings/company', requireAdmin, catchAsync(async (req, res) => {
 }));
 
 // --- ADMIN EMPLOYEE MANAGEMENT ---
-app.get('/api/admin/employees', requireAdmin, catchAsync(async (req, res) => {
+app.get('/api/admin/employees', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const employees = await User.find({}, '-password');
   res.json(employees);
 }));
 
-app.post('/api/admin/employees', requireAdmin, catchAsync(async (req, res) => {
+app.post('/api/admin/employees', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const user = req.userObj;
   const { name, username, password } = req.body;
   if (!name || !username || !password) {
@@ -3067,7 +3060,7 @@ app.post('/api/admin/employees', requireAdmin, catchAsync(async (req, res) => {
   res.json({ success: true, employee: { id: newEmp.id, name: newEmp.name, username: newEmp.username, role: newEmp.role, disabled: newEmp.disabled } });
 }));
 
-app.put('/api/admin/employees/:id', requireAdmin, catchAsync(async (req, res) => {
+app.put('/api/admin/employees/:id', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const user = req.userObj;
   const { name, username, password, disabled } = req.body;
   
@@ -3101,7 +3094,7 @@ app.put('/api/admin/employees/:id', requireAdmin, catchAsync(async (req, res) =>
   res.json({ success: true, message: 'Employee updated successfully' });
 }));
 
-app.get('/api/admin/audit-logs', requireAdmin, catchAsync(async (req, res) => {
+app.get('/api/admin/audit-logs', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const logs = await AuditLog.find({}).sort({ time: -1 });
   res.json(logs);
 }));
@@ -3250,7 +3243,7 @@ app.get('/api/profile/password-change-requests', requireAuth, catchAsync(async (
 }));
 
 // Get all password change requests (Admin only)
-app.get('/api/admin/password-change-requests', requireAdmin, catchAsync(async (req, res) => {
+app.get('/api/admin/password-change-requests', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const requests = await PasswordChangeRequest.find().sort({ requested_at: -1 });
   const requestsWithAvatars = [];
   for (const r of requests) {
@@ -3264,7 +3257,7 @@ app.get('/api/admin/password-change-requests', requireAdmin, catchAsync(async (r
 }));
 
 // Approve password change request (Admin only)
-app.post('/api/admin/password-change-requests/:id/approve', requireAdmin, catchAsync(async (req, res) => {
+app.post('/api/admin/password-change-requests/:id/approve', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const admin = req.userObj;
   const requestId = req.params.id;
   const { adminNote } = req.body;
@@ -3312,7 +3305,7 @@ app.post('/api/admin/password-change-requests/:id/approve', requireAdmin, catchA
 }));
 
 // Reject password change request (Admin only)
-app.post('/api/admin/password-change-requests/:id/reject', requireAdmin, catchAsync(async (req, res) => {
+app.post('/api/admin/password-change-requests/:id/reject', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const admin = req.userObj;
   const requestId = req.params.id;
   const { adminNote } = req.body;
@@ -3423,7 +3416,7 @@ app.put('/api/profile/appearance', requireAuth, catchAsync(async (req, res) => {
 }));
 
 // Admin endpoint: View employee full profile
-app.get('/api/admin/employees/:id/profile', requireAdmin, catchAsync(async (req, res) => {
+app.get('/api/admin/employees/:id/profile', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const emp = await User.findOne({ id: req.params.id });
   if (!emp) return res.status(404).json({ message: 'Employee not found' });
   const empObj = emp.toObject();
@@ -3432,7 +3425,7 @@ app.get('/api/admin/employees/:id/profile', requireAdmin, catchAsync(async (req,
 }));
 
 // Admin endpoint: Update employee profile metadata
-app.put('/api/admin/employees/:id/profile', requireAdmin, catchAsync(async (req, res) => {
+app.put('/api/admin/employees/:id/profile', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const emp = await User.findOne({ id: req.params.id });
   if (!emp) return res.status(404).json({ message: 'Employee not found' });
 
@@ -3469,7 +3462,7 @@ app.put('/api/admin/employees/:id/profile', requireAdmin, catchAsync(async (req,
 }));
 
 // Admin endpoint: Update/reset employee avatar
-app.put('/api/admin/employees/:id/avatar', requireAdmin, catchAsync(async (req, res) => {
+app.put('/api/admin/employees/:id/avatar', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const emp = await User.findOne({ id: req.params.id });
   if (!emp) return res.status(404).json({ message: 'Employee not found' });
   
@@ -3953,14 +3946,14 @@ const recalculateSupplierBalances = async (supplierId) => {
 };
 
 // 1. Suppliers Directory
-app.get('/api/purchases/suppliers', requireAuth, catchAsync(async (req, res) => {
+app.get('/api/purchases/suppliers', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const showArchived = req.query.archived === 'true';
   const query = showArchived ? { archived: true } : { archived: { $ne: true } };
   const suppliers = await Supplier.find(query).sort({ factoryName: 1 });
   res.json(suppliers);
 }));
 
-app.post('/api/purchases/suppliers', requireAuth, catchAsync(async (req, res) => {
+app.post('/api/purchases/suppliers', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const { factoryName, ownerName, mobile, gstNumber, address, openingGstBalance, openingNonGstBalance } = req.body;
 
   if (!factoryName || !ownerName || !address) {
@@ -3994,7 +3987,7 @@ app.post('/api/purchases/suppliers', requireAuth, catchAsync(async (req, res) =>
   res.status(201).json(savedSupplier);
 }));
 
-app.put('/api/purchases/suppliers/:id', requireAuth, catchAsync(async (req, res) => {
+app.put('/api/purchases/suppliers/:id', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const { id } = req.params;
   const supplier = await Supplier.findOne({ id });
   if (!supplier) {
@@ -4093,12 +4086,12 @@ app.post('/api/purchases/suppliers/:id/restore', requireAuth, requireAdmin, catc
 }));
 
 // 2. Purchase Entries
-app.get('/api/purchases', requireAuth, catchAsync(async (req, res) => {
+app.get('/api/purchases', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const purchases = await Purchase.find().sort({ createdAt: -1 });
   res.json(purchases);
 }));
 
-app.post('/api/purchases', requireAuth, catchAsync(async (req, res) => {
+app.post('/api/purchases', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const {
     invoiceNumber, purchaseDate, supplierId, gstType,
     grandTotal, paidAmount, invoiceFile, invoiceFileName, invoiceFileType
@@ -4359,12 +4352,12 @@ app.delete('/api/purchases/:id', requireAuth, requireAdmin, catchAsync(async (re
 }));
 
 // 3. Goods Received Register (GRN)
-app.get('/api/purchases/grns', requireAuth, catchAsync(async (req, res) => {
+app.get('/api/purchases/grns', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const grns = await GRN.find().sort({ createdAt: -1 });
   res.json(grns);
 }));
 
-app.put('/api/purchases/grns/:id', requireAuth, catchAsync(async (req, res) => {
+app.put('/api/purchases/grns/:id', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const { id } = req.params;
   const grn = await GRN.findOne({ id });
   if (!grn) {
@@ -4422,12 +4415,12 @@ app.put('/api/purchases/grns/:id', requireAuth, catchAsync(async (req, res) => {
 }));
 
 // 4. Supplier Payments
-app.get('/api/purchases/payments', requireAuth, catchAsync(async (req, res) => {
+app.get('/api/purchases/payments', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const payments = await SupplierPayment.find().sort({ createdAt: -1 });
   res.json(payments);
 }));
 
-app.post('/api/purchases/payments', requireAuth, catchAsync(async (req, res) => {
+app.post('/api/purchases/payments', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const { supplierId, date, amount, paymentMethod, referenceNumber, category, notes, receiptFile, receiptFileName, paymentType } = req.body;
 
   if (!supplierId || !amount || !category) {
@@ -4547,7 +4540,7 @@ app.delete('/api/purchases/payments/:id', requireAuth, requireAdmin, catchAsync(
 }));
 
 // 5. Supplier Chronological Ledger
-app.get('/api/purchases/suppliers/:id/ledger', requireAuth, catchAsync(async (req, res) => {
+app.get('/api/purchases/suppliers/:id/ledger', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const { id } = req.params;
   const supplier = await Supplier.findOne({ id });
   if (!supplier) {
@@ -4647,7 +4640,7 @@ app.get('/api/purchases/suppliers/:id/ledger', requireAuth, catchAsync(async (re
 }));
 
 // 6. Analytics & Dashboard Stats
-app.get('/api/purchases/stats', requireAuth, catchAsync(async (req, res) => {
+app.get('/api/purchases/stats', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const activeSuppliers = await Supplier.find({ archived: { $ne: true } });
   const purchases = await Purchase.find();
   const payments = await SupplierPayment.find();
@@ -4713,7 +4706,7 @@ app.get('/api/purchases/stats', requireAuth, catchAsync(async (req, res) => {
 }));
 
 // 7. Audit Logs
-app.get('/api/purchases/audit-logs', requireAuth, catchAsync(async (req, res) => {
+app.get('/api/purchases/audit-logs', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const logs = await PurchaseAuditLog.find().sort({ timestamp: -1 }).limit(100);
   res.json(logs);
 }));

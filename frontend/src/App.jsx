@@ -74,6 +74,17 @@ function AdminRoute({ children }) {
   return children;
 }
 
+function PurchasesRoute({ children }) {
+  const { user, loading } = useAuth();
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'admin' || user?.username === 'admin';
+
+  if (loading) return <div className="flex items-center justify-center h-screen text-slate-500">Loading…</div>;
+  if (!user || !isAdmin) {
+    return <Navigate to="/" replace state={{ message: "Access Denied - Admin Only Module" }} />;
+  }
+  return children;
+}
+
 function PublicRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -100,7 +111,8 @@ export default function App() {
               <Route path="communication" element={<CommunicationHub />} />
               <Route path="admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
               <Route path="admin/password-requests" element={<AdminRoute><AdminPasswordRequests /></AdminRoute>} />
-              <Route path="purchases-factories" element={<PurchasesFactories />} />
+              <Route path="purchases-factories" element={<PurchasesRoute><PurchasesFactories /></PurchasesRoute>} />
+              <Route path="purchases-factory" element={<PurchasesRoute><PurchasesFactories /></PurchasesRoute>} />
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

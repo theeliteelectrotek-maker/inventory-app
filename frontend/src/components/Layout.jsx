@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import SessionTimeoutManager from './SessionTimeoutManager';
@@ -7,7 +7,7 @@ import { io } from 'socket.io-client';
 import {
   LayoutDashboard, Package, ShoppingCart, Store,
   LogOut, Menu, Building2, Undo2, BarChart3, Database, Settings, ArrowLeftRight, MessageSquare, KeyRound,
-  Factory
+  Factory, X
 } from 'lucide-react';
 import logo from '../logo.png';
 
@@ -29,10 +29,29 @@ const nav = [
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasMention, setHasMention] = useState(false);
   const [hasAnnouncement, setHasAnnouncement] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.message) {
+      setToast(location.state.message);
+      // Clear location state
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (!user) return;
@@ -237,8 +256,13 @@ export default function Layout() {
     navigate('/login');
   }
 
-  const allowedNav = [...nav];
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'admin' || user?.username === 'admin';
+  const allowedNav = nav.filter(item => {
+    if (item.to === '/purchases-factories') {
+      return isAdmin;
+    }
+    return true;
+  });
   if (isAdmin) {
     allowedNav.push({ to: '/admin', label: 'Admin Panel', icon: Database });
     allowedNav.push({ to: '/admin/password-requests', label: 'Password Change Requests', icon: KeyRound, isSubItem: true });
@@ -351,6 +375,14 @@ export default function Layout() {
   return (
     <div className="flex h-screen overflow-hidden bg-[#F8FAFC] dark:bg-[#0F172A]">
       <SessionTimeoutManager />
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-red-650 text-white px-4 py-3 rounded-xl shadow-xl shadow-red-950/20 border border-red-500/30 transition-all duration-300 animate-slide-in">
+          <span className="font-bold text-sm">{toast}</span>
+          <button onClick={() => setToast(null)} className="hover:text-red-200 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+      )}
       {/* Desktop sidebar */}
       <div className={`hidden lg:flex ${isCompactSidebar ? 'lg:w-20' : 'lg:w-64'} lg:flex-shrink-0 flex-col transition-all duration-300`}>{sidebar}</div>
 
