@@ -847,9 +847,21 @@ app.post('/api/sales/online', postOnlineSalesHandler);
 app.post('/api/online-sales', postOnlineSalesHandler);
 
 const deleteOnlineSalesHandler = catchAsync(async (req, res) => {
-  const sale = await OnlineSale.findOneAndDelete({ id: req.params.id });
-  if (!sale) return res.status(404).json({ message: 'Sale not found' });
+  const saleId = req.params.id;
+  console.log(`[DELETE ONLINE SALE INITIALIZED] ID passed: "${saleId}"`);
   
+  const sale = await OnlineSale.findOneAndDelete({ id: saleId });
+  if (!sale) {
+    console.error(`[DELETE ONLINE SALE FAILED] Sale document not found for ID: "${saleId}"`);
+    return res.status(404).json({ message: 'Sale not found' });
+  }
+  
+  console.log(`[DATABASE DELETE VERIFIED] Removed document ID: "${sale.id}", orderId: "${sale.orderId || 'N/A'}", product: "${sale.productName}"`);
+  
+  // Double check actual deletion in DB
+  const checkExists = await OnlineSale.findOne({ id: saleId });
+  console.log(`[DATABASE DELETE DOUBLE CHECK] Does document still exist in DB? ${!!checkExists}`);
+
   if (sale.status !== 'Cancelled') {
     const product = await Product.findOne({ id: sale.productId });
     if (product) {
@@ -857,18 +869,28 @@ const deleteOnlineSalesHandler = catchAsync(async (req, res) => {
       product.totalQty += sale.qty;
       product.updatedAt = new Date().toISOString();
       await product.save();
+      console.log(`[STOCK RESTORED SUCCESS] Returned ${sale.qty} pieces to stock for product "${product.name}"`);
     }
   }
+  
+  console.log(`[DELETE ONLINE SALE COMPLETED] Successfully deleted and responded`);
   res.json({ message: sale.status === 'Cancelled' ? 'Deleted' : 'Deleted and stock restored' });
 });
 app.delete('/api/sales/online/:id', deleteOnlineSalesHandler);
 app.delete('/api/online-sales/:id', deleteOnlineSalesHandler);
 
 const cancelOnlineSalesHandler = catchAsync(async (req, res) => {
-  const sale = await OnlineSale.findOne({ id: req.params.id });
-  if (!sale) return res.status(404).json({ message: 'Sale not found' });
+  const saleId = req.params.id;
+  console.log(`[CANCEL ONLINE SALE INITIALIZED] ID passed: "${saleId}"`);
+
+  const sale = await OnlineSale.findOne({ id: saleId });
+  if (!sale) {
+    console.error(`[CANCEL ONLINE SALE FAILED] Sale document not found for ID: "${saleId}"`);
+    return res.status(404).json({ message: 'Sale not found' });
+  }
   
   if (sale.status === 'Cancelled') {
+    console.warn(`[CANCEL ONLINE SALE WARNING] Order ${saleId} is already Cancelled`);
     return res.status(400).json({ message: 'Order is already cancelled' });
   }
   
@@ -878,12 +900,19 @@ const cancelOnlineSalesHandler = catchAsync(async (req, res) => {
   sale.cancelDate = getSystemLocalDate();
   await sale.save();
   
+  console.log(`[DATABASE UPDATE VERIFIED] Status updated to Cancelled for ID: "${sale.id}"`);
+
+  // Double check actual update in DB
+  const updatedDoc = await OnlineSale.findOne({ id: saleId });
+  console.log(`[DATABASE UPDATE DOUBLE CHECK] Verified status in DB is: "${updatedDoc?.status}"`);
+
   const product = await Product.findOne({ id: sale.productId });
   if (product) {
     product.availableQty += sale.qty;
     product.totalQty += sale.qty;
     product.updatedAt = new Date().toISOString();
     await product.save();
+    console.log(`[STOCK RESTORED SUCCESS] Returned ${sale.qty} pieces to stock for product "${product.name}"`);
   }
   
   const cancelLog = new OnlineSaleCancelLog({
@@ -897,6 +926,7 @@ const cancelOnlineSalesHandler = catchAsync(async (req, res) => {
     cancelledBy: req.userObj ? (req.userObj.name || req.userObj.username) : 'System'
   });
   await cancelLog.save();
+  console.log(`[CANCEL LOG CREATED] Logged cancel history for ID: "${sale.id}"`);
   
   const audit = new AuditLog({
     id: uuidv4(),
@@ -906,6 +936,7 @@ const cancelOnlineSalesHandler = catchAsync(async (req, res) => {
   });
   await audit.save();
   
+  console.log(`[CANCEL ONLINE SALE COMPLETED] Successfully updated and responded`);
   res.json({ message: 'Order cancelled and stock restored', sale });
 });
 app.post('/api/sales/online/:id/cancel', requireAuth, cancelOnlineSalesHandler);

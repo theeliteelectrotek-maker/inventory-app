@@ -4,7 +4,7 @@ import {
   Plus, Trash2, ShoppingCart, X, Loader2, Search, PlusCircle, 
   TrendingUp, TrendingDown, ArrowUpRight, Percent, Award, 
   ShoppingBag, Layers, IndianRupee, RotateCcw, Calendar, Download,
-  XCircle
+  XCircle, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useIsDarkMode } from '../context/ThemeContext';
@@ -362,6 +362,16 @@ export default function OnlineSales() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  useEffect(() => {
+    if (toast.show) {
+      const timer = setTimeout(() => {
+        setToast({ show: false, message: '', type: 'success' });
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast.show]);
 
   // --- Dynamic Date Filtering State ---
   const [dateMode, setDateMode] = useState('thisMonth'); // 'today', 'yesterday', 'thisWeek', 'thisMonth', 'thisYear', 'custom'
@@ -504,29 +514,38 @@ export default function OnlineSales() {
   }
 
   async function handleDelete(id) {
+    console.log(`[API REQUEST] DELETE /api/online-sales/${id}`);
     const sale = sales.find((s) => s.id === id);
-    const confirmMsg = sale?.status === 'Cancelled' 
-      ? 'Delete this cancelled sale record?' 
-      : 'Delete this sale? Stock will be restored.';
-    if (!confirm(confirmMsg)) return;
-    await api.deleteOnlineSale(id);
-    setSales((ss) => ss.filter((s) => s.id !== id));
-    if (sale && sale.status !== 'Cancelled') {
-      setProducts((ps) => ps.map((p) => p.id === sale.productId ? { ...p, availableQty: p.availableQty + sale.qty } : p));
+    try {
+      const result = await api.deleteOnlineSale(id);
+      console.log(`[API RESPONSE] DELETE /api/online-sales/${id} SUCCESS:`, result);
+      setSales((ss) => ss.filter((s) => s.id !== id));
+      if (sale && sale.status !== 'Cancelled') {
+        setProducts((ps) => ps.map((p) => p.id === sale.productId ? { ...p, availableQty: p.availableQty + sale.qty } : p));
+      }
+      setToast({ show: true, message: sale?.status === 'Cancelled' ? 'Cancelled sale record deleted permanently!' : 'Order deleted permanently and stock restored!', type: 'success' });
+    } catch (err) {
+      console.error(`[API ERROR] DELETE /api/online-sales/${id} FAILED:`, err);
+      setToast({ show: true, message: err.message || 'Failed to delete order.', type: 'error' });
     }
   }
 
   async function handleCancel(id) {
-    if (!confirm("Are you sure you want to cancel this order? Stock will be returned to inventory.")) return;
+    console.log(`[API REQUEST] POST /api/online-sales/${id}/cancel`);
     try {
       const result = await api.cancelOnlineSale(id);
+      console.log(`[API RESPONSE] POST /api/online-sales/${id}/cancel SUCCESS:`, result);
       const updatedSale = result.sale;
       if (updatedSale) {
         setSales((ss) => ss.map((s) => s.id === id ? { ...s, ...updatedSale } : s));
         setProducts((ps) => ps.map((p) => p.id === updatedSale.productId ? { ...p, availableQty: p.availableQty + updatedSale.qty } : p));
+        setToast({ show: true, message: 'Order cancelled successfully and stock returned to inventory!', type: 'success' });
+      } else {
+        throw new Error('No sale object returned from server');
       }
     } catch (err) {
-      alert(err.message || 'Failed to cancel the sale.');
+      console.error(`[API ERROR] POST /api/online-sales/${id}/cancel FAILED:`, err);
+      setToast({ show: true, message: err.message || 'Failed to cancel order.', type: 'error' });
     }
   }
 
@@ -1019,6 +1038,18 @@ export default function OnlineSales() {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification Banner */}
+      {toast.show && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-2xl border bg-slate-900 text-slate-100 dark:bg-[#1E293B] border-slate-800 dark:border-slate-700 animate-fadeIn">
+          {toast.type === 'success' ? (
+            <CheckCircle2 size={16} className="text-emerald-500" />
+          ) : (
+            <AlertCircle size={16} className="text-red-500" />
+          )}
+          <span className="text-sm font-semibold">{toast.message}</span>
+        </div>
+      )}
+
       {/* 1. Header Page Title Block */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
