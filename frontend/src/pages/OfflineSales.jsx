@@ -13,6 +13,18 @@ import { useLocation } from 'react-router-dom';
 import KPICardValue from '../components/KPICardValue';
 
 const emptyItem = { productId: '', qty: '', amount: '', saleType: 'Piece' };
+
+const getEffectiveOfflinePrice = (product, saleType) => {
+  if (!product) return 0;
+  if (saleType === 'Box') {
+    return product.boxSellingPrice || 0;
+  }
+  if (product.pieceSellingPrice > 0) {
+    return product.pieceSellingPrice;
+  }
+  return product.offlinePrice ?? product.unitPrice ?? 0;
+};
+
 const today = () => {
   const d = new Date();
   const year = d.getFullYear();
@@ -221,7 +233,7 @@ function ItemRow({ item, products, onProductChange, onQtyChange, onSaleTypeChang
         <p className="text-xs text-slate-400 dark:text-[#94A3B8] pl-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-1 bg-slate-50 dark:bg-[#1E293B]/50 p-2 rounded-lg border border-slate-100 dark:border-[#334155]">
           <span>
             📍 Stock: <span className="font-semibold text-slate-700 dark:text-[#CBD5E1]">{selProd.availableQty} units {selProd.piecesPerBox > 0 && `(${Math.floor(selProd.availableQty / selProd.piecesPerBox)} boxes)`}</span>
-            &nbsp;· {item.saleType === 'Box' ? 'Box Price:' : 'Base Price:'} <span className="font-semibold text-rose-600 dark:text-[#EF4444]">₹{getEffectiveOfflinePrice(selProd, item.saleType)}</span>
+            &nbsp;· {item.saleType === 'Box' ? 'Box Price:' : 'Base Price:'} <span className="font-semibold text-rose-600 dark:text-[#EF4444]">₹{typeof getEffectiveOfflinePrice === 'function' ? getEffectiveOfflinePrice(selProd, item.saleType) : (selProd?.boxSellingPrice || selProd?.pieceSellingPrice || selProd?.offlinePrice || selProd?.unitPrice || 0)}</span>
             {item.saleType === 'Box' && (
               <span className="font-semibold text-slate-500"> (= {Number(item.qty || 0) * (selProd.piecesPerBox || 1)} pcs)</span>
             )}
@@ -1029,59 +1041,150 @@ export default function OfflineSales() {
     setForm((f) => { const orders = [...f.orders]; orders[oi] = { ...orders[oi], date }; return { ...f, orders }; });
   }
 
-  function getEffectiveOfflinePrice(product, saleType) {
-    if (!product) return 0;
-    if (saleType === 'Box') {
-      return product.boxSellingPrice || 0;
-    }
-    if (product.pieceSellingPrice > 0) {
-      return product.pieceSellingPrice;
-    }
-    return product.offlinePrice ?? product.unitPrice ?? 0;
-  }
-
   function handleItemProductChange(oi, ii, productId) {
-    const p = products.find((x) => x.id === productId);
-    const unitPrice = getEffectiveOfflinePrice(p, form.orders[oi].items[ii].saleType);
-    setForm((f) => {
-      const orders = [...f.orders];
-      const items = [...orders[oi].items];
-      const qty = Number(items[ii].qty) || 1;
+    try {
+      console.log(`[OfflineSales] handleItemProductChange called: orderIndex=${oi}, itemIndex=${ii}, productId=${productId}`);
+      
+      const p = products?.find((x) => x.id === productId);
+      if (!p) {
+        console.error('[OfflineSales] Product not found in list for ID:', productId);
+        return;
+      }
+      
+      const currentItem = form.orders[oi]?.items[ii];
+      if (!currentItem) {
+        console.error(`[OfflineSales] Order item at index ${ii} in order ${oi} not found.`);
+        return;
+      }
+
+      const saleType = currentItem.saleType || 'Piece';
+      const unitPrice = getEffectiveOfflinePrice(p, saleType);
+      const qty = Number(currentItem.qty) || 1;
       const baseAmount = unitPrice * qty;
-      const finalAmount = orders[oi].gst ? Math.round(baseAmount * 1.18) : baseAmount;
-      items[ii] = { ...items[ii], productId, amount: finalAmount ? String(finalAmount) : '' };
-      orders[oi] = { ...orders[oi], items };
-      return { ...f, orders };
-    });
+      const isGst = !!form.orders[oi]?.gst;
+      const finalAmount = isGst ? Math.round(baseAmount * 1.18) : baseAmount;
+
+      console.log(`[OfflineSales] Calculating amount for selected product: name=${p.name}, saleType=${saleType}, unitPrice=${unitPrice}, qty=${qty}, baseAmount=${baseAmount}, isGst=${isGst}, finalAmount=${finalAmount}`);
+
+      setForm((f) => {
+        try {
+          const orders = [...f.orders];
+          if (!orders[oi]) return f;
+          const items = [...orders[oi].items];
+          if (!items[ii]) return f;
+          
+          items[ii] = { 
+            ...items[ii], 
+            productId, 
+            amount: finalAmount ? String(finalAmount) : '' 
+          };
+          orders[oi] = { ...orders[oi], items };
+          console.log('[OfflineSales] State update successful for product change');
+          return { ...f, orders };
+        } catch (stateErr) {
+          console.error('[OfflineSales] State update failed for product change:', stateErr);
+          return f;
+        }
+      });
+    } catch (err) {
+      console.error('[OfflineSales] handleItemProductChange error caught:', err);
+    }
   }
 
   function handleItemQtyChange(oi, ii, qty) {
-    setForm((f) => {
-      const orders = [...f.orders];
-      const items = [...orders[oi].items];
-      const p = products.find((x) => x.id === items[ii].productId);
-      const unitPrice = getEffectiveOfflinePrice(p, items[ii].saleType);
+    try {
+      console.log(`[OfflineSales] handleItemQtyChange called: orderIndex=${oi}, itemIndex=${ii}, qty=${qty}`);
+      
+      const currentItem = form.orders[oi]?.items[ii];
+      if (!currentItem) {
+        console.error(`[OfflineSales] Order item at index ${ii} in order ${oi} not found.`);
+        return;
+      }
+      
+      const p = products?.find((x) => x.id === currentItem.productId);
+      if (!p) {
+        console.warn('[OfflineSales] Product not found in products list for item:', currentItem.productId);
+      }
+      
+      const saleType = currentItem.saleType || 'Piece';
+      const unitPrice = getEffectiveOfflinePrice(p, saleType);
       const baseAmount = unitPrice * Number(qty);
-      const finalAmount = orders[oi].gst ? Math.round(baseAmount * 1.18) : baseAmount;
-      items[ii] = { ...items[ii], qty, amount: finalAmount ? String(finalAmount) : items[ii].amount };
-      orders[oi] = { ...orders[oi], items };
-      return { ...f, orders };
-    });
+      const isGst = !!form.orders[oi]?.gst;
+      const finalAmount = isGst ? Math.round(baseAmount * 1.18) : baseAmount;
+
+      console.log(`[OfflineSales] Calculating amount for qty change: unitPrice=${unitPrice}, qty=${qty}, baseAmount=${baseAmount}, isGst=${isGst}, finalAmount=${finalAmount}`);
+
+      setForm((f) => {
+        try {
+          const orders = [...f.orders];
+          if (!orders[oi]) return f;
+          const items = [...orders[oi].items];
+          if (!items[ii]) return f;
+          
+          items[ii] = { 
+            ...items[ii], 
+            qty, 
+            amount: finalAmount ? String(finalAmount) : items[ii].amount 
+          };
+          orders[oi] = { ...orders[oi], items };
+          console.log('[OfflineSales] State update successful for qty change');
+          return { ...f, orders };
+        } catch (stateErr) {
+          console.error('[OfflineSales] State update failed for qty change:', stateErr);
+          return f;
+        }
+      });
+    } catch (err) {
+      console.error('[OfflineSales] handleItemQtyChange error caught:', err);
+    }
   }
 
   function handleItemSaleTypeChange(oi, ii, saleType) {
-    setForm((f) => {
-      const orders = [...f.orders];
-      const items = [...orders[oi].items];
-      const p = products.find((x) => x.id === items[ii].productId);
+    try {
+      console.log(`[OfflineSales] handleItemSaleTypeChange called: orderIndex=${oi}, itemIndex=${ii}, saleType=${saleType}`);
+      
+      const currentItem = form.orders[oi]?.items[ii];
+      if (!currentItem) {
+        console.error(`[OfflineSales] Order item at index ${ii} in order ${oi} not found.`);
+        return;
+      }
+      
+      const p = products?.find((x) => x.id === currentItem.productId);
+      if (!p) {
+        console.warn('[OfflineSales] Product not found in products list for item:', currentItem.productId);
+      }
+      
       const unitPrice = getEffectiveOfflinePrice(p, saleType);
-      const qty = Number(items[ii].qty) || 1;
+      const qty = Number(currentItem.qty) || 1;
       const baseAmount = unitPrice * qty;
-      const finalAmount = orders[oi].gst ? Math.round(baseAmount * 1.18) : baseAmount;
-      items[ii] = { ...items[ii], saleType, amount: finalAmount ? String(finalAmount) : items[ii].amount };
-      orders[oi] = { ...orders[oi], items };
-      return { ...f, orders };
-    });
+      const isGst = !!form.orders[oi]?.gst;
+      const finalAmount = isGst ? Math.round(baseAmount * 1.18) : baseAmount;
+
+      console.log(`[OfflineSales] Calculating amount for saleType change: unitPrice=${unitPrice}, qty=${qty}, baseAmount=${baseAmount}, isGst=${isGst}, finalAmount=${finalAmount}`);
+
+      setForm((f) => {
+        try {
+          const orders = [...f.orders];
+          if (!orders[oi]) return f;
+          const items = [...orders[oi].items];
+          if (!items[ii]) return f;
+          
+          items[ii] = { 
+            ...items[ii], 
+            saleType, 
+            amount: finalAmount ? String(finalAmount) : items[ii].amount 
+          };
+          orders[oi] = { ...orders[oi], items };
+          console.log('[OfflineSales] State update successful for saleType change');
+          return { ...f, orders };
+        } catch (stateErr) {
+          console.error('[OfflineSales] State update failed for saleType change:', stateErr);
+          return f;
+        }
+      });
+    } catch (err) {
+      console.error('[OfflineSales] handleItemSaleTypeChange error caught:', err);
+    }
   }
 
   function toggleOrderGst(oi) {
@@ -1143,16 +1246,48 @@ export default function OfflineSales() {
 
   // ── Edit new-item handlers ─────────────────────────────────
   function handleEditItemProductChange(idx, productId) {
-    const p = products.find((x) => x.id === productId);
-    const unitPrice = getEffectiveOfflinePrice(p, editNewItems[idx].saleType);
-    setEditNewItems((items) => {
-      const updated = [...items];
-      const qty = Number(updated[idx].qty) || 1;
+    try {
+      console.log(`[OfflineSales] handleEditItemProductChange called: index=${idx}, productId=${productId}`);
+      
+      const p = products?.find((x) => x.id === productId);
+      if (!p) {
+        console.error('[OfflineSales] Product not found in list for ID:', productId);
+        return;
+      }
+      
+      const currentItem = editNewItems[idx];
+      if (!currentItem) {
+        console.error(`[OfflineSales] Edit new item at index ${idx} not found.`);
+        return;
+      }
+
+      const saleType = currentItem.saleType || 'Piece';
+      const unitPrice = getEffectiveOfflinePrice(p, saleType);
+      const qty = Number(currentItem.qty) || 1;
       const baseAmount = unitPrice * qty;
       const finalAmount = editGst ? Math.round(baseAmount * 1.18) : baseAmount;
-      updated[idx] = { ...updated[idx], productId, amount: finalAmount ? String(finalAmount) : '' };
-      return updated;
-    });
+
+      console.log(`[OfflineSales] Calculating amount for selected edit product: name=${p.name}, saleType=${saleType}, unitPrice=${unitPrice}, qty=${qty}, baseAmount=${baseAmount}, isGst=${editGst}, finalAmount=${finalAmount}`);
+
+      setEditNewItems((items) => {
+        try {
+          const updated = [...items];
+          if (!updated[idx]) return items;
+          updated[idx] = { 
+            ...updated[idx], 
+            productId, 
+            amount: finalAmount ? String(finalAmount) : '' 
+          };
+          console.log('[OfflineSales] State update successful for edit product change');
+          return updated;
+        } catch (stateErr) {
+          console.error('[OfflineSales] State update failed for edit product change:', stateErr);
+          return items;
+        }
+      });
+    } catch (err) {
+      console.error('[OfflineSales] handleEditItemProductChange error caught:', err);
+    }
   }
 
   // ── Expand function ────────────────────────────────────────
@@ -1161,28 +1296,89 @@ export default function OfflineSales() {
   }
 
   function handleEditItemQtyChange(idx, qty) {
-    setEditNewItems((items) => {
-      const updated = [...items];
-      const p = products.find((x) => x.id === updated[idx].productId);
-      const unitPrice = getEffectiveOfflinePrice(p, updated[idx].saleType);
+    try {
+      console.log(`[OfflineSales] handleEditItemQtyChange called: index=${idx}, qty=${qty}`);
+      
+      const currentItem = editNewItems[idx];
+      if (!currentItem) {
+        console.error(`[OfflineSales] Edit new item at index ${idx} not found.`);
+        return;
+      }
+      
+      const p = products?.find((x) => x.id === currentItem.productId);
+      if (!p) {
+        console.warn('[OfflineSales] Product not found in products list for item:', currentItem.productId);
+      }
+      
+      const saleType = currentItem.saleType || 'Piece';
+      const unitPrice = getEffectiveOfflinePrice(p, saleType);
       const baseAmount = unitPrice * Number(qty);
       const finalAmount = editGst ? Math.round(baseAmount * 1.18) : baseAmount;
-      updated[idx] = { ...updated[idx], qty, amount: finalAmount ? String(finalAmount) : updated[idx].amount };
-      return updated;
-    });
+
+      console.log(`[OfflineSales] Calculating amount for edit qty change: unitPrice=${unitPrice}, qty=${qty}, baseAmount=${baseAmount}, isGst=${editGst}, finalAmount=${finalAmount}`);
+
+      setEditNewItems((items) => {
+        try {
+          const updated = [...items];
+          if (!updated[idx]) return items;
+          updated[idx] = { 
+            ...updated[idx], 
+            qty, 
+            amount: finalAmount ? String(finalAmount) : updated[idx].amount 
+          };
+          console.log('[OfflineSales] State update successful for edit qty change');
+          return updated;
+        } catch (stateErr) {
+          console.error('[OfflineSales] State update failed for edit qty change:', stateErr);
+          return items;
+        }
+      });
+    } catch (err) {
+      console.error('[OfflineSales] handleEditItemQtyChange error caught:', err);
+    }
   }
 
   function handleEditItemSaleTypeChange(idx, saleType) {
-    setEditNewItems((items) => {
-      const updated = [...items];
-      const p = products.find((x) => x.id === updated[idx].productId);
+    try {
+      console.log(`[OfflineSales] handleEditItemSaleTypeChange called: index=${idx}, saleType=${saleType}`);
+      
+      const currentItem = editNewItems[idx];
+      if (!currentItem) {
+        console.error(`[OfflineSales] Edit new item at index ${idx} not found.`);
+        return;
+      }
+      
+      const p = products?.find((x) => x.id === currentItem.productId);
+      if (!p) {
+        console.warn('[OfflineSales] Product not found in products list for item:', currentItem.productId);
+      }
+      
       const unitPrice = getEffectiveOfflinePrice(p, saleType);
-      const qty = Number(updated[idx].qty) || 1;
+      const qty = Number(currentItem.qty) || 1;
       const baseAmount = unitPrice * qty;
       const finalAmount = editGst ? Math.round(baseAmount * 1.18) : baseAmount;
-      updated[idx] = { ...updated[idx], saleType, amount: finalAmount ? String(finalAmount) : updated[idx].amount };
-      return updated;
-    });
+
+      console.log(`[OfflineSales] Calculating amount for edit saleType change: unitPrice=${unitPrice}, qty=${qty}, baseAmount=${baseAmount}, isGst=${editGst}, finalAmount=${finalAmount}`);
+
+      setEditNewItems((items) => {
+        try {
+          const updated = [...items];
+          if (!updated[idx]) return items;
+          updated[idx] = { 
+            ...updated[idx], 
+            saleType, 
+            amount: finalAmount ? String(finalAmount) : updated[idx].amount 
+          };
+          console.log('[OfflineSales] State update successful for edit saleType change');
+          return updated;
+        } catch (stateErr) {
+          console.error('[OfflineSales] State update failed for edit saleType change:', stateErr);
+          return items;
+        }
+      });
+    } catch (err) {
+      console.error('[OfflineSales] handleEditItemSaleTypeChange error caught:', err);
+    }
   }
 
   function toggleEditGst() {
@@ -2759,7 +2955,7 @@ export default function OfflineSales() {
                             <p className="text-[11px] text-slate-400 dark:text-[#94A3B8] flex items-center justify-between mt-1">
                               <span>
                                 📍 Stock: <span className="font-semibold text-slate-650 dark:text-[#CBD5E1]">{selProd.availableQty} units {selProd.piecesPerBox > 0 && `(${Math.floor(selProd.availableQty / selProd.piecesPerBox)} boxes)`}</span>
-                                &nbsp;· {item.saleType === 'Box' ? 'Box Price:' : 'Base Price:'} <span className="font-semibold text-rose-600 dark:text-[#EF4444]">₹{getEffectiveOfflinePrice(selProd, item.saleType)}</span>
+                                &nbsp;· {item.saleType === 'Box' ? 'Box Price:' : 'Base Price:'} <span className="font-semibold text-rose-600 dark:text-[#EF4444]">₹{typeof getEffectiveOfflinePrice === 'function' ? getEffectiveOfflinePrice(selProd, item.saleType) : (selProd?.boxSellingPrice || selProd?.pieceSellingPrice || selProd?.offlinePrice || selProd?.unitPrice || 0)}</span>
                                 {item.saleType === 'Box' && (
                                   <span className="font-semibold text-slate-500"> (= {Number(item.qty || 0) * (selProd.piecesPerBox || 1)} pcs)</span>
                                 )}

@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import SessionTimeoutManager from './SessionTimeoutManager';
+import ErrorBoundary from './ErrorBoundary';
 import { io } from 'socket.io-client';
 import {
   LayoutDashboard, Package, ShoppingCart, Store,
@@ -405,7 +406,9 @@ export default function Layout() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-[#F8FAFC] dark:bg-[#0F172A]">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>
