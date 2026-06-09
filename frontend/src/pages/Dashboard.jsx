@@ -90,7 +90,7 @@ export default function Dashboard() {
   };
   const todayStr = getTodayStr();
 
-  const fmt = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
+  const fmt = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 
   // ================= ROW 1 CALCULATIONS =================
   let salesToday = 0;

@@ -502,7 +502,7 @@ export default function Returns() {
 
   const formStats = formSummary();
 
-  const fmt = (num) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num || 0);
+  const fmt = (num) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num || 0);
 
   return (
     <div className="space-y-6 pb-12 relative text-slate-800 dark:text-[#CBD5E1]">

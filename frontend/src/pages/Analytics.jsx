@@ -498,8 +498,8 @@ export default function Analytics() {
 
   // Format currency helper
   const fmt = (val) => {
-    if (val === undefined || val === null) return '₹0';
-    return `₹${Math.round(val).toLocaleString('en-IN')}`;
+    if (val === undefined || val === null) return '₹0.00';
+    return `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const overview = analytics?.overview || {};

@@ -60,7 +60,7 @@ export default function SalesHistory() {
             <ShoppingCart size={16} className="text-purple-600" />
             <span className="text-sm text-slate-500 font-medium">Online Revenue</span>
           </div>
-          <p className="text-xl font-bold text-slate-800">₹{onlineTotal.toFixed(0)}</p>
+          <p className="text-xl font-bold text-slate-800">₹{onlineTotal.toFixed(2)}</p>
           <p className="text-xs text-slate-400">{onlineSales.length} orders</p>
         </div>
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
@@ -68,7 +68,7 @@ export default function SalesHistory() {
             <Store size={16} className="text-teal-600" />
             <span className="text-sm text-slate-500 font-medium">Offline Revenue</span>
           </div>
-          <p className="text-xl font-bold text-slate-800">₹{offlineTotal.toFixed(0)}</p>
+          <p className="text-xl font-bold text-slate-800">₹{offlineTotal.toFixed(2)}</p>
           <p className="text-xs text-slate-400">{offlineSales.length} orders</p>
         </div>
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
@@ -76,7 +76,7 @@ export default function SalesHistory() {
             <History size={16} className="text-indigo-600" />
             <span className="text-sm text-slate-500 font-medium">Total Revenue</span>
           </div>
-          <p className="text-xl font-bold text-slate-800">₹{(onlineTotal + offlineTotal).toFixed(0)}</p>
+          <p className="text-xl font-bold text-slate-800">₹{(onlineTotal + offlineTotal).toFixed(2)}</p>
           <p className="text-xs text-slate-400">{onlineSales.length + offlineSales.length} orders</p>
         </div>
       </div>
@@ -147,14 +147,14 @@ export default function SalesHistory() {
                     </td>
                     <td className="px-4 py-3 text-slate-600">{s.qty}</td>
                     <td className="px-4 py-3 font-semibold text-slate-800">
-                      ₹{s.type === 'online' ? s.amount : s.totalAmount}
+                      ₹{Number(s.type === 'online' ? s.amount : s.totalAmount).toFixed(2)}
                     </td>
                     <td className="px-4 py-3">
                       {s.type === 'online'
                         ? <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-600">Completed</span>
                         : s.amountLeft === 0
                           ? <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-600">Paid</span>
-                          : <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-600">Due ₹{s.amountLeft}</span>}
+                          : <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-600">Due ₹{Number(s.amountLeft).toFixed(2)}</span>}
                     </td>
                   </tr>
                 ))}

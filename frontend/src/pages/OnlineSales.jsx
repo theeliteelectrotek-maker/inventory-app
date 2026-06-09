@@ -771,7 +771,7 @@ export default function OnlineSales() {
     return matchPlatform && matchSearch;
   });
 
-  const fmt = (val) => `₹${Math.round(val || 0).toLocaleString('en-IN')}`;
+  const fmt = (val) => `₹${Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   // --- EXPORTS ---
   const exportToCSV = () => {
@@ -821,7 +821,7 @@ export default function OnlineSales() {
         <td style="padding: 8px 12px; text-transform: capitalize; font-weight: bold; color: #4f46e5;">${s.platform}</td>
         <td style="padding: 8px 12px; font-family: monospace; color: #475569;">${s.orderId || '—'}</td>
         <td style="padding: 8px 12px; font-weight: bold; color: #1e293b;">${s.qty}</td>
-        <td style="padding: 8px 12px; font-weight: bold; text-align: right; color: #1e293b;">₹${s.amount.toLocaleString('en-IN')}</td>
+        <td style="padding: 8px 12px; font-weight: bold; text-align: right; color: #1e293b;">₹${Number(s.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
       </tr>
     `).join('');
 
@@ -949,22 +949,22 @@ export default function OnlineSales() {
           <div class="grid">
             <div class="card" style="border-left: 4px solid #6366f1;">
               <div class="card-label">Total Online Revenue</div>
-              <div class="card-val">₹${currentKPIs.total.revenue.toLocaleString('en-IN')}</div>
+              <div class="card-val">₹${Number(currentKPIs.total.revenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <div class="card-sub">${currentKPIs.total.orders} orders • ${currentKPIs.total.units} units</div>
             </div>
             <div class="card" style="border-left: 4px solid #f97316;">
               <div class="card-label">Amazon Sales</div>
-              <div class="card-val">₹${currentKPIs.amazon.revenue.toLocaleString('en-IN')}</div>
+              <div class="card-val">₹${Number(currentKPIs.amazon.revenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <div class="card-sub">${currentKPIs.amazon.orders} orders • ${currentKPIs.amazon.units} units</div>
             </div>
             <div class="card" style="border-left: 4px solid #3b82f6;">
               <div class="card-label">Flipkart Sales</div>
-              <div class="card-val">₹${currentKPIs.flipkart.revenue.toLocaleString('en-IN')}</div>
+              <div class="card-val">₹${Number(currentKPIs.flipkart.revenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <div class="card-sub">${currentKPIs.flipkart.orders} orders • ${currentKPIs.flipkart.units} units</div>
             </div>
             <div class="card" style="border-left: 4px solid #ec4899;">
               <div class="card-label">Meesho Sales</div>
-              <div class="card-val">₹${currentKPIs.meesho.revenue.toLocaleString('en-IN')}</div>
+              <div class="card-val">₹${Number(currentKPIs.meesho.revenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <div class="card-sub">${currentKPIs.meesho.orders} orders • ${currentKPIs.meesho.units} units</div>
             </div>
           </div>
@@ -986,16 +986,16 @@ export default function OnlineSales() {
                 ${mostRevenueProduct ? mostRevenueProduct.name : 'N/A'}
               </div>
               <div style="font-size: 11px; font-weight: 800; color: #475569;">
-                ${mostRevenueProduct ? `₹${mostRevenueProduct.revenue.toLocaleString('en-IN')}` : '—'}
+                ${mostRevenueProduct ? `₹${Number(mostRevenueProduct.revenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
               </div>
             </div>
             <div class="card">
               <div class="card-label">Avg Order Value (AOV)</div>
               <div class="card-val">
-                ₹${(currentKPIs.total.orders > 0 ? Math.round(currentKPIs.total.revenue / currentKPIs.total.orders) : 0).toLocaleString('en-IN')}
+                ₹${Number(currentKPIs.total.orders > 0 ? currentKPIs.total.revenue / currentKPIs.total.orders : 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div class="card-sub">
-                Revenue Per Unit: ₹${(currentKPIs.total.units > 0 ? Math.round(currentKPIs.total.revenue / currentKPIs.total.units) : 0).toLocaleString('en-IN')}
+                Revenue Per Unit: ₹${Number(currentKPIs.total.units > 0 ? currentKPIs.total.revenue / currentKPIs.total.units : 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
           </div>
@@ -1679,7 +1679,7 @@ export default function OnlineSales() {
 
                           <div>
                             <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1.5 md:hidden">Amount (₹) *</label>
-                            <input required type="number" min="0" value={item.amount}
+                            <input required type="number" step="0.01" min="0" value={item.amount}
                               onChange={(e) => handleItemAmountChange(idx, e.target.value)}
                               className="w-full h-[42px] px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Amount (₹)" />
                           </div>

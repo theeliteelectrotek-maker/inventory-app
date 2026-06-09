@@ -421,7 +421,7 @@ export default function Replacements() {
     setSearch('');
   };
 
-  const fmt = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
+  const fmt = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 
   const productSelectOptions = products.map(p => ({ value: p.id, label: `${p.name} (${p.sku || 'No SKU'})` }));
   const shopSelectOptions = shops.map(s => ({ value: s.id, label: s.name }));
@@ -1070,22 +1070,22 @@ export default function Replacements() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Retail Value</label>
-                  <input type="number" min="0" value={form.productValue} onChange={(e) => handleFinanceChange('productValue', e.target.value)}
+                  <input type="number" step="0.01" min="0" value={form.productValue} onChange={(e) => handleFinanceChange('productValue', e.target.value)}
                     className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Replacement Cost</label>
-                  <input type="number" disabled value={form.replacementCost}
+                  <input type="number" step="0.01" min="0" disabled value={form.replacementCost}
                     className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-slate-50 dark:bg-slate-800 text-slate-550 dark:text-[#94A3B8] font-bold focus:outline-none cursor-not-allowed" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Recovery/Salvage Amount</label>
-                  <input type="number" min="0" value={form.recoveryAmount} onChange={(e) => handleFinanceChange('recoveryAmount', e.target.value)}
+                  <input type="number" step="0.01" min="0" value={form.recoveryAmount} onChange={(e) => handleFinanceChange('recoveryAmount', e.target.value)}
                     className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Net Loss/Adjustment</label>
-                  <input type="number" disabled value={form.netLoss}
+                  <input type="number" step="0.01" min="0" disabled value={form.netLoss}
                     className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-slate-50 dark:bg-slate-800 text-rose-500 font-extrabold focus:outline-none cursor-not-allowed" />
                 </div>
               </div>

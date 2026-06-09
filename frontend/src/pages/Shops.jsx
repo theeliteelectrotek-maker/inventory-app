@@ -309,7 +309,7 @@ export default function Shops() {
     return matchSearch && matchFilter;
   });
 
-  const fmt = (val) => `₹${Math.round(val || 0).toLocaleString('en-IN')}`;
+  const fmt = (val) => `₹${Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   function healthBadge(health) {
     if (health === 'Recovery Required') return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50">Recovery Required</span>;

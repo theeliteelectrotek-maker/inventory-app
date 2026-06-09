@@ -80,7 +80,7 @@ function TxnRow({ txn, onChange, onRemove }) {
         <div className="flex gap-3 flex-1">
           <div className="relative flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 dark:text-[#94A3B8]">₹</span>
-            <input type="number" min="0" value={txn.amount} onChange={(e) => onChange('amount', e.target.value)}
+            <input type="number" step="0.01" min="0" value={txn.amount} onChange={(e) => onChange('amount', e.target.value)}
               className="w-full pl-7 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" placeholder="Amount" required />
           </div>
           <select value={txn.method} onChange={(e) => {
@@ -217,7 +217,7 @@ function ItemRow({ item, products, onProductChange, onQtyChange, onSaleTypeChang
             className="w-full sm:w-20 px-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC] text-center" placeholder={item.saleType === 'Box' ? 'Boxes' : 'Qty'} />
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 dark:text-[#94A3B8]">₹</span>
-            <input type="number" min="0" value={item.amount}
+            <input type="number" step="0.01" min="0" value={item.amount}
               onChange={(e) => onAmountChange(e.target.value)}
               className="w-full sm:w-28 pl-7 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-[#1E293B] text-slate-900 dark:text-[#F8FAFC]" placeholder="Amount" />
           </div>
@@ -740,7 +740,7 @@ export default function OfflineSales() {
     const compLogo = companySettings?.logo || '';
 
     const isGST = s.isGSTInvoice;
-    const baseAmount = isGST ? Math.round(s.totalAmount / 1.18) : s.totalAmount;
+    const baseAmount = isGST ? Math.round((s.totalAmount / 1.18) * 100) / 100 : s.totalAmount;
     const taxAmount = s.totalAmount - baseAmount;
 
     const itemsHTML = (s.items || []).map((item, idx) => {
@@ -755,9 +755,9 @@ export default function OfflineSales() {
           <td style="padding: 10px 12px; font-weight: bold; color: #1e293b; text-align: center;">
             ${item.saleType === 'Box' ? `${item.saleQty} Box${item.saleQty > 1 ? 'es' : ''} (${item.qty} pcs)` : `${item.qty} Piece${item.qty > 1 ? 's' : ''}`}
           </td>
-          <td style="padding: 10px 12px; font-weight: bold; color: #1e293b; text-align: right;">₹${Math.round(itemBasePrice).toLocaleString('en-IN')}</td>
+          <td style="padding: 10px 12px; font-weight: bold; color: #1e293b; text-align: right;">₹${Number(itemBasePrice).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
           ${isGST ? `<td style="padding: 10px 12px; font-weight: bold; color: #1e293b; text-align: right;">18%</td>` : ''}
-          <td style="padding: 10px 12px; font-weight: bold; text-align: right; color: #1e293b;">₹${Math.round(item.amount).toLocaleString('en-IN')}</td>
+          <td style="padding: 10px 12px; font-weight: bold; text-align: right; color: #1e293b;">₹${Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         </tr>
       `;
     }).join('');
@@ -965,25 +965,25 @@ export default function OfflineSales() {
               ${isGST ? `
                 <tr>
                   <td style="color: #64748b; font-weight: 500;">Taxable Value</td>
-                  <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${baseAmount.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${Number(baseAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
                 <tr>
                   <td style="color: #64748b; font-weight: 500;">CGST (9%)</td>
-                  <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${Math.round(taxAmount / 2).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${(Math.round((taxAmount / 2) * 100) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
                 <tr>
                   <td style="color: #64748b; font-weight: 500;">SGST (9%)</td>
-                  <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${Math.round(taxAmount / 2).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${(Math.round((taxAmount / 2) * 100) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
               ` : `
                 <tr>
                   <td style="color: #64748b; font-weight: 500;">Subtotal</td>
-                  <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${s.totalAmount.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-weight: 600; color: #1e293b;">₹${Number(s.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
               `}
               <tr class="grand-total">
                 <td style="color: #0f172a; font-weight: 800;">Grand Total</td>
-                <td style="text-align: right; font-weight: 900; color: #ef4444;">₹${s.totalAmount.toLocaleString('en-IN')}</td>
+                <td style="text-align: right; font-weight: 900; color: #ef4444;">₹${Number(s.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             </table>
 
@@ -1062,7 +1062,7 @@ export default function OfflineSales() {
       const qty = Number(currentItem.qty) || 1;
       const baseAmount = unitPrice * qty;
       const isGst = !!form.orders[oi]?.gst;
-      const finalAmount = isGst ? Math.round(baseAmount * 1.18) : baseAmount;
+      const finalAmount = isGst ? Math.round(baseAmount * 1.18 * 100) / 100 : baseAmount;
 
       console.log(`[OfflineSales] Calculating amount for selected product: name=${p.name}, saleType=${saleType}, unitPrice=${unitPrice}, qty=${qty}, baseAmount=${baseAmount}, isGst=${isGst}, finalAmount=${finalAmount}`);
 
@@ -1110,7 +1110,7 @@ export default function OfflineSales() {
       const unitPrice = getEffectiveOfflinePrice(p, saleType);
       const baseAmount = unitPrice * Number(qty);
       const isGst = !!form.orders[oi]?.gst;
-      const finalAmount = isGst ? Math.round(baseAmount * 1.18) : baseAmount;
+      const finalAmount = isGst ? Math.round(baseAmount * 1.18 * 100) / 100 : baseAmount;
 
       console.log(`[OfflineSales] Calculating amount for qty change: unitPrice=${unitPrice}, qty=${qty}, baseAmount=${baseAmount}, isGst=${isGst}, finalAmount=${finalAmount}`);
 
@@ -1158,7 +1158,7 @@ export default function OfflineSales() {
       const qty = Number(currentItem.qty) || 1;
       const baseAmount = unitPrice * qty;
       const isGst = !!form.orders[oi]?.gst;
-      const finalAmount = isGst ? Math.round(baseAmount * 1.18) : baseAmount;
+      const finalAmount = isGst ? Math.round(baseAmount * 1.18 * 100) / 100 : baseAmount;
 
       console.log(`[OfflineSales] Calculating amount for saleType change: unitPrice=${unitPrice}, qty=${qty}, baseAmount=${baseAmount}, isGst=${isGst}, finalAmount=${finalAmount}`);
 
@@ -1196,7 +1196,7 @@ export default function OfflineSales() {
       order.items = order.items.map((item) => {
         if (!item.amount) return item;
         const currentAmount = Number(item.amount) || 0;
-        const newAmount = nextGst ? Math.round(currentAmount * 1.18) : Math.round(currentAmount / 1.18);
+        const newAmount = nextGst ? Math.round(currentAmount * 1.18 * 100) / 100 : Math.round((currentAmount / 1.18) * 100) / 100;
         return { ...item, amount: String(newAmount) };
       });
       orders[oi] = order;
@@ -1265,7 +1265,7 @@ export default function OfflineSales() {
       const unitPrice = getEffectiveOfflinePrice(p, saleType);
       const qty = Number(currentItem.qty) || 1;
       const baseAmount = unitPrice * qty;
-      const finalAmount = editGst ? Math.round(baseAmount * 1.18) : baseAmount;
+      const finalAmount = editGst ? Math.round(baseAmount * 1.18 * 100) / 100 : baseAmount;
 
       console.log(`[OfflineSales] Calculating amount for selected edit product: name=${p.name}, saleType=${saleType}, unitPrice=${unitPrice}, qty=${qty}, baseAmount=${baseAmount}, isGst=${editGst}, finalAmount=${finalAmount}`);
 
@@ -1313,7 +1313,7 @@ export default function OfflineSales() {
       const saleType = currentItem.saleType || 'Piece';
       const unitPrice = getEffectiveOfflinePrice(p, saleType);
       const baseAmount = unitPrice * Number(qty);
-      const finalAmount = editGst ? Math.round(baseAmount * 1.18) : baseAmount;
+      const finalAmount = editGst ? Math.round(baseAmount * 1.18 * 100) / 100 : baseAmount;
 
       console.log(`[OfflineSales] Calculating amount for edit qty change: unitPrice=${unitPrice}, qty=${qty}, baseAmount=${baseAmount}, isGst=${editGst}, finalAmount=${finalAmount}`);
 
@@ -1356,7 +1356,7 @@ export default function OfflineSales() {
       const unitPrice = getEffectiveOfflinePrice(p, saleType);
       const qty = Number(currentItem.qty) || 1;
       const baseAmount = unitPrice * qty;
-      const finalAmount = editGst ? Math.round(baseAmount * 1.18) : baseAmount;
+      const finalAmount = editGst ? Math.round(baseAmount * 1.18 * 100) / 100 : baseAmount;
 
       console.log(`[OfflineSales] Calculating amount for edit saleType change: unitPrice=${unitPrice}, qty=${qty}, baseAmount=${baseAmount}, isGst=${editGst}, finalAmount=${finalAmount}`);
 
@@ -1388,7 +1388,7 @@ export default function OfflineSales() {
         items.map((item) => {
           if (!item.amount) return item;
           const currentAmount = Number(item.amount) || 0;
-          const newAmount = nextGst ? Math.round(currentAmount * 1.18) : Math.round(currentAmount / 1.18);
+          const newAmount = nextGst ? Math.round(currentAmount * 1.18 * 100) / 100 : Math.round((currentAmount / 1.18) * 100) / 100;
           return { ...item, amount: String(newAmount) };
         })
       );
@@ -1397,7 +1397,7 @@ export default function OfflineSales() {
         const updatedItems = (prevModal.items || []).map((item) => {
           if (!item.amount) return item;
           const currentAmount = Number(item.amount) || 0;
-          const newAmount = nextGst ? Math.round(currentAmount * 1.18) : Math.round(currentAmount / 1.18);
+          const newAmount = nextGst ? Math.round(currentAmount * 1.18 * 100) / 100 : Math.round((currentAmount / 1.18) * 100) / 100;
           return { ...item, amount: newAmount };
         });
         const updatedTotal = updatedItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
@@ -1744,7 +1744,7 @@ export default function OfflineSales() {
 
   const totalGstInvoicesCount = gstInvoices.length;
   const totalGstRevenue = gstRevenue;
-  const gstTaxableAmount = gstInvoices.reduce((sum, s) => sum + Math.round(s.totalAmount / 1.18), 0);
+  const gstTaxableAmount = gstInvoices.reduce((sum, s) => sum + Math.round((s.totalAmount / 1.18) * 100) / 100, 0);
   const gstCollected = totalGstRevenue - gstTaxableAmount;
 
   const totalNonGstInvoicesCount = nonGstInvoices.length;
@@ -1786,7 +1786,7 @@ export default function OfflineSales() {
   shops.forEach(s => { shopMap[s.name] = s.type; });
 
   // Format currency helper
-  const fmt = (num) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(num || 0);
+  const fmt = (num) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num || 0);
 
   // Get status details helper
   const getSaleStatus = (s) => {
@@ -2941,7 +2941,7 @@ export default function OfflineSales() {
 
                               <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 dark:text-[#94A3B8]">₹</span>
-                                <input type="number" min="0" value={item.amount}
+                                <input type="number" step="0.01" min="0" value={item.amount}
                                   onChange={(e) => handleEditItemAmountChange(idx, e.target.value)}
                                   className="w-full sm:w-28 pl-7 pr-3 py-2.5 border border-slate-200 dark:border-[#334155] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#EF4444] bg-white dark:bg-[#111827] text-slate-900 dark:text-[#F8FAFC]" placeholder="Amt" />
                               </div>
@@ -3118,7 +3118,8 @@ export default function OfflineSales() {
                 <label className="block font-bold text-slate-500 dark:text-[#CBD5E1] uppercase tracking-wide">Amount *</label>
                 <input 
                   type="number" 
-                  min="1" 
+                  step="0.01"
+                  min="0" 
                   required 
                   value={editReceiptForm.amount} 
                   onChange={(e) => setEditReceiptForm(f => ({ ...f, amount: e.target.value }))}

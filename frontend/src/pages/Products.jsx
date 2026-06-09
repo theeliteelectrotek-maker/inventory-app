@@ -277,7 +277,7 @@ export default function Products() {
     return matchSearch && matchStock && matchPlatform;
   });
 
-  const fmt = (val) => `₹${Math.round(val || 0).toLocaleString('en-IN')}`;
+  const fmt = (val) => `₹${Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   function stockBadge(qty) {
     if (qty === 0) return <span className="px-2.5 py-1 rounded-xl text-xs font-bold bg-red-50 text-red-650 border border-red-150 dark:bg-red-950/30 dark:border-red-900/50 dark:text-[#EF4444]">Out of Stock</span>;
@@ -697,12 +697,12 @@ export default function Products() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide font-sans">Cost Price / Piece (₹) *</label>
-                  <input required type="number" step="any" min="0" value={form.costPrice} onChange={(e) => setForm((f) => ({ ...f, costPrice: e.target.value }))}
+                  <input required type="number" step="0.01" min="0" value={form.costPrice} onChange={(e) => setForm((f) => ({ ...f, costPrice: e.target.value }))}
                     className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-808 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500 font-semibold text-center" placeholder="0" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide font-sans">Offline Price / Piece (₹) *</label>
-                  <input required type="number" min="0" value={form.offlinePrice} onChange={(e) => setForm((f) => ({ ...f, offlinePrice: e.target.value }))}
+                  <input required type="number" step="0.01" min="0" value={form.offlinePrice} onChange={(e) => setForm((f) => ({ ...f, offlinePrice: e.target.value }))}
                     className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-808 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-550 font-semibold text-center" placeholder="0" />
                 </div>
               </div>
@@ -718,19 +718,19 @@ export default function Products() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Box Cost Price (₹)</label>
-                    <input type="number" min="0" value={form.boxCostPrice} onChange={(e) => setForm((f) => ({ ...f, boxCostPrice: e.target.value }))}
+                    <input type="number" step="0.01" min="0" value={form.boxCostPrice} onChange={(e) => setForm((f) => ({ ...f, boxCostPrice: e.target.value }))}
                       className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#111827] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-550 font-semibold text-center" placeholder="e.g. 200" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Box Selling Price (₹)</label>
-                    <input type="number" min="0" value={form.boxSellingPrice} onChange={(e) => setForm((f) => ({ ...f, boxSellingPrice: e.target.value }))}
+                    <input type="number" step="0.01" min="0" value={form.boxSellingPrice} onChange={(e) => setForm((f) => ({ ...f, boxSellingPrice: e.target.value }))}
                       className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#111827] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-550 font-semibold text-center" placeholder="e.g. 300" />
                   </div>
                   <div className="space-y-1.5">
                     <label className="block font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wide">Piece Selling Price (₹)</label>
-                    <input type="number" min="0" value={form.pieceSellingPrice} onChange={(e) => setForm((f) => ({ ...f, pieceSellingPrice: e.target.value }))}
+                    <input type="number" step="0.01" min="0" value={form.pieceSellingPrice} onChange={(e) => setForm((f) => ({ ...f, pieceSellingPrice: e.target.value }))}
                       className="w-full px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#111827] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-550 font-semibold text-center" placeholder="e.g. 35" />
                   </div>
                 </div>
@@ -741,21 +741,21 @@ export default function Products() {
                   <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider truncate">
                     <span className="text-orange-500">Amazon</span> Price (₹)
                   </label>
-                  <input type="number" min="0" value={form.amazonPrice} onChange={(e) => setForm((f) => ({ ...f, amazonPrice: e.target.value }))}
+                  <input type="number" step="0.01" min="0" value={form.amazonPrice} onChange={(e) => setForm((f) => ({ ...f, amazonPrice: e.target.value }))}
                     className="w-full px-2.5 py-2 border border-orange-200 dark:border-orange-900/50 rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-orange-400 font-semibold text-center" placeholder="0" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider truncate">
                     <span className="text-blue-500">Flipkart</span> Price (₹)
                   </label>
-                  <input type="number" min="0" value={form.flipkartPrice} onChange={(e) => setForm((f) => ({ ...f, flipkartPrice: e.target.value }))}
+                  <input type="number" step="0.01" min="0" value={form.flipkartPrice} onChange={(e) => setForm((f) => ({ ...f, flipkartPrice: e.target.value }))}
                     className="w-full px-2.5 py-2 border border-blue-200 dark:border-blue-900/50 rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-blue-400 font-semibold text-center" placeholder="0" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider truncate">
                     <span className="text-pink-500">Meesho</span> Price (₹)
                   </label>
-                  <input type="number" min="0" value={form.meeshoPrice} onChange={(e) => setForm((f) => ({ ...f, meeshoPrice: e.target.value }))}
+                  <input type="number" step="0.01" min="0" value={form.meeshoPrice} onChange={(e) => setForm((f) => ({ ...f, meeshoPrice: e.target.value }))}
                     className="w-full px-2.5 py-2 border border-pink-200 dark:border-pink-900/50 rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-805 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-pink-400 font-semibold text-center" placeholder="0" />
                 </div>
               </div>

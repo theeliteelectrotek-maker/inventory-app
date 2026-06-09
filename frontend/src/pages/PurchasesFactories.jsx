@@ -467,7 +467,7 @@ export default function PurchasesFactories() {
     p.supplierName.toLowerCase().includes(purchaseSearch.toLowerCase())
   );
 
-  const formatRupees = (val) => `₹${Math.round(val || 0).toLocaleString('en-IN')}`;
+  const formatRupees = (val) => `₹${Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const combinedTransactions = [
     ...purchases.map(p => ({
@@ -1436,6 +1436,7 @@ export default function PurchasesFactories() {
                 <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Opening GST Balance (₹)</label>
                 <input
                   type="number"
+                  step="0.01"
                   min="0"
                   value={supplierForm.openingGstBalance}
                   onChange={(e) => setSupplierForm(prev => ({ ...prev, openingGstBalance: Number(e.target.value) || 0 }))}
@@ -1447,6 +1448,7 @@ export default function PurchasesFactories() {
                 <label className="block text-[10px] font-bold uppercase tracking-wider mb-1">Opening Non-GST Balance (₹)</label>
                 <input
                   type="number"
+                  step="0.01"
                   min="0"
                   value={supplierForm.openingNonGstBalance}
                   onChange={(e) => setSupplierForm(prev => ({ ...prev, openingNonGstBalance: Number(e.target.value) || 0 }))}
@@ -1551,6 +1553,7 @@ export default function PurchasesFactories() {
                   <input
                     required
                     type="number"
+                    step="0.01"
                     min="0"
                     value={purchaseForm.grandTotal}
                     onChange={(e) => setPurchaseForm(prev => ({ ...prev, grandTotal: e.target.value }))}
@@ -1563,6 +1566,7 @@ export default function PurchasesFactories() {
                   <input
                     required
                     type="number"
+                    step="0.01"
                     min="0"
                     value={purchaseForm.paidAmount}
                     onChange={(e) => setPurchaseForm(prev => ({ ...prev, paidAmount: e.target.value }))}
@@ -1644,7 +1648,8 @@ export default function PurchasesFactories() {
                 <input
                   required
                   type="number"
-                  min="1"
+                  step="0.01"
+                  min="0"
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: Number(e.target.value) || '' }))}
                   className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
@@ -2161,7 +2166,8 @@ export default function PurchasesFactories() {
                 <input
                   type="number"
                   required
-                  min="1"
+                  step="0.01"
+                  min="0"
                   value={editPaymentForm.amount}
                   onChange={(e) => setEditPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
                   className="w-full px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC]"
@@ -2333,6 +2339,7 @@ export default function PurchasesFactories() {
                   <input
                     required
                     type="number"
+                    step="0.01"
                     min="0"
                     value={editPurchaseForm.grandTotal}
                     onChange={(e) => setEditPurchaseForm(prev => ({ ...prev, grandTotal: e.target.value }))}
@@ -2345,6 +2352,7 @@ export default function PurchasesFactories() {
                   <input
                     required
                     type="number"
+                    step="0.01"
                     min="0"
                     value={editPurchaseForm.paidAmount}
                     onChange={(e) => setEditPurchaseForm(prev => ({ ...prev, paidAmount: e.target.value }))}
