@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import SearchableSelect from '../components/SearchableSelect';
 import { useLocation } from 'react-router-dom';
 import KPICardValue from '../components/KPICardValue';
+import MetricCard from '../components/MetricCard';
 
 const emptyItem = { productId: '', qty: '', amount: '', saleType: 'Piece' };
 
@@ -1911,137 +1912,81 @@ export default function OfflineSales() {
       </div>
 
       {/* KPI Header Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Total Sales */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-indigo-500 dark:border-t-indigo-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Sales</span>
-            <KPICardValue value={summaryRevenue} className="text-slate-900 dark:text-[#F8FAFC]" />
-          </div>
-          <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-indigo-650 bg-indigo-50 dark:bg-indigo-950/30 px-2 py-0.5 rounded-lg inline-block">
-              Sales aggregate
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-[#1E293B] border border-indigo-100 dark:border-[#334155] text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
-              <TrendingUp size={16} />
-            </div>
-          </div>
-        </div>
-
-        {/* Amount Received */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-emerald-500 dark:border-t-emerald-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Received</span>
-            <KPICardValue value={summaryReceived} className="text-emerald-600 dark:text-[#10B981]" />
-          </div>
-          <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-lg inline-block">
-              Cleared collections
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-[#1E293B] border border-emerald-100 dark:border-[#334155] text-emerald-600 dark:text-[#10B981] flex items-center justify-center flex-shrink-0">
-              <CheckCircle2 size={16} />
-            </div>
-          </div>
-        </div>
-
-        {/* Pending Amount */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-red-500 dark:border-t-red-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Pending Dues</span>
-            <KPICardValue value={summaryPending} className="text-red-650 dark:text-[#EF4444]" />
-          </div>
-          <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-red-600 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded-lg inline-block">
-              Awaiting collection
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-[#1E293B] border border-red-100 dark:border-[#334155] text-red-500 dark:text-[#EF4444] flex items-center justify-center flex-shrink-0">
-              <Clock size={16} />
-            </div>
-          </div>
-        </div>
-
-        {/* UPI Collection */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-blue-500 dark:border-t-blue-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">UPI Payments</span>
-            <KPICardValue value={summaryUpi} className="text-slate-900 dark:text-[#F8FAFC]" />
-          </div>
-          <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-lg inline-block">
-              ⚡ Digital receipts
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-[#1E293B] border border-blue-100 dark:border-[#334155] text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
-              <CreditCard size={16} />
-            </div>
-          </div>
-        </div>
-
-        {/* Cash Collection */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-violet-500 dark:border-t-violet-500 hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-36 relative overflow-hidden group">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Cash Payments</span>
-            <KPICardValue value={summaryCash} className="text-slate-900 dark:text-[#F8FAFC]" />
-          </div>
-          <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-violet-600 bg-violet-50 dark:bg-violet-950/30 px-2 py-0.5 rounded-lg inline-block">
-              💵 Paper receipts
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-[#1E293B] border border-violet-100 dark:border-[#334155] text-violet-650 dark:text-violet-400 flex items-center justify-center flex-shrink-0">
-              <Wallet size={16} />
-            </div>
-          </div>
-        </div>
+      <div className="grid gap-4 xl:grid-cols-5 lg:grid-cols-5 md:grid-cols-2 grid-cols-1">
+        <MetricCard
+          header="Total Sales"
+          value={summaryRevenue}
+          isCurrency
+          accentColor="border-t-indigo-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Sales aggregate"
+        />
+        <MetricCard
+          header="Total Received"
+          value={summaryReceived}
+          isCurrency
+          accentColor="border-t-emerald-500"
+          valueClassName="text-emerald-600 dark:text-[#10B981]"
+          description="Cleared collections"
+        />
+        <MetricCard
+          header="Pending Dues"
+          value={summaryPending}
+          isCurrency
+          accentColor="border-t-red-500"
+          valueClassName="text-red-650 dark:text-[#EF4444]"
+          description="Awaiting collection"
+        />
+        <MetricCard
+          header="UPI Payments"
+          value={summaryUpi}
+          isCurrency
+          accentColor="border-t-blue-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="⚡ Digital receipts"
+        />
+        <MetricCard
+          header="Cash Payments"
+          value={summaryCash}
+          isCurrency
+          accentColor="border-t-violet-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="💵 Paper receipts"
+        />
       </div>
 
       {/* GST Segregation KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-        {/* GST Sales Card */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-emerald-600 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-between h-28 relative overflow-hidden group">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">GST Sales</span>
-            <KPICardValue value={gstRevenue} className="text-slate-900 dark:text-[#F8FAFC]" />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-slate-400 dark:text-[#94A3B8]">Total GST invoices value</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.2 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-[#10B981] rounded">18% GST</span>
-          </div>
-        </div>
-
-        {/* Non-GST Sales Card */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-slate-500 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-between h-28 relative overflow-hidden group">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Non GST Sales</span>
-            <KPICardValue value={nonGstRevenue} className="text-slate-900 dark:text-[#F8FAFC]" />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-slate-400 dark:text-[#94A3B8]">Exempt / Cash invoices</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.2 bg-slate-50 text-slate-650 dark:bg-slate-900 dark:text-[#CBD5E1] rounded">Tax Free</span>
-          </div>
-        </div>
-
-        {/* GST Invoices Count Card */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-teal-500 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-between h-28 relative overflow-hidden group">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">GST Invoices</span>
-            <p className="text-2xl font-black text-slate-800 dark:text-[#F8FAFC] tracking-tight">{gstCount} <span className="text-xs font-normal text-slate-400">bills</span></p>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-slate-400 dark:text-[#94A3B8]">GST billing count</span>
-            <FileText size={14} className="text-teal-500" />
-          </div>
-        </div>
-
-        {/* Non-GST Invoices Count Card */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-gray-400 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-between h-28 relative overflow-hidden group">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Non GST Invoices</span>
-            <p className="text-2xl font-black text-slate-800 dark:text-[#F8FAFC] tracking-tight">{nonGstCount} <span className="text-xs font-normal text-slate-400">bills</span></p>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-slate-400 dark:text-[#94A3B8]">Standard / Cash count</span>
-            <FileText size={14} className="text-gray-400" />
-          </div>
-        </div>
+      <div className="grid gap-4 xl:grid-cols-4 lg:grid-cols-4 md:grid-cols-2 grid-cols-1 mt-6">
+        <MetricCard
+          header="GST Sales"
+          value={gstRevenue}
+          isCurrency
+          accentColor="border-t-emerald-600"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="18% GST invoices"
+        />
+        <MetricCard
+          header="Non GST Sales"
+          value={nonGstRevenue}
+          isCurrency
+          accentColor="border-t-slate-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Exempt / Cash invoices"
+        />
+        <MetricCard
+          header="GST Invoices"
+          value={`${gstCount} bills`}
+          accentColor="border-t-teal-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="GST billing count"
+        />
+        <MetricCard
+          header="Non GST Invoices"
+          value={`${nonGstCount} bills`}
+          accentColor="border-t-gray-400"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Standard / Cash count"
+        />
       </div>
 
       {/* GST & Non-GST Billing Summaries */}

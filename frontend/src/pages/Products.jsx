@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import KPICardValue from '../components/KPICardValue';
+import MetricCard from '../components/MetricCard';
 
 const empty = { name: '', sku: '', description: '', qty: '', costPrice: '', offlinePrice: '', amazonPrice: '', flipkartPrice: '', meeshoPrice: '', category: 'General', piecesPerBox: '', boxCostPrice: '', boxSellingPrice: '', pieceSellingPrice: '' };
 
@@ -335,76 +336,62 @@ export default function Products() {
       </div>
 
       {/* KPI Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-        {/* Total Products */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-red-600 dark:border-t-red-650 rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 min-h-[140px]">
-          <div className="space-y-1.5">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Products</span>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{totalProducts}</p>
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">
-              Unique catalog count
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-[#1E293B] border border-slate-150 dark:border-[#1E293B] text-slate-500 dark:text-[#CBD5E1] flex items-center justify-center shrink-0">
-            <Box size={22} />
-          </div>
-        </div>
-
-        {/* Inventory Value */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-emerald-600 rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 min-h-[140px]">
-          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Inventory Value</span>
-            <KPICardValue value={totalInventoryValue} className="text-slate-900 dark:text-[#F8FAFC] leading-none" />
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">
-              Valued at cost price
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:text-[#10B981] flex items-center justify-center shrink-0">
-            <IndianRupee size={22} />
-          </div>
-        </div>
-
-        {/* Low Stock */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-amber-500 rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 min-h-[140px]">
-          <div className="space-y-1.5">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Low Stock</span>
-            <p className="text-3xl font-extrabold text-amber-600 dark:text-[#F59E0B] tracking-tight leading-none">{lowStockCount} items</p>
-            <span className="text-[11px] font-semibold text-amber-600 dark:text-[#F59E0B] bg-amber-50/50 dark:bg-amber-950/30 px-2 py-0.5 rounded-full inline-block mt-1">
-              Stock level &lt;= 10
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 dark:bg-amber-950/30 dark:border-amber-900/50 dark:text-[#F59E0B] flex items-center justify-center shrink-0">
-            <AlertTriangle size={22} />
-          </div>
-        </div>
-
-        {/* Out of Stock */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-red-500 dark:border-t-[#EF4444] rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 min-h-[140px]">
-          <div className="space-y-1.5">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Out of Stock</span>
-            <p className="text-3xl font-extrabold text-[#EF4444] tracking-tight leading-none">{outOfStockCount} items</p>
-            <span className="text-[11px] font-semibold text-red-600 dark:text-[#EF4444] bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded-full inline-block mt-1">
-              Depleted inventory
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-100 text-red-650 dark:bg-red-950/30 dark:border-red-900/50 dark:text-[#EF4444] flex items-center justify-center shrink-0">
-            <AlertOctagon size={22} />
-          </div>
-        </div>
-
-        {/* Average Margin */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-blue-500 dark:border-t-blue-650 rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 min-h-[140px]">
-          <div className="space-y-1.5">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Average Margin</span>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{avgMarginPct.toFixed(1)}%</p>
-            <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full inline-block mt-1">
-              Mean product margin
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 text-blue-650 dark:bg-blue-950/30 dark:border-blue-900/50 dark:text-blue-400 flex items-center justify-center shrink-0">
-            <TrendingUp size={22} />
-          </div>
-        </div>
+      <div className="grid gap-6 xl:grid-cols-5 lg:grid-cols-5 md:grid-cols-2 grid-cols-1">
+        <MetricCard
+          header="Total Products"
+          value={`${totalProducts}`}
+          accentColor="border-t-red-600 dark:border-t-red-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Unique catalog count"
+          icon={
+            <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-[#1E293B] border border-slate-150 dark:border-[#1E293B] text-slate-500 dark:text-[#CBD5E1] flex items-center justify-center shrink-0">
+              <Box size={22} />
+            </div>
+          }
+        />
+        <MetricCard
+          header="Inventory Value"
+          value={totalInventoryValue}
+          isCurrency
+          accentColor="border-t-emerald-600"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Valued at cost price"
+          icon={
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:text-[#10B981] flex items-center justify-center shrink-0">
+              <IndianRupee size={22} />
+            </div>
+          }
+        />
+        <MetricCard
+          header="Low Stock"
+          value={`${lowStockCount} items`}
+          accentColor="border-t-amber-500"
+          valueClassName="text-amber-600 dark:text-[#F59E0B]"
+        >
+          <span className="text-[11px] font-semibold text-amber-600 dark:text-[#F59E0B] bg-amber-50/50 dark:bg-amber-950/30 px-2 py-0.5 rounded-full inline-block mt-1">
+            Stock level &lt;= 10
+          </span>
+        </MetricCard>
+        <MetricCard
+          header="Out of Stock"
+          value={`${outOfStockCount} items`}
+          accentColor="border-t-red-500 dark:border-t-[#EF4444]"
+          valueClassName="text-[#EF4444]"
+        >
+          <span className="text-[11px] font-semibold text-red-600 dark:text-[#EF4444] bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded-full inline-block mt-1">
+            Depleted inventory
+          </span>
+        </MetricCard>
+        <MetricCard
+          header="Average Margin"
+          value={`${avgMarginPct.toFixed(1)}%`}
+          accentColor="border-t-blue-500 dark:border-t-blue-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+        >
+          <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 px-2 py-0.5 rounded-full inline-block mt-1">
+            Mean product margin
+          </span>
+        </MetricCard>
       </div>
 
       {/* Product Health Section */}

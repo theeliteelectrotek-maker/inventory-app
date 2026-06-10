@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
+import MetricCard from '../components/MetricCard';
 import SearchableSelect from '../components/SearchableSelect';
 import { useLocation } from 'react-router-dom';
 import {
@@ -565,78 +566,51 @@ export default function Returns() {
       </div>
 
       {/* KPI Cards Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-        {/* Total Returns */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-slate-500 dark:border-t-slate-400 flex flex-col justify-between h-32">
-          <div className="flex justify-between items-center text-slate-400 dark:text-[#94A3B8]">
-            <span className="text-[10px] font-bold uppercase tracking-wider block">Returns Transactions</span>
-            <div className="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg"><Undo2 size={12} /></div>
-          </div>
-          <div>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight">{totalReturnsCount}</p>
-            <p className="text-[10px] text-slate-400 dark:text-[#94A3B8] font-semibold mt-1">Logged requests</p>
-          </div>
-        </div>
-
-        {/* Total Units */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-indigo-500 dark:border-t-indigo-500 flex flex-col justify-between h-32">
-          <div className="flex justify-between items-center text-slate-400 dark:text-[#94A3B8]">
-            <span className="text-[10px] font-bold uppercase tracking-wider block">Total Returned Units</span>
-            <div className="p-1.5 bg-indigo-50 dark:bg-indigo-950/20 rounded-lg text-indigo-505"><Layers size={12} /></div>
-          </div>
-          <div>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight">{totalReturnedUnits}</p>
-            <p className="text-[10px] text-indigo-405 font-semibold mt-1">Cumulative units</p>
-          </div>
-        </div>
-
-        {/* Good/Cleared */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-emerald-500 dark:border-t-emerald-500 flex flex-col justify-between h-32">
-          <div className="flex justify-between items-center text-slate-400 dark:text-[#94A3B8]">
-            <span className="text-[10px] font-bold uppercase tracking-wider block text-emerald-500">Restocked Units</span>
-            <div className="p-1.5 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg text-emerald-500"><CheckCircle2 size={12} /></div>
-          </div>
-          <div>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight">{goodReturnsCount}</p>
-            <p className="text-[10px] text-emerald-500 font-semibold mt-1">Good condition (Sellable)</p>
-          </div>
-        </div>
-
-        {/* Review/Review */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-amber-500 dark:border-t-amber-500 flex flex-col justify-between h-32">
-          <div className="flex justify-between items-center text-slate-400 dark:text-[#94A3B8]">
-            <span className="text-[10px] font-bold uppercase tracking-wider block text-amber-500">Pending Review</span>
-            <div className="p-1.5 bg-amber-50 dark:bg-amber-950/20 rounded-lg text-amber-500"><Clock size={12} /></div>
-          </div>
-          <div>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight">{pendingInspectionCount}</p>
-            <p className="text-[10px] text-amber-505 font-semibold mt-1">Under inspection</p>
-          </div>
-        </div>
-
-        {/* Stock Recovery Value */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-teal-500 dark:border-t-teal-500 flex flex-col justify-between h-32">
-          <div className="flex justify-between items-center text-slate-400 dark:text-[#94A3B8]">
-            <span className="text-[10px] font-bold uppercase tracking-wider block text-teal-600 dark:text-teal-400">Stock Recovered</span>
-            <div className="p-1.5 bg-teal-50 dark:bg-teal-950/20 rounded-lg text-teal-500"><IndianRupee size={12} /></div>
-          </div>
-          <div>
-            <p className="text-xl font-extrabold text-emerald-650 dark:text-emerald-400 tracking-tight truncate" title={fmt(totalStockRecoveredVal)}>{fmt(totalStockRecoveredVal)}</p>
-            <p className="text-[10px] text-emerald-500 font-semibold mt-1">Restocked inventory value</p>
-          </div>
-        </div>
-
-        {/* Damaged Loss Value */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-rose-500 dark:border-t-rose-400 flex flex-col justify-between h-32">
-          <div className="flex justify-between items-center text-slate-400 dark:text-[#94A3B8]">
-            <span className="text-[10px] font-bold uppercase tracking-wider block text-rose-500">Write-off Loss</span>
-            <div className="p-1.5 bg-rose-50 dark:bg-rose-950/20 rounded-lg text-rose-550"><AlertTriangle size={12} /></div>
-          </div>
-          <div>
-            <p className="text-xl font-extrabold text-red-650 dark:text-red-400 tracking-tight truncate" title={fmt(totalDamagedLossVal)}>{fmt(totalDamagedLossVal)}</p>
-            <p className="text-[10px] text-red-500 font-semibold mt-1">Damaged/Scrapped cost loss</p>
-          </div>
-        </div>
+      <div className="grid gap-4 xl:grid-cols-6 lg:grid-cols-4 md:grid-cols-2 grid-cols-1">
+        <MetricCard
+          header="Returns Transactions"
+          value={`${totalReturnsCount}`}
+          accentColor="border-t-slate-500 dark:border-t-slate-400"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Logged requests"
+        />
+        <MetricCard
+          header="Total Returned Units"
+          value={`${totalReturnedUnits}`}
+          accentColor="border-t-indigo-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Cumulative units"
+        />
+        <MetricCard
+          header="Restocked Units"
+          value={`${goodReturnsCount}`}
+          accentColor="border-t-emerald-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Good condition (Sellable)"
+        />
+        <MetricCard
+          header="Pending Review"
+          value={`${pendingInspectionCount}`}
+          accentColor="border-t-amber-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Under inspection"
+        />
+        <MetricCard
+          header="Stock Recovered"
+          value={totalStockRecoveredVal}
+          isCurrency
+          accentColor="border-t-teal-500"
+          valueClassName="text-emerald-650 dark:text-emerald-400"
+          description="Restocked inventory value"
+        />
+        <MetricCard
+          header="Write-off Loss"
+          value={totalDamagedLossVal}
+          isCurrency
+          accentColor="border-t-rose-500 dark:border-t-rose-400"
+          valueClassName="text-red-650 dark:text-red-400"
+          description="Damaged/Scrapped cost loss"
+        />
       </div>
 
       {/* Analytics visualization */}

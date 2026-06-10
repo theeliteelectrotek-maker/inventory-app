@@ -1145,15 +1145,15 @@ export default function OnlineSales() {
       {/* 3. Marketplace KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Online Card */}
-        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border-t-4 border-t-indigo-600 border-x border-b border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between min-h-[150px]">
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border-t-4 border-t-indigo-600 border-x border-b border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between min-h-[150px] min-w-0 overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1E293B] pb-2.5">
             <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50 px-2.5 py-0.5 rounded-xl">
               Total Online
             </span>
             <span className="text-[9px] font-extrabold text-slate-805 dark:text-[#F8FAFC]">All Platforms</span>
           </div>
-          <div className="mt-3.5 space-y-2.5">
-            <div>
+          <div className="mt-3.5 space-y-2.5 min-w-0">
+            <div className="min-w-0">
               <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue</span>
               <KPICardValue value={currentKPIs.total.revenue} className="text-[#111827] dark:text-[#F8FAFC]" />
             </div>
@@ -1171,15 +1171,15 @@ export default function OnlineSales() {
         </div>
 
         {/* Amazon Card */}
-        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border-t-4 border-t-orange-500 border-x border-b border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between min-h-[150px]">
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border-t-4 border-t-orange-500 border-x border-b border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between min-h-[150px] min-w-0 overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1E293B] pb-2.5">
             <span className="text-[10px] font-black uppercase tracking-wider bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-900/50 px-2.5 py-0.5 rounded-xl">
               Amazon
             </span>
             <span className="text-[9px] font-extrabold text-slate-805 dark:text-[#F8FAFC]">Marketplace</span>
           </div>
-          <div className="mt-3.5 space-y-2.5">
-            <div>
+          <div className="mt-3.5 space-y-2.5 min-w-0">
+            <div className="min-w-0">
               <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue</span>
               <KPICardValue value={currentKPIs.amazon.revenue} className="text-[#111827] dark:text-[#F8FAFC]" />
             </div>
@@ -1197,15 +1197,15 @@ export default function OnlineSales() {
         </div>
 
         {/* Flipkart Card */}
-        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border-t-4 border-t-blue-500 border-x border-b border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between min-h-[150px]">
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border-t-4 border-t-blue-500 border-x border-b border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between min-h-[150px] min-w-0 overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1E293B] pb-2.5">
             <span className="text-[10px] font-black uppercase tracking-wider bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 px-2.5 py-0.5 rounded-xl">
               Flipkart
             </span>
             <span className="text-[9px] font-extrabold text-slate-805 dark:text-[#F8FAFC]">Marketplace</span>
           </div>
-          <div className="mt-3.5 space-y-2.5">
-            <div>
+          <div className="mt-3.5 space-y-2.5 min-w-0">
+            <div className="min-w-0">
               <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue</span>
               <KPICardValue value={currentKPIs.flipkart.revenue} className="text-[#111827] dark:text-[#F8FAFC]" />
             </div>
@@ -1223,15 +1223,15 @@ export default function OnlineSales() {
         </div>
 
         {/* Meesho Card */}
-        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border-t-4 border-t-pink-500 border-x border-b border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between min-h-[150px]">
+        <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 border-t-4 border-t-pink-500 border-x border-b border-slate-200 dark:border-[#1E293B] shadow-md dark:shadow-none flex flex-col justify-between min-h-[150px] min-w-0 overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1E293B] pb-2.5">
             <span className="text-[10px] font-black uppercase tracking-wider bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-400 border border-pink-200 dark:border-pink-900/50 px-2.5 py-0.5 rounded-xl">
               Meesho
             </span>
             <span className="text-[9px] font-extrabold text-slate-805 dark:text-[#F8FAFC]">Marketplace</span>
           </div>
-          <div className="mt-3.5 space-y-2.5">
-            <div>
+          <div className="mt-3.5 space-y-2.5 min-w-0">
+            <div className="min-w-0">
               <span className="text-[8px] font-bold text-slate-600 dark:text-[#94A3B8] uppercase tracking-wider block">Revenue</span>
               <KPICardValue value={currentKPIs.meesho.revenue} className="text-[#111827] dark:text-[#F8FAFC]" />
             </div>

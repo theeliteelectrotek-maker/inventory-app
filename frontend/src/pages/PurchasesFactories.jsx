@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useIsDarkMode } from '../context/ThemeContext';
 import KPICardValue from '../components/KPICardValue';
+import MetricCard from '../components/MetricCard';
 
 // --- General Modal Component ---
 function Modal({ title, onClose, children }) {
@@ -604,23 +605,39 @@ export default function PurchasesFactories() {
               )}
 
               {/* KPI cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                {[
-                  { label: 'Total Supplier Due', val: formatRupees(stats.totalSupplierDue), desc: 'Gross outstanding liability', color: 'border-t-red-500' },
-                  { label: 'Total Supplier Advance', val: formatRupees(stats.totalSupplierAdvance), desc: 'Prepaid materials balance', color: 'border-t-emerald-500' },
-                  { label: 'Net Supplier Exposure', val: stats.netSupplierExposure < 0 ? `-${formatRupees(Math.abs(stats.netSupplierExposure))}` : formatRupees(stats.netSupplierExposure), desc: 'Net accounts payable exposure', color: 'border-t-indigo-500' },
-                  { label: 'This Month Payments', val: formatRupees(stats.thisMonthPayments), desc: 'Gross payments this month', color: 'border-t-teal-500' }
-                ].map((c, i) => (
-                  <div key={i} className={`bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 ${c.color} hover:shadow-md transition-all flex flex-col justify-between h-32`}>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">{c.label}</span>
-                      <p className="text-2xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight mt-1 truncate">{c.val}</p>
-                    </div>
-                    <span className="text-[10px] font-medium text-slate-400 dark:text-[#94A3B8] bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-lg inline-block w-fit truncate">
-                      {c.desc}
-                    </span>
-                  </div>
-                ))}
+              <div className="grid gap-6 xl:grid-cols-4 lg:grid-cols-4 md:grid-cols-2 grid-cols-1">
+                <MetricCard
+                  header="Total Supplier Due"
+                  value={stats.totalSupplierDue}
+                  isCurrency
+                  accentColor="border-t-red-500"
+                  valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+                  description="Gross outstanding liability"
+                />
+                <MetricCard
+                  header="Total Supplier Advance"
+                  value={stats.totalSupplierAdvance}
+                  isCurrency
+                  accentColor="border-t-emerald-500"
+                  valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+                  description="Prepaid materials balance"
+                />
+                <MetricCard
+                  header="Net Supplier Exposure"
+                  value={Math.abs(stats.netSupplierExposure)}
+                  isCurrency
+                  accentColor="border-t-indigo-500"
+                  valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+                  description="Net accounts payable"
+                />
+                <MetricCard
+                  header="This Month Payments"
+                  value={stats.thisMonthPayments}
+                  isCurrency
+                  accentColor="border-t-teal-500"
+                  valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+                  description="Gross payments this month"
+                />
               </div>
 
               {/* Grid of recent ledger payments & top factories */}

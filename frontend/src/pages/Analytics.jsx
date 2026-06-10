@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useIsDarkMode } from '../context/ThemeContext';
 import KPICardValue from '../components/KPICardValue';
+import MetricCard from '../components/MetricCard';
 
 // --- Date Range Presets Helper ---
 const getTodayStr = (offsetDays = 0) => {
@@ -667,126 +668,122 @@ export default function Analytics() {
               )}
 
                {/* Profitability Overview Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6">
-                {/* Revenue */}
-                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
-                  <div className="space-y-1.5">
-                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Revenue</span>
-                    <KPICardValue value={overview.revenue} className="text-slate-900 dark:text-[#F8FAFC] leading-none" />
-                  </div>
-                  <div className="mt-4 text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] bg-slate-50 dark:bg-[#1E293B] px-2.5 py-1 rounded-lg self-start">
-                    Gross sales receipts
-                  </div>
-                </div>
-
-                {/* COGS */}
-                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#3B82F6] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
-                  <div className="space-y-1.5">
-                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Product Cost (COGS)</span>
-                    <KPICardValue value={overview.productCost} className="text-slate-900 dark:text-[#F8FAFC] leading-none" />
-                  </div>
-                  <div className="mt-4 text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] bg-slate-50 dark:bg-[#1E293B] px-2.5 py-1 rounded-lg self-start">
-                    Cost of materials sold
-                  </div>
-                </div>
-
-                {/* Gross Profit */}
-                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
-                  <div className="space-y-1.5">
-                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Gross Profit</span>
-                    <KPICardValue value={overview.grossProfit} className="text-slate-900 dark:text-[#F8FAFC] leading-none" />
-                  </div>
-                  <div className="mt-4 flex items-center gap-1 text-[10px] font-extrabold text-emerald-600 dark:text-[#10B981] bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-lg self-start">
+              <div className="grid gap-6 xl:grid-cols-6 lg:grid-cols-4 md:grid-cols-2 grid-cols-1">
+                <MetricCard
+                  header="Total Revenue"
+                  value={overview.revenue}
+                  isCurrency
+                  accentColor="border-t-[#10B981]"
+                  valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+                  description="Gross sales receipts"
+                />
+                <MetricCard
+                  header="Product Cost (COGS)"
+                  value={overview.productCost}
+                  isCurrency
+                  accentColor="border-t-[#3B82F6]"
+                  valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+                  description="Cost of materials sold"
+                />
+                <MetricCard
+                  header="Gross Profit"
+                  value={overview.grossProfit}
+                  isCurrency
+                  accentColor="border-t-[#10B981]"
+                  valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+                >
+                  <div className="flex items-center gap-1 text-[10px] font-extrabold text-emerald-600 dark:text-[#10B981] bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-lg self-start">
                     <TrendingUp size={12} /> {overview.revenue > 0 ? ((overview.grossProfit / overview.revenue) * 100).toFixed(0) : 0}% margin
                   </div>
-                </div>
-
-                {/* Returns Cost */}
-                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#EF4444] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
-                  <div className="space-y-1.5">
-                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Returns Cost</span>
-                    <KPICardValue value={overview.returnsValue} className="text-[#EF4444] leading-none" />
-                  </div>
-                  <div className="mt-4 text-[10px] font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2.5 py-1 rounded-lg self-start">
-                    Lost returned sales value
-                  </div>
-                </div>
-
-                {/* Net Profit */}
-                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-5 shadow-md shadow-[#10B981]/10 dark:shadow-none flex flex-col justify-between relative overflow-hidden ring-2 ring-[#10B981] dark:ring-[#10B981] ring-offset-2 dark:ring-offset-[#0F172A] hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
-                  <div className="space-y-1.5">
-                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Net Profit</span>
-                    <KPICardValue value={overview.netProfit} className="text-emerald-600 dark:text-[#10B981] leading-none" />
-                  </div>
-                  <div className={`mt-4 flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-1 rounded-lg self-start ${
+                </MetricCard>
+                <MetricCard
+                  header="Returns Cost"
+                  value={overview.returnsValue}
+                  isCurrency
+                  accentColor="border-t-[#EF4444]"
+                  valueClassName="text-[#EF4444]"
+                  description="Lost returned sales value"
+                />
+                <MetricCard
+                  header="Net Profit"
+                  value={overview.netProfit}
+                  isCurrency
+                  accentColor="border-t-[#10B981]"
+                  valueClassName="text-emerald-600 dark:text-[#10B981]"
+                  highlighted
+                  ringColor="ring-[#10B981]"
+                >
+                  <div className={`flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-1 rounded-lg self-start ${
                     overview.netProfit >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-[#10B981]' : 'bg-red-50 text-red-650 dark:bg-red-950/30 dark:text-[#EF4444]'
                   }`}>
                     {overview.netProfit >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                     {overview.revenue > 0 ? ((overview.netProfit / overview.revenue) * 100).toFixed(0) : 0}% net margin
                   </div>
-                </div>
-
-                {/* Units Sold */}
-                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#3B82F6] rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex flex-col justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
-                  <div className="space-y-1.5">
-                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Units Sold</span>
-                    <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">{overview.unitsSold || 0} pcs</p>
-                  </div>
-                  <div className="mt-4 flex items-center gap-1 text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] bg-slate-50 dark:bg-[#1E293B] px-2.5 py-1 rounded-lg self-start">
+                </MetricCard>
+                <MetricCard
+                  header="Units Sold"
+                  value={`${overview.unitsSold || 0} pcs`}
+                  accentColor="border-t-[#3B82F6]"
+                  valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+                >
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 dark:text-[#94A3B8] bg-slate-50 dark:bg-[#1E293B] px-2.5 py-1 rounded-lg self-start">
                     <Percent size={12} className="text-orange-500" /> {overview.returnPercentage ? overview.returnPercentage.toFixed(1) : 0}% returns
                   </div>
-                </div>
+                </MetricCard>
               </div>
 
               {/* PIECE & BOX SELLING TELEMETRY */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-                {/* Pieces Sold */}
-                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-purple-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
-                  <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Pieces Sold</span>
-                    <p className="text-2xl font-extrabold text-slate-900 dark:text-[#F8FAFC] leading-none mt-1">{(overview.totalPiecesSold || 0).toLocaleString('en-IN')}</p>
-                    <span className="text-[10px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1">Single unit pieces sold</span>
-                  </div>
-                  <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 text-purple-500 flex items-center justify-center shrink-0">
-                    <Tag size={20} />
-                  </div>
-                </div>
-
-                {/* Boxes Sold */}
-                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-pink-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
-                  <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Boxes Sold</span>
-                    <p className="text-2xl font-extrabold text-slate-900 dark:text-[#F8FAFC] leading-none mt-1">{(overview.totalBoxesSold || 0).toLocaleString('en-IN')}</p>
-                    <span className="text-[10px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1">Box packaging sold</span>
-                  </div>
-                  <div className="w-12 h-12 rounded-xl bg-pink-50 dark:bg-pink-950/30 border border-pink-100 dark:border-pink-900/50 text-pink-500 flex items-center justify-center shrink-0">
-                    <Package size={20} />
-                  </div>
-                </div>
-
-                {/* Revenue from Pieces */}
-                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-emerald-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
-                  <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Piece Sales Revenue</span>
-                    <KPICardValue value={overview.revenueFromPieceSales} className="text-slate-900 dark:text-[#F8FAFC] leading-none text-2xl" />
-                    <span className="text-[10px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1">Revenue from pieces</span>
-                  </div>
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
-                    <IndianRupee size={20} />
-                  </div>
-                </div>
-
-                {/* Revenue from Boxes */}
-                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-blue-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 transition-all duration-300">
-                  <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-                    <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Box Sales Revenue</span>
-                    <KPICardValue value={overview.revenueFromBoxSales} className="text-slate-900 dark:text-[#F8FAFC] leading-none text-2xl" />
-                    <span className="text-[10px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1">Revenue from boxes</span>
-                  </div>
-                  <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 text-blue-500 flex items-center justify-center shrink-0">
-                    <IndianRupee size={20} />
-                  </div>
-                </div>
+              <div className="grid gap-6 xl:grid-cols-4 lg:grid-cols-4 md:grid-cols-2 grid-cols-1 mt-6">
+                <MetricCard
+                  header="Pieces Sold"
+                  value={(overview.totalPiecesSold || 0).toLocaleString('en-IN')}
+                  accentColor="border-t-purple-500"
+                  valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+                  description="Single unit pieces sold"
+                  icon={
+                    <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 text-purple-500 flex items-center justify-center shrink-0">
+                      <Tag size={20} />
+                    </div>
+                  }
+                />
+                <MetricCard
+                  header="Boxes Sold"
+                  value={(overview.totalBoxesSold || 0).toLocaleString('en-IN')}
+                  accentColor="border-t-pink-500"
+                  valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+                  description="Box packaging sold"
+                  icon={
+                    <div className="w-12 h-12 rounded-xl bg-pink-50 dark:bg-pink-950/30 border border-pink-100 dark:border-pink-900/50 text-pink-500 flex items-center justify-center shrink-0">
+                      <Package size={20} />
+                    </div>
+                  }
+                />
+                <MetricCard
+                  header="Piece Sales Revenue"
+                  value={overview.revenueFromPieceSales}
+                  isCurrency
+                  accentColor="border-t-emerald-500"
+                  valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+                  description="Revenue from pieces"
+                  icon={
+                    <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
+                      <IndianRupee size={20} />
+                    </div>
+                  }
+                />
+                <MetricCard
+                  header="Box Sales Revenue"
+                  value={overview.revenueFromBoxSales}
+                  isCurrency
+                  accentColor="border-t-blue-500"
+                  valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+                  description="Revenue from boxes"
+                  icon={
+                    <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 text-blue-500 flex items-center justify-center shrink-0">
+                      <IndianRupee size={20} />
+                    </div>
+                  }
+                />
               </div>
 
               {/* Profit Trends and Platform Share charts */}

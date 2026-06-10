@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from 'react-router-dom';
 import KPICardValue from '../components/KPICardValue';
+import MetricCard from '../components/MetricCard';
 
 const empty = { name: '', type: 'shop', ownerName: '', mobile: '', address: '', gstNumber: '', notes: '' };
 
@@ -386,102 +387,53 @@ export default function Shops() {
       </div>
 
       {/* Top CRM KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-        {/* Total Shops */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-slate-500 dark:border-t-slate-400 hover:shadow-md transition-all flex flex-col justify-between h-32">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Customers</span>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight mt-1">{totalShops}</p>
-          </div>
-          <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-slate-500 dark:text-[#CBD5E1] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg inline-block">
-              Accounts Registered
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-[#334155] text-slate-500 dark:text-slate-400 flex items-center justify-center flex-shrink-0">
-              <Building2 size={16} />
-            </div>
-          </div>
-        </div>
-
-        {/* Active Shops */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-emerald-500 dark:border-t-emerald-500 hover:shadow-md transition-all flex flex-col justify-between h-32">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Active Customers</span>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight mt-1">{activeShops}</p>
-          </div>
-          <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-lg inline-block">
-              With billing logs
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-[#334155] text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
-              <CheckCircle2 size={16} />
-            </div>
-          </div>
-        </div>
-
-        {/* Total Sales */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-indigo-500 dark:border-t-indigo-550 hover:shadow-md transition-all flex flex-col justify-between h-32">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Lifetime Sales</span>
-            <KPICardValue value={totalSalesVal} className="text-slate-900 dark:text-[#F8FAFC]" />
-          </div>
-          <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-indigo-650 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20 px-2 py-0.5 rounded-lg inline-block">
-              Gross billed amount
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-[#334155] text-indigo-600 dark:text-indigo-450 flex items-center justify-center flex-shrink-0">
-              <TrendingUp size={16} />
-            </div>
-          </div>
-        </div>
-
-        {/* Amount Collected */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-teal-500 dark:border-t-teal-500 hover:shadow-md transition-all flex flex-col justify-between h-32">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Collected</span>
-            <KPICardValue value={totalCollectedVal} className="text-slate-900 dark:text-[#F8FAFC]" />
-          </div>
-          <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-teal-650 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/20 px-2 py-0.5 rounded-lg inline-block">
-              Payments settled
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-[#334155] text-teal-650 dark:text-teal-450 flex items-center justify-center flex-shrink-0">
-              <Landmark size={16} />
-            </div>
-          </div>
-        </div>
-
-        {/* Outstanding Dues */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-red-500 dark:border-t-red-550 hover:shadow-md transition-all flex flex-col justify-between h-32">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Total Outstanding</span>
-            <KPICardValue value={totalOutstandingVal} className="text-red-650 dark:text-red-405" />
-          </div>
-          <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-red-650 dark:text-red-400 bg-red-50 dark:bg-red-950/20 px-2 py-0.5 rounded-lg inline-block">
-              Outstanding dues
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-[#334155] text-red-500 dark:text-red-405 flex items-center justify-center flex-shrink-0">
-              <AlertTriangle size={16} />
-            </div>
-          </div>
-        </div>
-
-        {/* Avg customer value */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-[#334155] border-t-4 border-t-blue-500 dark:border-t-blue-500 hover:shadow-md transition-all flex flex-col justify-between h-32">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-400 dark:text-[#94A3B8] uppercase tracking-wider block">Average Shop LTV</span>
-            <KPICardValue value={avgCustomerLtv} className="text-slate-900 dark:text-[#F8FAFC]" />
-          </div>
-          <div className="flex items-center justify-between mt-4">
-            <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 px-2 py-0.5 rounded-lg inline-block">
-              Sales per customer
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-[#334155] text-blue-650 dark:text-blue-450 flex items-center justify-center flex-shrink-0">
-              <IndianRupee size={16} />
-            </div>
-          </div>
-        </div>
+      <div className="grid gap-4 xl:grid-cols-6 lg:grid-cols-3 md:grid-cols-2 grid-cols-1">
+        <MetricCard
+          header="Total Customers"
+          value={`${totalShops}`}
+          accentColor="border-t-slate-500 dark:border-t-slate-400"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Accounts Registered"
+        />
+        <MetricCard
+          header="Active Customers"
+          value={`${activeShops}`}
+          accentColor="border-t-emerald-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="With billing logs"
+        />
+        <MetricCard
+          header="Lifetime Sales"
+          value={totalSalesVal}
+          isCurrency
+          accentColor="border-t-indigo-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Gross billed amount"
+        />
+        <MetricCard
+          header="Total Collected"
+          value={totalCollectedVal}
+          isCurrency
+          accentColor="border-t-teal-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Payments settled"
+        />
+        <MetricCard
+          header="Total Outstanding"
+          value={totalOutstandingVal}
+          isCurrency
+          accentColor="border-t-red-500"
+          valueClassName="text-red-650 dark:text-red-400"
+          description="Outstanding dues"
+        />
+        <MetricCard
+          header="Average Shop LTV"
+          value={avgCustomerLtv}
+          isCurrency
+          accentColor="border-t-blue-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Sales per customer"
+        />
       </div>
 
       {/* CRM Insight Leaderboards */}

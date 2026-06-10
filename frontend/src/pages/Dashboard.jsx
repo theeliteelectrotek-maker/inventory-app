@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import KPICardValue from '../components/KPICardValue';
+import MetricCard from '../components/MetricCard';
 
 function parseLocalDate(dateStr) {
   if (!dateStr) return new Date();
@@ -321,54 +322,58 @@ export default function Dashboard() {
       </div>
 
       {/* ROW 1: 4 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total Sales Today */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
-          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Sales Today</span>
-            <KPICardValue value={salesToday} className="text-slate-900 dark:text-[#F8FAFC] leading-none" />
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">Online & Offline orders</span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
-            <ShoppingCart size={22} />
-          </div>
-        </div>
-
-        {/* Total Collections Today */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#10B981] rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
-          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Collections Today</span>
-            <KPICardValue value={collectionsToday} className="text-[#10B981] leading-none" />
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">Total payments collected</span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
-            <IndianRupee size={22} />
-          </div>
-        </div>
-
-        {/* Total Pending Dues */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#EF4444] rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
-          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Outstanding Dues</span>
-            <KPICardValue value={totalPendingDues} className="text-[#EF4444] leading-none" />
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">Awaiting shop clearances</span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 text-[#EF4444] flex items-center justify-center shrink-0">
-            <Clock size={22} />
-          </div>
-        </div>
-
-        {/* Low Stock Count */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-[#F59E0B] rounded-2xl p-6 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
-          <div className="space-y-1.5">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Low Stock Items</span>
-            <p className="text-3xl font-extrabold text-[#F59E0B] tracking-tight leading-none">{lowStockCount}</p>
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1.5">SKUs running low (&lt;= 20)</span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 text-[#F59E0B] flex items-center justify-center shrink-0">
-            <Package size={22} />
-          </div>
-        </div>
+      <div className="grid gap-6 xl:grid-cols-4 lg:grid-cols-4 md:grid-cols-2 grid-cols-1">
+        <MetricCard
+          header="Total Sales Today"
+          value={salesToday}
+          isCurrency
+          accentColor="border-t-[#10B981]"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Online & Offline orders"
+          icon={
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
+              <ShoppingCart size={22} />
+            </div>
+          }
+        />
+        <MetricCard
+          header="Collections Today"
+          value={collectionsToday}
+          isCurrency
+          accentColor="border-t-[#10B981]"
+          valueClassName="text-[#10B981]"
+          description="Total payments collected"
+          icon={
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
+              <IndianRupee size={22} />
+            </div>
+          }
+        />
+        <MetricCard
+          header="Total Outstanding Dues"
+          value={totalPendingDues}
+          isCurrency
+          accentColor="border-t-[#EF4444]"
+          valueClassName="text-[#EF4444]"
+          description="Awaiting shop clearances"
+          icon={
+            <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 text-[#EF4444] flex items-center justify-center shrink-0">
+              <Clock size={22} />
+            </div>
+          }
+        />
+        <MetricCard
+          header="Low Stock Items"
+          value={`${lowStockCount}`}
+          accentColor="border-t-[#F59E0B]"
+          valueClassName="text-[#F59E0B]"
+          description="SKUs running low (<= 20)"
+          icon={
+            <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 text-[#F59E0B] flex items-center justify-center shrink-0">
+              <Package size={22} />
+            </div>
+          }
+        />
       </div>
 
       {/* CUSTOMER COUNTS SUB-ROW */}
@@ -407,54 +412,57 @@ export default function Dashboard() {
       </div>
 
       {/* PIECE & BOX SELLING TELEMETRY */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Pieces Sold */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-purple-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
-          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Pieces Sold</span>
-            <p className="text-2xl font-extrabold text-slate-900 dark:text-[#F8FAFC] leading-none mt-1">{(stats.totalPiecesSold || 0).toLocaleString('en-IN')}</p>
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1">Single unit sales</span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 text-purple-500 flex items-center justify-center shrink-0">
-            <Tag size={20} />
-          </div>
-        </div>
-
-        {/* Boxes Sold */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-pink-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
-          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Total Boxes Sold</span>
-            <p className="text-2xl font-extrabold text-slate-900 dark:text-[#F8FAFC] leading-none mt-1">{(stats.totalBoxesSold || 0).toLocaleString('en-IN')}</p>
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1">Box packaging sales</span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-pink-50 dark:bg-pink-950/30 border border-pink-100 dark:border-pink-900/50 text-pink-500 flex items-center justify-center shrink-0">
-            <Package size={20} />
-          </div>
-        </div>
-
-        {/* Revenue from Pieces */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-emerald-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
-          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Piece Sales Revenue</span>
-            <KPICardValue value={stats.revenueFromPieceSales} className="text-slate-900 dark:text-[#F8FAFC] leading-none text-2xl" />
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1">Income from piece items</span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
-            <IndianRupee size={20} />
-          </div>
-        </div>
-
-        {/* Revenue from Boxes */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#1E293B] border-t-4 border-t-blue-500 rounded-2xl p-5 shadow-md shadow-slate-100/50 dark:shadow-none flex items-center justify-between hover:shadow-lg dark:hover:shadow-none transition-all duration-300 hover:-translate-y-0.5">
-          <div className="space-y-1.5 flex-1 min-w-0 pr-2">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider block">Box Sales Revenue</span>
-            <KPICardValue value={stats.revenueFromBoxSales} className="text-slate-900 dark:text-[#F8FAFC] leading-none text-2xl" />
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-[#94A3B8] block pt-1">Income from box items</span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 text-blue-500 flex items-center justify-center shrink-0">
-            <IndianRupee size={20} />
-          </div>
-        </div>
+      <div className="grid gap-6 xl:grid-cols-4 lg:grid-cols-4 md:grid-cols-2 grid-cols-1">
+        <MetricCard
+          header="Total Pieces Sold"
+          value={(stats.totalPiecesSold || 0).toLocaleString('en-IN')}
+          accentColor="border-t-purple-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Single unit sales"
+          icon={
+            <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 text-purple-500 flex items-center justify-center shrink-0">
+              <Tag size={20} />
+            </div>
+          }
+        />
+        <MetricCard
+          header="Total Boxes Sold"
+          value={(stats.totalBoxesSold || 0).toLocaleString('en-IN')}
+          accentColor="border-t-pink-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Box packaging sales"
+          icon={
+            <div className="w-12 h-12 rounded-xl bg-pink-50 dark:bg-pink-950/30 border border-pink-100 dark:border-pink-900/50 text-pink-500 flex items-center justify-center shrink-0">
+              <Package size={20} />
+            </div>
+          }
+        />
+        <MetricCard
+          header="Piece Sales Revenue"
+          value={stats.revenueFromPieceSales}
+          isCurrency
+          accentColor="border-t-emerald-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Income from piece items"
+          icon={
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 text-[#10B981] flex items-center justify-center shrink-0">
+              <IndianRupee size={20} />
+            </div>
+          }
+        />
+        <MetricCard
+          header="Box Sales Revenue"
+          value={stats.revenueFromBoxSales}
+          isCurrency
+          accentColor="border-t-blue-500"
+          valueClassName="text-slate-900 dark:text-[#F8FAFC]"
+          description="Income from box items"
+          icon={
+            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 text-blue-500 flex items-center justify-center shrink-0">
+              <IndianRupee size={20} />
+            </div>
+          }
+        />
       </div>
 
       {/* ROW 2: Transaction Tables Split */}
