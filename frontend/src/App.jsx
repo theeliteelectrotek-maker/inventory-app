@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
+import ProductDetails from './pages/ProductDetails';
 import OnlineSales from './pages/OnlineSales';
 import OfflineSales from './pages/OfflineSales';
 import Shops from './pages/Shops';
@@ -103,6 +104,7 @@ export default function App() {
               <Route index element={<Dashboard />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="products" element={<Products />} />
+              <Route path="products/details" element={<ProductDetails />} />
               <Route path="online-sales" element={<OnlineSales />} />
               <Route path="offline-sales" element={<OfflineSales />} />
               <Route path="shops" element={<Shops />} />

@@ -265,6 +265,31 @@ async function getRequestUser(req) {
   return 'System';
 }
 
+async function logProductPriceChange(userOrName, product, oldOfflinePrice, newOfflinePrice, triggerSource) {
+  if (Number(oldOfflinePrice) === Number(newOfflinePrice)) return;
+  
+  const timestamp = new Date().toISOString();
+  let userString = 'System';
+  
+  if (userOrName && typeof userOrName === 'object') {
+    userString = `${userOrName.name} (@${userOrName.username})`;
+  } else if (typeof userOrName === 'string') {
+    userString = userOrName;
+  }
+  
+  // 1. Console logging
+  console.log(`[PRICE CHANGE DEBUG] Product ID: ${product.id} | Name: "${product.name}" | Old Offline Price: ${oldOfflinePrice} | New Offline Price: ${newOfflinePrice} | Trigger Source: ${triggerSource} | User: ${userString} | Timestamp: ${timestamp}`);
+  
+  // 2. Persistent audit log
+  const audit = new AuditLog({
+    id: uuidv4(),
+    user: userString,
+    time: timestamp,
+    action: `Offline price changed for "${product.name}" (ID: ${product.id}) from ₹${oldOfflinePrice} to ₹${newOfflinePrice} via ${triggerSource}`
+  });
+  await audit.save();
+}
+
 function calculateReceivedAmount(transactions) {
   return (transactions || []).reduce((sum, t) => {
     if (t.method === 'cash' || t.method === 'upi') {
@@ -554,7 +579,7 @@ if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('<db_password>')) {
       await runSupplierMigration();
     })
     .catch((err) => {
-      console.error('❌ MongoDB Connection Error:', err.message);
+      console.error('❌ MongoDB Connection Error:', err.stack || err);
       if (err.message.includes('timeout')) {
         console.error('TIP: This is usually because the Render IP address is not whitelisted in MongoDB Atlas Network Access.');
       }
@@ -623,38 +648,103 @@ app.post('/api/admin/log-action', requireAuth, requireAdmin, catchAsync(async (r
   res.json({ success: true });
 }));
 
+// Temporary auth debug endpoint
+app.get('/api/debug/auth', catchAsync(async (req, res) => {
+  const dbConnected = mongoose.connection.readyState === 1;
+  let userCount = 0;
+  let adminUserFound = false;
+  if (dbConnected) {
+    userCount = await User.countDocuments();
+    const admin = await User.findOne({ role: { $regex: /^admin$/i } });
+    adminUserFound = !!admin;
+  }
+  const jwtConfigured = !!process.env.JWT_SECRET;
+  
+  res.json({
+    databaseConnected: dbConnected,
+    userCount,
+    adminUserFound,
+    jwtConfigured
+  });
+}));
+
+// Temporary pricing debug endpoint
+app.get('/api/debug/pricing', catchAsync(async (req, res) => {
+  const dbConnected = mongoose.connection.readyState === 1;
+  let productCount = 0;
+  let priceSample = [];
+  if (dbConnected) {
+    productCount = await Product.countDocuments();
+    const samples = await Product.find({}, 'id name offlinePrice unitPrice costPrice').limit(5);
+    priceSample = samples.map(p => ({
+      id: p.id,
+      name: p.name,
+      offlinePrice: p.offlinePrice,
+      unitPrice: p.unitPrice,
+      costPrice: p.costPrice
+    }));
+  }
+  res.json({
+    databaseConnected: dbConnected,
+    productCount,
+    priceSample
+  });
+}));
+
 // AUTH
 app.post('/api/auth/login', catchAsync(async (req, res) => {
+  console.log(`[AUTH DEBUG] Incoming login request: URL=${req.url}, Method=${req.method}, IP=${req.ip}`);
   const { username, password } = req.body;
-  if (!username || !password)
+  if (!username || !password) {
+    console.warn(`[AUTH DEBUG] Login attempt failed: Missing username or password.`);
     return res.status(400).json({ message: 'Username and password required' });
+  }
   
-  console.log(`[AUTH DEBUG] Login attempt for username: "${username}"`);
-  const user = await User.findOne({ username });
+  console.log(`[AUTH DEBUG] Username lookup for: "${username}"`);
+  let user;
+  try {
+    user = await User.findOne({ username });
+  } catch (err) {
+    console.error(`[AUTH DEBUG] Database error during username lookup for "${username}":`, err.stack || err);
+    throw err;
+  }
+
   if (!user) {
-    console.log(`[AUTH DEBUG] User "${username}" not found in database.`);
+    console.warn(`[AUTH DEBUG] Login attempt failed: User "${username}" not found in database.`);
     return res.status(401).json({ message: 'Invalid credentials' });
   }
-  console.log(`[AUTH DEBUG] User "${username}" found. Role: ${user.role}, Disabled: ${user.disabled}`);
+  console.log(`[AUTH DEBUG] User "${username}" found. ID: ${user.id}, Role: ${user.role}, Disabled: ${user.disabled}`);
 
-  const matched = comparePassword(password, user.password);
+  console.log(`[AUTH DEBUG] Password verification starting for user: "${username}"`);
+  let matched = false;
+  try {
+    matched = comparePassword(password, user.password);
+  } catch (err) {
+    console.error(`[AUTH DEBUG] Password verification error for user "${username}":`, err.stack || err);
+    throw err;
+  }
   console.log(`[AUTH DEBUG] Password comparison result: ${matched}`);
 
   if (!matched) {
-    console.log(`[AUTH DEBUG] Password comparison failed for user "${username}".`);
+    console.warn(`[AUTH DEBUG] Login attempt failed: Password comparison failed for user "${username}".`);
     return res.status(401).json({ message: 'Invalid credentials' });
   }
 
-  // Auto-upgrade legacy hash (SHA-256 or plain text) to bcrypt on successful login
+  // Auto-upgrade legacy hash (SHA-255 or plain text) to bcrypt on successful login
   if (!isBcryptHash(user.password)) {
     console.log(`[AUTH DEBUG] Upgrading legacy password hash to bcrypt for user "${username}".`);
-    user.password = hashPassword(password);
-    await user.save();
-    console.log(`[AUTH DEBUG] Password hash upgraded to bcrypt successfully.`);
+    try {
+      user.password = hashPassword(password);
+      await user.save();
+      console.log(`[AUTH DEBUG] Password hash upgraded to bcrypt successfully.`);
+    } catch (err) {
+      console.error(`[AUTH DEBUG] Database error during password hash upgrade for "${username}":`, err.stack || err);
+      throw err;
+    }
   }
 
   if (user.disabled) {
-    console.log(`[AUTH DEBUG] Account is disabled for user "${username}".`);
+    console.warn(`[AUTH DEBUG] Login attempt failed: Account is disabled for user "${username}".`);
     return res.status(403).json({ message: 'Account is disabled. Please contact administrator.' });
   }
 
@@ -682,19 +772,34 @@ app.post('/api/auth/login', catchAsync(async (req, res) => {
     ip,
     lastLogin: new Date().toISOString()
   });
-  await user.save();
 
-  const audit = new AuditLog({
-    id: uuidv4(),
-    user: `${user.name} (@${user.username})`,
-    time: new Date().toISOString(),
-    action: 'Logged in'
-  });
-  await audit.save();
+  console.log(`[AUTH DEBUG] Session generation starting: user="${username}", sessionId="${sessionId}", IP="${ip}", device="${device}"`);
+  try {
+    await user.save();
+  } catch (err) {
+    console.error(`[AUTH DEBUG] Database error during session save for user "${username}":`, err.stack || err);
+    throw err;
+  }
+
+  try {
+    const audit = new AuditLog({
+      id: uuidv4(),
+      user: `${user.name} (@${user.username})`,
+      time: new Date().toISOString(),
+      action: 'Logged in'
+    });
+    await audit.save();
+  } catch (err) {
+    console.error(`[AUTH DEBUG] Database error during AuditLog save for user "${username}":`, err.stack || err);
+  }
 
   const userObj = user.toObject();
   const { password: _, _id, __v, ...safe } = userObj;
-  res.json({ user: safe, token: `token_${user.id}_${sessionId}_${Date.now()}` });
+  
+  const token = `token_${user.id}_${sessionId}_${Date.now()}`;
+  console.log(`[AUTH DEBUG] Token generated successfully for user "${username}": ${token.substring(0, 15)}...`);
+  
+  res.json({ user: safe, token });
 }));
 
 app.post('/api/auth/register', catchAsync(async (req, res) => {
@@ -743,6 +848,12 @@ app.post('/api/products', catchAsync(async (req, res) => {
     pieceSellingPrice: pieceSellingPrice !== undefined ? Number(pieceSellingPrice) : 0
   });
   await product.save();
+  
+  const userStr = await getRequestUser(req);
+  if (Number(offlinePrice) > 0) {
+    await logProductPriceChange(userStr, product, 0, Number(offlinePrice), 'Product Creation API');
+  }
+  
   res.json(product);
 }));
 
@@ -762,18 +873,78 @@ app.put('/api/products/:id', catchAsync(async (req, res) => {
   }
   updateData.updatedAt = new Date().toISOString();
 
+  const existingProduct = await Product.findOne({ id: req.params.id });
+  if (!existingProduct) return res.status(404).json({ message: 'Product not found' });
+
+  const oldOfflinePrice = existingProduct.offlinePrice || 0;
+  const newOfflinePrice = updateData.offlinePrice !== undefined ? Number(updateData.offlinePrice) : oldOfflinePrice;
+
+  const requestUserStr = await getRequestUser(req);
+  await logProductPriceChange(requestUserStr, existingProduct, oldOfflinePrice, newOfflinePrice, 'Product Update API');
+
   const product = await Product.findOneAndUpdate(
     { id: req.params.id },
     updateData,
     { new: true }
   ).select('-_id -__v');
-  if (!product) return res.status(404).json({ message: 'Product not found' });
+
   res.json(product);
 }));
 
-app.delete('/api/products/:id', catchAsync(async (req, res) => {
-  await Product.findOneAndDelete({ id: req.params.id });
-  res.json({ message: 'Deleted' });
+app.delete('/api/products/:id', requireAuth, catchAsync(async (req, res) => {
+  const productId = req.params.id;
+  console.log(`[DELETE PRODUCT] User "${req.user?.username}" (role: ${req.user?.role}) requesting delete for product ID: "${productId}"`);
+  
+  // 1. Admin-only check
+  if (req.user?.role !== 'admin') {
+    console.log(`[DELETE PRODUCT] DENIED - user role "${req.user?.role}" is not admin`);
+    return res.status(403).json({ message: 'Access Denied - Only administrators can delete products' });
+  }
+
+  // 2. Check product exists
+  const product = await Product.findOne({ id: productId });
+  if (!product) {
+    console.log(`[DELETE PRODUCT] Product not found: "${productId}"`);
+    return res.status(404).json({ message: 'Product not found' });
+  }
+  console.log(`[DELETE PRODUCT] Found product: "${product.name}" (ID: ${productId})`);
+
+  // 3. Check for linked online sales
+  const linkedOnlineSales = await OnlineSale.countDocuments({ productId: productId });
+  if (linkedOnlineSales > 0) {
+    console.log(`[DELETE PRODUCT] BLOCKED - ${linkedOnlineSales} online sales linked to "${product.name}"`);
+    return res.status(400).json({ 
+      message: `Cannot delete "${product.name}": ${linkedOnlineSales} online sales record(s) are linked to this product. Remove linked sales first.` 
+    });
+  }
+
+  // 4. Check for linked offline sales
+  const linkedOfflineSales = await OfflineSale.countDocuments({ 'items.productId': productId });
+  if (linkedOfflineSales > 0) {
+    console.log(`[DELETE PRODUCT] BLOCKED - ${linkedOfflineSales} offline sales linked to "${product.name}"`);
+    return res.status(400).json({ 
+      message: `Cannot delete "${product.name}": ${linkedOfflineSales} offline sales record(s) are linked to this product. Remove linked sales first.` 
+    });
+  }
+
+  // 5. Perform deletion
+  await Product.findOneAndDelete({ id: productId });
+  console.log(`[DELETE PRODUCT] SUCCESS - Deleted "${product.name}" (ID: ${productId})`);
+
+  // 6. Audit log
+  try {
+    const audit = new AuditLog({
+      id: `audit_${Date.now()}`,
+      user: req.user?.name || req.user?.username || 'Unknown',
+      action: `Deleted product "${product.name}" (ID: ${productId}, Cost: ₹${product.costPrice || 0}, Stock: ${product.availableQty || 0})`,
+      time: new Date().toISOString()
+    });
+    await audit.save();
+  } catch (auditErr) {
+    console.warn('[DELETE PRODUCT] Audit log failed:', auditErr.message);
+  }
+
+  res.json({ message: `Product "${product.name}" deleted successfully` });
 }));
 
 // ONLINE SALES
@@ -2796,10 +2967,15 @@ app.post('/api/import/preview', requireAuth, requireAdmin, catchAsync(async (req
       const totalQty = Number(getImportRowValue(rawRow, ['totalqty', 'qty', 'quantity', 'stock']) || 0);
       const availableQty = Number(getImportRowValue(rawRow, ['availableqty', 'qty', 'quantity', 'availstock']) || totalQty);
       
-      const costPrice = Number(getImportRowValue(rawRow, ['costprice', 'cost', 'purchaseprice']) || 0);
-      const unitPrice = Number(getImportRowValue(rawRow, ['unitprice', 'price', 'rate', 'sellingprice']) || 0);
-      const offlinePrice = Number(getImportRowValue(rawRow, ['offlineprice', 'wholesaleprice']) || unitPrice);
-      const onlinePrice = Number(getImportRowValue(rawRow, ['onlineprice', 'retailprice']) || unitPrice);
+      const rawCostPrice = getImportRowValue(rawRow, ['costprice', 'cost', 'purchaseprice']);
+      const rawUnitPrice = getImportRowValue(rawRow, ['unitprice', 'price', 'rate', 'sellingprice']);
+      const rawOfflinePrice = getImportRowValue(rawRow, ['offlineprice', 'wholesaleprice']);
+      const rawOnlinePrice = getImportRowValue(rawRow, ['onlineprice', 'retailprice']);
+
+      const costPrice = rawCostPrice !== undefined ? Number(rawCostPrice) : undefined;
+      const unitPrice = rawUnitPrice !== undefined ? Number(rawUnitPrice) : undefined;
+      const offlinePrice = rawOfflinePrice !== undefined ? Number(rawOfflinePrice) : (unitPrice !== undefined ? unitPrice : undefined);
+      const onlinePrice = rawOnlinePrice !== undefined ? Number(rawOnlinePrice) : (unitPrice !== undefined ? unitPrice : undefined);
 
       if (!name) {
         errors.push('Product Name is required.');
@@ -2807,7 +2983,7 @@ app.post('/api/import/preview', requireAuth, requireAdmin, catchAsync(async (req
       if (isNaN(totalQty) || totalQty < 0) {
         errors.push('Quantity must be a positive number.');
       }
-      if (unitPrice < 0 || costPrice < 0) {
+      if ((unitPrice !== undefined && unitPrice < 0) || (costPrice !== undefined && costPrice < 0)) {
         errors.push('Prices cannot be negative.');
       }
 
@@ -2963,6 +3139,11 @@ app.post('/api/import/confirm', requireAuth, requireAdmin, catchAsync(async (req
       }
 
       if (existing) {
+        const oldOfflinePrice = existing.offlinePrice || 0;
+        const newOfflinePrice = r.offlinePrice !== undefined ? r.offlinePrice : oldOfflinePrice;
+        
+        await logProductPriceChange(user, existing, oldOfflinePrice, newOfflinePrice, 'Product Catalog Bulk Import');
+
         existing.category = r.category || existing.category;
         existing.description = r.description || existing.description;
         existing.totalQty = r.totalQty !== undefined ? r.totalQty : existing.totalQty;
@@ -2984,10 +3165,14 @@ app.post('/api/import/confirm', requireAuth, requireAdmin, catchAsync(async (req
           availableQty: r.availableQty !== undefined ? r.availableQty : (r.totalQty || 0),
           costPrice: r.costPrice || 0,
           unitPrice: r.unitPrice || 0,
-          offlinePrice: r.offlinePrice || r.unitPrice || 0,
-          onlinePrice: r.onlinePrice || r.unitPrice || 0
+          offlinePrice: r.offlinePrice !== undefined ? r.offlinePrice : (r.unitPrice || 0),
+          onlinePrice: r.onlinePrice !== undefined ? r.onlinePrice : (r.unitPrice || 0)
         });
         await newProduct.save();
+
+        if (newProduct.offlinePrice > 0) {
+          await logProductPriceChange(user, newProduct, 0, newProduct.offlinePrice, 'Product Catalog Bulk Import (Create)');
+        }
       }
       successCount++;
     }
@@ -3022,6 +3207,11 @@ app.post('/api/import/confirm', requireAuth, requireAdmin, catchAsync(async (req
     for (const r of records) {
       const match = await Product.findOne({ id: r.id });
       if (match) {
+        const oldOfflinePrice = match.offlinePrice || 0;
+        const newOfflinePrice = r.offlinePrice !== undefined ? r.offlinePrice : oldOfflinePrice;
+
+        await logProductPriceChange(user, match, oldOfflinePrice, newOfflinePrice, 'Price-List Bulk Import');
+
         match.costPrice = r.costPrice !== undefined ? r.costPrice : match.costPrice;
         match.unitPrice = r.unitPrice !== undefined ? r.unitPrice : match.unitPrice;
         match.offlinePrice = r.offlinePrice !== undefined ? r.offlinePrice : match.offlinePrice;

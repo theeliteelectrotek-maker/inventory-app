@@ -8,7 +8,7 @@ import { io } from 'socket.io-client';
 import {
   LayoutDashboard, Package, ShoppingCart, Store,
   LogOut, Menu, Building2, Undo2, BarChart3, Database, Settings, ArrowLeftRight, MessageSquare, KeyRound,
-  Factory, X
+  Factory, X, Box
 } from 'lucide-react';
 import logo from '../logo.png';
 
@@ -17,6 +17,8 @@ const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { to: '/analytics', label: 'Business Analytics', icon: BarChart3 },
   { to: '/products', label: 'Products', icon: Package },
+  { to: '/products', label: 'Products Performance', icon: Package, isSubItem: true, exact: true },
+  { to: '/products/details', label: 'Products Management', icon: Box, isSubItem: true },
   { to: '/online-sales', label: 'Online Sales', icon: ShoppingCart },
   { to: '/shops', label: 'Customer Management', icon: Building2 },
   { to: '/offline-sales', label: 'Offline Sales', icon: Store },
