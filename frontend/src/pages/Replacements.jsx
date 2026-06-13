@@ -65,17 +65,21 @@ const emptyForm = () => ({
   mobile: '',
   cityState: '',
   dealerCode: '',
-  productId: '',
-  productName: '',
-  productCategory: 'General',
-  sku: '',
-  batchNumber: '',
-  qty: '1',
-  invoiceNumber: '',
-  invoiceDate: '',
-  reason: REASONS[0],
-  condition: CONDITIONS[0],
-  productImages: [],
+  products: [
+    {
+      productId: '',
+      productName: '',
+      category: 'General',
+      sku: '',
+      batchNumber: '',
+      quantity: 1,
+      invoiceNo: '',
+      invoiceDate: '',
+      replacementReason: REASONS[0],
+      productCondition: CONDITIONS[0],
+      damageImages: []
+    }
+  ],
   invoiceCopy: [],
   damageProof: [],
   additionalDocs: [],
@@ -144,6 +148,9 @@ export default function Replacements() {
   const [activeTab, setActiveTab] = useState('all');
 
   const [form, setForm] = useState(emptyForm());
+  const formProductsCount = form.products ? form.products.length : 0;
+  const formTotalQuantity = form.products ? form.products.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0) : 0;
+  const [expandedIndices, setExpandedIndices] = useState({ 0: true });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [previewImage, setPreviewImage] = useState(null);
@@ -194,35 +201,140 @@ export default function Replacements() {
   };
 
   useEffect(() => {
-    const selectedProd = products.find(p => p.id === form.productId);
-    const costPrice = selectedProd ? (selectedProd.costPrice || selectedProd.offlinePrice || 0) : 0;
-    const qtyNum = Number(form.qty) || 0;
-    const calculatedCost = costPrice * qtyNum;
+    if (!form.products || form.products.length === 0) return;
     
+    let totalCost = 0;
+    let totalRetailVal = 0;
+    
+    form.products.forEach(item => {
+      const selectedProd = products.find(p => p.id === item.productId);
+      if (selectedProd) {
+        const costPrice = selectedProd.costPrice || selectedProd.offlinePrice || 0;
+        const retailPrice = selectedProd.offlinePrice || selectedProd.unitPrice || 0;
+        const qtyNum = Number(item.quantity) || 0;
+        totalCost += costPrice * qtyNum;
+        totalRetailVal += retailPrice * qtyNum;
+      }
+    });
+
     setForm(prev => {
-      if (prev.replacementCost !== calculatedCost) {
+      if (prev.replacementCost !== totalCost || prev.productValue !== totalRetailVal) {
         return {
           ...prev,
-          replacementCost: calculatedCost,
-          netLoss: calculatedCost - (prev.recoveryAmount || 0)
+          replacementCost: totalCost,
+          productValue: totalRetailVal,
+          netLoss: totalCost - (prev.recoveryAmount || 0)
         };
       }
       return prev;
     });
-  }, [form.productId, form.qty, products]);
+  }, [form.products, products]);
 
-  const handleProductSelect = (productId) => {
+  const handleProductSelect = (index, productId) => {
+    console.log(`[DEBUG] handleProductSelect index=${index} productId=${productId}`);
     const selectedProd = products.find(p => p.id === productId);
+    console.log(`[DEBUG] selectedProd found:`, selectedProd ? selectedProd.name : 'NOT FOUND');
     if (selectedProd) {
-      setForm(prev => ({
-        ...prev,
-        productId: selectedProd.id,
-        productName: selectedProd.name,
-        sku: selectedProd.sku || '',
-        productCategory: selectedProd.category || 'General',
-        productValue: selectedProd.offlinePrice || selectedProd.unitPrice || 0
-      }));
+      setForm(prev => {
+        const newProducts = [...prev.products];
+        newProducts[index] = {
+          ...newProducts[index],
+          productId: selectedProd.id,
+          productName: selectedProd.name,
+          sku: selectedProd.sku || '',
+          category: selectedProd.category || 'General'
+        };
+        return { ...prev, products: newProducts };
+      });
     }
+  };
+
+  const updateProductField = (index, field, value) => {
+    setForm(prev => {
+      const newProducts = [...prev.products];
+      newProducts[index] = {
+        ...newProducts[index],
+        [field]: value
+      };
+      return { ...prev, products: newProducts };
+    });
+  };
+
+  const addProductRow = () => {
+    setForm(prev => {
+      const newProducts = [
+        ...prev.products,
+        {
+          productId: '',
+          productName: '',
+          category: 'General',
+          sku: '',
+          batchNumber: '',
+          quantity: 1,
+          invoiceNo: '',
+          invoiceDate: '',
+          replacementReason: REASONS[0],
+          productCondition: CONDITIONS[0],
+          damageImages: []
+        }
+      ];
+      setExpandedIndices(prevExpanded => ({
+        ...prevExpanded,
+        [newProducts.length - 1]: true
+      }));
+      return { ...prev, products: newProducts };
+    });
+  };
+
+  const removeProductRow = (index) => {
+    setForm(prev => {
+      const newProducts = prev.products.filter((_, i) => i !== index);
+      setExpandedIndices(prevExpanded => {
+        const nextExpanded = {};
+        newProducts.forEach((_, i) => {
+          const oldIndex = i < index ? i : i + 1;
+          nextExpanded[i] = prevExpanded[oldIndex] !== undefined ? prevExpanded[oldIndex] : true;
+        });
+        return nextExpanded;
+      });
+      return { ...prev, products: newProducts };
+    });
+  };
+
+  const toggleRowExpanded = (index) => {
+    setExpandedIndices(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  const handleProductFileChange = (index, e) => {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setForm(prev => {
+          const newProducts = [...prev.products];
+          newProducts[index] = {
+            ...newProducts[index],
+            damageImages: [...(newProducts[index].damageImages || []), reader.result]
+          };
+          return { ...prev, products: newProducts };
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeProductImage = (prodIndex, imgIndex) => {
+    setForm(prev => {
+      const newProducts = [...prev.products];
+      newProducts[prodIndex] = {
+        ...newProducts[prodIndex],
+        damageImages: newProducts[prodIndex].damageImages.filter((_, i) => i !== imgIndex)
+      };
+      return { ...prev, products: newProducts };
+    });
   };
 
   const handleFileChange = (e, field) => {
@@ -255,10 +367,77 @@ export default function Replacements() {
     });
   };
 
+  const handleEditClick = (r) => {
+    const normalizedProducts = (r.products && r.products.length > 0)
+      ? r.products.map(p => ({
+          productId: p.productId,
+          productName: p.productName,
+          category: p.productCategory || 'General',
+          sku: p.sku || '',
+          batchNumber: p.batchNumber || '',
+          quantity: p.qty || 1,
+          invoiceNo: p.invoiceNumber || '',
+          invoiceDate: p.invoiceDate || '',
+          replacementReason: p.reason || REASONS[0],
+          productCondition: p.condition || CONDITIONS[0],
+          damageImages: p.productImages || []
+        }))
+      : [
+          {
+            productId: r.productId,
+            productName: r.productName,
+            category: r.productCategory || 'General',
+            sku: r.sku || '',
+            batchNumber: r.batchNumber || '',
+            quantity: r.qty || 1,
+            invoiceNo: r.invoiceNumber || '',
+            invoiceDate: r.invoiceDate || '',
+            replacementReason: r.reason || REASONS[0],
+            productCondition: r.condition || CONDITIONS[0],
+            damageImages: r.productImages || []
+          }
+        ];
+
+    const nextExpanded = {};
+    normalizedProducts.forEach((_, i) => {
+      nextExpanded[i] = i === 0;
+    });
+
+    setForm({
+      ...r,
+      products: normalizedProducts
+    });
+    setExpandedIndices(nextExpanded);
+    setEditingRequest(r);
+    setError('');
+    setShowModal(true);
+  };
+
   async function handleSubmit(e) {
     e.preventDefault();
     setSaving(true);
     setError('');
+
+    // Validation
+    if (!form.products || form.products.length === 0) {
+      setError('At least one product is required.');
+      setSaving(false);
+      return;
+    }
+
+    const emptyProduct = form.products.some(it => !it.productId);
+    if (emptyProduct) {
+      setError('Please select a registered product for all product cards.');
+      setSaving(false);
+      return;
+    }
+
+    const invalidQty = form.products.some(it => Number(it.quantity) <= 0);
+    if (invalidQty) {
+      setError('Product quantity must be greater than zero.');
+      setSaving(false);
+      return;
+    }
 
     try {
       let finalForm = { ...form };
@@ -274,6 +453,7 @@ export default function Replacements() {
       setShowModal(false);
       setForm(emptyForm());
       setEditingRequest(null);
+      setExpandedIndices({ 0: true });
       // Re-fetch to sync updated product stocks
       fetchData();
     } catch (err) {
@@ -321,7 +501,10 @@ export default function Replacements() {
   const pendingRequests = replacements.filter(r => r.status === 'Pending' || r.status === 'Under Review').length;
   const approvedRequests = replacements.filter(r => r.status === 'Approved').length;
   const rejectedRequests = replacements.filter(r => r.status === 'Rejected').length;
-  const totalValue = replacements.reduce((sum, r) => sum + (r.productValue * (r.qty || 1)), 0);
+  const totalValue = replacements.reduce((sum, r) => {
+    const recordTotal = (r.products && r.products.length > 0) ? r.productValue : (r.productValue * (r.qty || 1));
+    return sum + recordTotal;
+  }, 0);
   
   const completedRequests = replacements.filter(r => r.status === 'Completed' || r.status === 'Dispatched').length;
   const completionRate = totalClaims > 0 ? Math.round((completedRequests / totalClaims) * 100) : 0;
@@ -348,7 +531,8 @@ export default function Replacements() {
         const found = trend.find(t => t.key === yrMth);
         if (found) {
           found.count += 1;
-          found.value += (r.productValue * r.qty);
+          const recordTotal = (r.products && r.products.length > 0) ? r.productValue : (r.productValue * (r.qty || 1));
+          found.value += recordTotal;
         }
       }
     });
@@ -784,10 +968,24 @@ export default function Replacements() {
                       <div className="flex items-center gap-2">
                         <span className="font-extrabold text-sm text-slate-800 dark:text-[#F8FAFC] tracking-tight">{r.productName}</span>
                         {r.sku && <span className="text-[9px] px-1.5 py-0.2 bg-slate-50 dark:bg-slate-800 text-slate-550 dark:text-slate-400 border border-slate-150 dark:border-slate-800 rounded font-mono font-bold uppercase">{r.sku}</span>}
+                        {r.products && r.products.length > 1 && (
+                          <span className="text-[9px] px-1.5 py-0.2 bg-red-500/10 text-red-500 border border-red-500/20 rounded font-bold shrink-0">
+                            +{r.products.length - 1} More
+                          </span>
+                        )}
                       </div>
-                      <p className="text-[10px] text-slate-400 dark:text-[#94A3B8] font-semibold flex items-center gap-1">
+                      <p className="text-[10px] text-slate-405 dark:text-[#94A3B8] font-semibold flex items-center gap-1">
                         <Calendar size={11} /> Date: {r.date || r.createdAt?.split('T')[0]} · Qty: <span className="text-slate-800 dark:text-slate-250 font-bold">{r.qty}</span>
                       </p>
+                      {r.products && r.products.length > 1 && (
+                        <div className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold max-h-[45px] overflow-y-auto scrollbar-thin pl-1 border-l border-slate-150 dark:border-slate-800 space-y-0.5 mt-1">
+                          {r.products.map((p, idx) => (
+                            <div key={idx} className="truncate">
+                              · {p.productName} (x{p.qty})
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -816,7 +1014,7 @@ export default function Replacements() {
                   <div className="flex items-center justify-between md:justify-end gap-3.5 border-t md:border-t-0 pt-3 md:pt-0 border-slate-50 dark:border-slate-800 shrink-0">
                     <span className={`px-2.5 py-1 text-[10px] font-extrabold border rounded-full capitalize ${statusColor}`}>
                       {r.status}
-                    </span>
+            </span>
 
                     <div className="flex items-center gap-1">
                       <button onClick={() => setDetailsModal(r)} title="View Details"
@@ -824,7 +1022,7 @@ export default function Replacements() {
                         <Eye size={14} />
                       </button>
 
-                      <button onClick={() => { setForm(r); setEditingRequest(r); setError(''); setShowModal(true); }} title="Edit Claim"
+                      <button onClick={() => handleEditClick(r)} title="Edit Claim"
                         className="p-2 rounded-xl text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-850 hover:text-slate-700 dark:hover:text-[#F8FAFC] transition-all">
                         <Pencil size={14} />
                       </button>
@@ -844,7 +1042,7 @@ export default function Replacements() {
 
       {/* Log/Edit Replacement Modal */}
       {showModal && (
-        <Modal title={editingRequest ? "Edit Replacement Request" : "Log New Replacement Request"} onClose={() => setShowModal(false)}>
+        <Modal title={editingRequest ? "Edit Replacement Request" : "Log New Replacement Request"} onClose={() => setShowModal(false)} maxWidth="max-w-4xl">
           <form onSubmit={handleSubmit} className="space-y-6 text-slate-700 dark:text-[#CBD5E1]">
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl p-3.5 text-xs font-bold flex items-center gap-2">
@@ -896,123 +1094,171 @@ export default function Replacements() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Dealer Code / GSTIN</label>
-                  <input type="text" value={form.dealerCode} onChange={(e) => setForm({ ...form, dealerCode: e.target.value })} placeholder="GST number or dealer reference..."
+                  <input type="text" value={form.dealerCode || ''} onChange={(e) => setForm({ ...form, dealerCode: e.target.value })} placeholder="GST number or dealer reference..."
                     className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
                 </div>
               </div>
             </div>
 
-            {/* Product Details */}
-            <div className="space-y-3.5 border-b border-slate-150 dark:border-slate-850 pb-5">
-              <h4 className="text-xs font-extrabold uppercase text-[#EF4444] tracking-wider flex items-center gap-1.5">
-                <Layers size={14} /> 2. Product Details
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Select Registered Product *</label>
-                  <SearchableSelect
-                    options={productSelectOptions}
-                    value={form.productId}
-                    onChange={handleProductSelect}
-                    placeholder="Search/Select product SKU..."
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Category</label>
-                    <input type="text" value={form.productCategory} onChange={(e) => setForm({ ...form, productCategory: e.target.value })} placeholder="Category..."
-                      className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">SKU / Code</label>
-                    <input type="text" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="Product code..."
-                      className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
-                  </div>
-                </div>
+            {/* Repeatable Products List */}
+            <div className="space-y-4 border-b border-slate-150 dark:border-slate-850 pb-5">
+              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
+                <h4 className="text-xs font-extrabold uppercase text-[#EF4444] tracking-wider flex items-center gap-1.5">
+                  <Layers size={14} /> 2. Product Details matrix
+                </h4>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Batch Number</label>
-                  <input type="text" value={form.batchNumber} onChange={(e) => setForm({ ...form, batchNumber: e.target.value })} placeholder="Batch manufacturing code..."
-                    className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Quantity *</label>
-                  <input type="number" required min="1" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} placeholder="Quantity..."
-                    className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Invoice No.</label>
-                    <input type="text" value={form.invoiceNumber} onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })} placeholder="Inv Ref..."
-                      className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Invoice Date</label>
-                    <input type="date" value={form.invoiceDate} onChange={(e) => setForm({ ...form, invoiceDate: e.target.value })}
-                      className="w-full h-[42px] px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-xs bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
-                  </div>
-                </div>
+              <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1 scrollbar-thin">
+                {form.products && form.products.map((item, idx) => {
+                  const isExpanded = expandedIndices[idx] !== false;
+                  return (
+                    <div key={idx} className="border border-slate-200 dark:border-[#334155] rounded-2xl bg-slate-50/50 dark:bg-[#0F172A]/40 overflow-hidden transition-all duration-300">
+                      {/* Card Header (Collapsible toggle + Delete button) */}
+                      <div className="flex justify-between items-center px-4 py-2.5 bg-slate-100/60 dark:bg-slate-800/60 border-b border-slate-200 dark:border-[#334155]">
+                        <button type="button" onClick={() => toggleRowExpanded(idx)}
+                          className="flex items-center gap-2 font-extrabold text-xs text-slate-700 dark:text-[#F8FAFC]">
+                          <span className="text-[10px] text-red-500 font-black">Product {idx + 1}</span>
+                          {item.productName ? (
+                            <span className="truncate max-w-[200px] font-bold text-slate-500 dark:text-slate-400">({item.productName})</span>
+                          ) : (
+                            <span className="italic text-slate-400 font-medium">(No product selected)</span>
+                          )}
+                          <span className="text-[9px] text-slate-400 dark:text-slate-500">
+                            {isExpanded ? '▲' : '▼'}
+                          </span>
+                        </button>
+
+                        {idx > 0 && (
+                          <button type="button" onClick={() => removeProductRow(idx)}
+                            className="flex items-center gap-1 text-[10px] font-bold text-rose-500 hover:text-rose-600 transition-colors bg-rose-50 dark:bg-rose-950/20 px-2.5 py-1 rounded-lg">
+                            <Trash2 size={12} /> Remove
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Card Body (Visible only when expanded) */}
+                      {isExpanded && (
+                        <div className="p-4 space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Product Selector */}
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Select Registered Product *</label>
+                              <SearchableSelect
+                                options={productSelectOptions}
+                                value={item.productId}
+                                onChange={(val) => handleProductSelect(idx, val)}
+                                placeholder="Search/Select product SKU..."
+                                required
+                              />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                              {/* Category */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Category</label>
+                                <input type="text" value={item.category || ''} onChange={(e) => updateProductField(idx, 'category', e.target.value)} placeholder="Category..."
+                                  className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
+                              </div>
+                              {/* SKU */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">SKU / Code</label>
+                                <input type="text" value={item.sku || ''} onChange={(e) => updateProductField(idx, 'sku', e.target.value)} placeholder="Product code..."
+                                  className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Batch Number */}
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Batch Number</label>
+                              <input type="text" value={item.batchNumber || ''} onChange={(e) => updateProductField(idx, 'batchNumber', e.target.value)} placeholder="Batch number..."
+                                className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
+                            </div>
+                            {/* Quantity */}
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Quantity *</label>
+                              <input type="number" required min="1" value={item.quantity || 1} onChange={(e) => updateProductField(idx, 'quantity', e.target.value)} placeholder="Quantity..."
+                                className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
+                            </div>
+                            {/* Invoice number / date */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Invoice No.</label>
+                                <input type="text" value={item.invoiceNo || ''} onChange={(e) => updateProductField(idx, 'invoiceNo', e.target.value)} placeholder="Inv..."
+                                  className="w-full h-[42px] px-4 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Invoice Date</label>
+                                <input type="date" value={item.invoiceDate || ''} onChange={(e) => updateProductField(idx, 'invoiceDate', e.target.value)}
+                                  className="w-full h-[42px] px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-xs bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none" />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Reason */}
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Replacement Reason *</label>
+                              <select required value={item.replacementReason} onChange={(e) => updateProductField(idx, 'replacementReason', e.target.value)}
+                                className="w-full h-[42px] px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none">
+                                {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                              </select>
+                            </div>
+                            {/* Condition */}
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Product Condition *</label>
+                              <select required value={item.productCondition} onChange={(e) => updateProductField(idx, 'productCondition', e.target.value)}
+                                className="w-full h-[42px] px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none">
+                                {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Damage Images Upload block */}
+                          <div className="p-3.5 bg-slate-100/60 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <label className="font-bold text-[10px] uppercase text-slate-555 dark:text-slate-400 block mb-1">Product Damage Images</label>
+                            <input type="file" multiple accept="image/*" onChange={(e) => handleProductFileChange(idx, e)} className="text-[11px] block mt-1" />
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {(item.damageImages || []).map((img, i) => (
+                                <div key={i} className="relative w-12 h-12 rounded border overflow-hidden shrink-0">
+                                  <img src={img} className="w-full h-full object-cover" />
+                                  <button type="button" onClick={() => removeProductImage(idx, i)} className="absolute top-0 right-0 p-0.5 bg-red-650 text-white rounded-bl"><X size={10} /></button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add Another Product Button wrapper */}
+              <div className="sticky bottom-0 bg-white dark:bg-[#1E293B] py-3 z-10 flex justify-center border-t border-slate-150 dark:border-slate-800">
+                <button type="button" onClick={addProductRow}
+                  className="flex items-center gap-1.5 px-6 py-2.5 bg-slate-850 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm">
+                  ➕ Add Another Product
+                </button>
               </div>
             </div>
 
-            {/* Reasons & Condition */}
-            <div className="space-y-3.5 border-b border-slate-150 dark:border-slate-850 pb-5">
-              <h4 className="text-xs font-extrabold uppercase text-[#EF4444] tracking-wider flex items-center gap-1.5">
-                <AlertTriangle size={14} /> 3. Claim Parameters
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Replacement Reason *</label>
-                  <select required value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                    className="w-full h-[42px] px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none">
-                    {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Product Condition *</label>
-                  <select required value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })}
-                    className="w-full h-[42px] px-3 py-2 border border-slate-200 dark:border-[#334155] rounded-xl text-sm bg-white dark:bg-[#1E293B] focus:ring-2 focus:ring-red-500 focus:outline-none">
-                    {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Documents and Evidence */}
+            {/* Invoices copies Upload (Overall) */}
             <div className="space-y-3.5 border-b border-slate-150 dark:border-slate-850 pb-5 text-xs">
               <h4 className="text-xs font-extrabold uppercase text-[#EF4444] tracking-wider flex items-center gap-1.5">
-                <FileText size={14} /> 4. Evidence Uploads (Base64)
+                <FileText size={14} /> 3. Evidence & Invoices Upload (Overall)
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Images */}
-                <div className="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-150 dark:border-slate-800">
-                  <label className="font-bold text-[10px] uppercase text-slate-550 dark:text-slate-400 block mb-1">Product Damage Images</label>
-                  <input type="file" multiple accept="image/*" onChange={(e) => handleFileChange(e, 'productImages')} className="text-[11px] block mt-1" />
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {form.productImages.map((img, i) => (
-                      <div key={i} className="relative w-12 h-12 rounded border overflow-hidden shrink-0">
-                        <img src={img} className="w-full h-full object-cover" />
-                        <button type="button" onClick={() => removeEvidenceFile('productImages', i)} className="absolute top-0 right-0 p-0.5 bg-red-600 text-white rounded-bl"><X size={10} /></button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Invoice Copy */}
-                <div className="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-150 dark:border-slate-800">
-                  <label className="font-bold text-[10px] uppercase text-slate-550 dark:text-slate-400 block mb-1">Invoice Copy/Bill Proof</label>
-                  <input type="file" multiple accept="image/*,application/pdf" onChange={(e) => handleFileChange(e, 'invoiceCopy')} className="text-[11px] block mt-1" />
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {form.invoiceCopy.map((img, i) => (
-                      <div key={i} className="relative w-12 h-12 rounded border overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                        {img.startsWith('data:application/pdf') ? <FileText size={16} /> : <img src={img} className="w-full h-full object-cover" />}
-                        <button type="button" onClick={() => removeEvidenceFile('invoiceCopy', i)} className="absolute top-0 right-0 p-0.5 bg-red-600 text-white rounded-bl"><X size={10} /></button>
-                      </div>
-                    ))}
-                  </div>
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-150 dark:border-slate-800">
+                <label className="font-bold text-[10px] uppercase text-slate-550 dark:text-slate-400 block mb-1">Invoice Copy/Bill Proof</label>
+                <input type="file" multiple accept="image/*,application/pdf" onChange={(e) => handleFileChange(e, 'invoiceCopy')} className="text-[11px] block mt-1" />
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {form.invoiceCopy.map((img, i) => (
+                    <div key={i} className="relative w-12 h-12 rounded border overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                      {img.startsWith('data:application/pdf') ? <FileText size={16} /> : <img src={img} className="w-full h-full object-cover" />}
+                      <button type="button" onClick={() => removeEvidenceFile('invoiceCopy', i)} className="absolute top-0 right-0 p-0.5 bg-red-650 text-white rounded-bl"><X size={10} /></button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1067,6 +1313,19 @@ export default function Replacements() {
               <h4 className="text-xs font-extrabold uppercase text-[#EF4444] tracking-wider flex items-center gap-1.5">
                 <IndianRupee size={14} /> 6. ERP Financial Impact (INR)
               </h4>
+
+              {/* Summary Stats Strip */}
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 p-4.5 rounded-2xl">
+                <div className="p-3 bg-white dark:bg-[#1E293B] border border-slate-150 dark:border-slate-800 rounded-xl text-center">
+                  <p className="text-slate-400 dark:text-slate-500 text-[8px] uppercase font-bold">Total Products</p>
+                  <p className="font-black text-slate-850 dark:text-[#F8FAFC] text-sm mt-0.5">{formProductsCount} Product(s)</p>
+                </div>
+                <div className="p-3 bg-white dark:bg-[#1E293B] border border-slate-150 dark:border-slate-800 rounded-xl text-center">
+                  <p className="text-slate-400 dark:text-slate-500 text-[8px] uppercase font-bold">Total Quantity</p>
+                  <p className="font-black text-slate-850 dark:text-[#F8FAFC] text-sm mt-0.5">{formTotalQuantity} unit(s)</p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Retail Value</label>
@@ -1106,28 +1365,37 @@ export default function Replacements() {
         </Modal>
       )}
 
-      {/* Claim Detail View Modal */}
-      {detailsModal && (() => {
+           {detailsModal && (() => {
         const r = detailsModal;
         const statusColor = STATUS_COLORS[r.status] || 'bg-slate-100 text-slate-600 border-slate-200';
         return (
-          <Modal title="Replacement Request Dossier" onClose={() => setDetailsModal(null)}>
+          <Modal title="Replacement Request Dossier" onClose={() => setDetailsModal(null)} maxWidth="max-w-4xl">
             <div className="space-y-6 text-xs text-slate-650 dark:text-[#CBD5E1] font-medium">
               
               {/* Product Identity Banner */}
               <div className="flex items-center gap-3.5 border-b border-slate-100 dark:border-[#334155] pb-4">
                 <ProductThumbnail name={r.productName} />
                 <div className="space-y-0.5">
-                  <h4 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-sm">{r.productName}</h4>
+                  <h4 className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-sm">
+                    {r.products && r.products.length > 1 ? "Multi-Product Replacement Claim" : r.productName}
+                  </h4>
                   <div className="flex items-center gap-2 mt-0.5">
-                    {r.sku && <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-[#334155] px-1.5 py-0.2 font-mono">SKU: {r.sku}</span>}
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-[#334155] px-1.5 py-0.2">Category: {r.productCategory}</span>
+                    {r.products && r.products.length > 1 ? (
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-[#334155] px-1.5 py-0.2">
+                        Contains {r.products.length} Products
+                      </span>
+                    ) : (
+                      <>
+                        {r.sku && <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-[#334155] px-1.5 py-0.2 font-mono">SKU: {r.sku}</span>}
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-[#334155] px-1.5 py-0.2">Category: {r.productCategory}</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Status Header */}
-              <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 rounded-2xl">
+              <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 p-4 rounded-2xl">
                 <div className="space-y-1">
                   <p className="font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-[8px]">Request Status</p>
                   <span className={`px-2.5 py-0.5 border rounded-full text-[10px] font-extrabold inline-block mt-0.5 ${statusColor}`}>
@@ -1136,73 +1404,110 @@ export default function Replacements() {
                 </div>
                 <div className="space-y-1 text-right">
                   <p className="font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-[8px]">Replacement quantity</p>
-                  <span className="font-black text-slate-800 dark:text-[#F8FAFC] text-sm block mt-0.5">{r.qty} units</span>
+                  <span className="font-black text-slate-800 dark:text-[#F8FAFC] text-sm block mt-0.5">{r.qty} unit(s)</span>
                 </div>
               </div>
 
-              {/* Shop & Product grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Shop Card */}
-                <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100/50 dark:border-[#334155]/50 space-y-2">
-                  <h5 className="font-extrabold text-[10px] uppercase text-[#EF4444] tracking-wider border-b border-slate-200/40 pb-1">Shop / Customer Ledger</h5>
+              {/* Shop Card */}
+              <div className="bg-slate-50 dark:bg-slate-800 p-4.5 rounded-2xl border border-slate-150/50 dark:border-[#334155]/50 space-y-2">
+                <h5 className="font-extrabold text-[10px] uppercase text-[#EF4444] tracking-wider border-b border-slate-200/40 pb-1">Shop / Customer Details</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1">
                     <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">Shop Name</p>
-                    <p className="font-extrabold text-slate-700 dark:text-[#F8FAFC]">{r.shopName}</p>
+                    <p className="font-extrabold text-slate-700 dark:text-[#F8FAFC] text-xs">{r.shopName}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <div>
-                      <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">Contact Person</p>
-                      <p className="font-bold text-slate-700 dark:text-[#CBD5E1]">{r.contactPerson || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">Mobile</p>
-                      <p className="font-bold text-slate-700 dark:text-[#CBD5E1]">{r.mobile || 'N/A'}</p>
-                    </div>
+                  <div>
+                    <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">Contact Person</p>
+                    <p className="font-bold text-slate-700 dark:text-[#CBD5E1] text-xs">{r.contactPerson || 'N/A'}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <div>
-                      <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">Dealer Code</p>
-                      <p className="font-bold text-slate-700 dark:text-[#CBD5E1]">{r.dealerCode || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">City/State</p>
-                      <p className="font-bold text-slate-700 dark:text-[#CBD5E1]">{r.cityState || 'N/A'}</p>
-                    </div>
+                  <div>
+                    <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">Mobile</p>
+                    <p className="font-bold text-slate-700 dark:text-[#CBD5E1] text-xs">{r.mobile || 'N/A'}</p>
                   </div>
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800/80 mt-1">
+                  <div>
+                    <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">Dealer Code / GSTIN</p>
+                    <p className="font-bold text-slate-700 dark:text-[#CBD5E1] text-xs">{r.dealerCode || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">City/State</p>
+                    <p className="font-bold text-slate-700 dark:text-[#CBD5E1] text-xs">{r.cityState || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
 
-                {/* Product Metadata */}
-                <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100/50 dark:border-[#334155]/50 space-y-2">
-                  <h5 className="font-extrabold text-[10px] uppercase text-[#EF4444] tracking-wider border-b border-slate-200/40 pb-1">Batch & Invoice Details</h5>
-                  <div className="space-y-1">
-                    <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">Product Name</p>
-                    <p className="font-extrabold text-slate-700 dark:text-[#F8FAFC]">{r.productName}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <div>
-                      <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">Batch Number</p>
-                      <p className="font-bold text-slate-700 dark:text-[#CBD5E1]">{r.batchNumber || 'N/A'}</p>
+              {/* Claimed Products Matrix */}
+              <div className="space-y-3 bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 p-4 rounded-2xl">
+                <h5 className="font-extrabold text-[10px] uppercase text-[#EF4444] tracking-wider border-b border-slate-200/40 pb-1.5 flex items-center gap-1">
+                  <Layers size={12} className="text-[#EF4444]" /> Claimed Products List ({(r.products && r.products.length) || 1})
+                </h5>
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
+                  {((r.products && r.products.length > 0) ? r.products : [{
+                    productId: r.productId,
+                    productName: r.productName,
+                    productCategory: r.productCategory,
+                    sku: r.sku,
+                    batchNumber: r.batchNumber,
+                    qty: r.qty,
+                    invoiceNumber: r.invoiceNumber,
+                    invoiceDate: r.invoiceDate,
+                    reason: r.reason,
+                    condition: r.condition,
+                    productImages: r.productImages || []
+                  }]).map((p, idx) => (
+                    <div key={idx} className="p-3.5 border border-slate-200 dark:border-[#334155] bg-white dark:bg-[#1E293B] rounded-2xl space-y-3">
+                      <div className="flex justify-between items-start flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center text-[10px] font-black">{idx + 1}</span>
+                          <div>
+                            <p className="font-extrabold text-slate-800 dark:text-[#F8FAFC] text-xs leading-tight">
+                              {p.productName}
+                            </p>
+                            <p className="text-[9px] text-slate-400 font-semibold mt-0.5">
+                              SKU: {p.sku || 'N/A'} · Category: {p.productCategory || 'General'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="px-2.5 py-0.8 bg-slate-100 dark:bg-slate-850 text-slate-700 dark:text-[#CBD5E1] border border-slate-150 dark:border-slate-850 rounded-lg text-[10px] font-bold">
+                          Qty: {p.qty} unit(s)
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[10px] border-t border-slate-100 dark:border-slate-800/80 pt-2 text-slate-500 dark:text-[#CBD5E1]">
+                        <div>
+                          <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Batch Number</span>
+                          <span className="font-bold">{p.batchNumber || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Invoice Info</span>
+                          <span className="font-bold">{p.invoiceNumber || 'N/A'} {p.invoiceDate ? `(${p.invoiceDate})` : ''}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider text-rose-500">Reason</span>
+                          <span className="font-bold text-rose-500">{p.reason}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Condition</span>
+                          <span className="font-bold">{p.condition}</span>
+                        </div>
+                      </div>
+                      {p.productImages && p.productImages.length > 0 && (
+                        <div className="border-t border-slate-100 dark:border-slate-800/80 pt-2">
+                          <span className="block text-[8px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mb-1">Product Damage Images</span>
+                          <div className="flex flex-wrap gap-2">
+                            {p.productImages.map((img, i) => (
+                              <img key={i} src={img} onClick={() => setPreviewImage(img)} className="w-10 h-10 object-cover rounded-xl border border-slate-200 dark:border-slate-700 hover:scale-105 cursor-zoom-in transition-all shrink-0 shadow-sm" />
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">Claim Reason</p>
-                      <p className="font-bold text-red-500">{r.reason}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <div>
-                      <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">Invoice Number</p>
-                      <p className="font-bold text-slate-700 dark:text-[#CBD5E1]">{r.invoiceNumber || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold">Invoice Date</p>
-                      <p className="font-bold text-slate-700 dark:text-[#CBD5E1]">{r.invoiceDate || 'N/A'}</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
               {/* Financial Section */}
-              <div className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 p-4.5 rounded-2xl space-y-3 shadow-inner">
+              <div className="bg-slate-50 dark:bg-slate-800 border border-slate-150 dark:border-slate-800 p-4.5 rounded-2xl space-y-3 shadow-inner">
                 <h5 className="font-extrabold text-[10px] uppercase text-[#EF4444] tracking-wider border-b border-slate-200/40 pb-1.5">ERP Financial Impact & Losses</h5>
                 <div className="grid grid-cols-4 gap-2 text-center">
                   <div>
@@ -1219,13 +1524,13 @@ export default function Replacements() {
                   </div>
                   <div>
                     <p className="text-slate-400 dark:text-slate-500 text-[8px] uppercase font-bold text-rose-500">Net Loss Adjustment</p>
-                    <p className="font-black text-rose-600 dark:text-rose-400 text-sm mt-0.5">{fmt(r.netLoss)}</p>
+                    <p className="font-black text-rose-600 dark:text-rose-450 text-sm mt-0.5">{fmt(r.netLoss)}</p>
                   </div>
                 </div>
               </div>
 
               {/* Dispatch & Logistics Card */}
-              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100/50 dark:border-[#334155]/50 space-y-2">
+              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-150/50 dark:border-[#334155]/50 space-y-2">
                 <h5 className="font-extrabold text-[10px] uppercase text-[#EF4444] tracking-wider border-b border-slate-200/40 pb-1">Fulfillment & Logistics</h5>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div>
@@ -1249,13 +1554,13 @@ export default function Replacements() {
                 )}
               </div>
 
-              {/* Evidence Uploads */}
-              {((r.productImages || []).length > 0 || (r.invoiceCopy || []).length > 0) && (
-                <div className="space-y-2 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-850 p-4 rounded-2xl">
+              {/* Evidence Uploads (Legacy fallbacks & invoice copies) */}
+              {((!r.products || r.products.length === 0) && (r.productImages || []).length > 0 || (r.invoiceCopy || []).length > 0) && (
+                <div className="space-y-2 bg-slate-50 dark:bg-slate-800 border border-slate-150 dark:border-slate-850 p-4 rounded-2xl">
                   <h5 className="font-extrabold text-[10px] uppercase text-[#EF4444] tracking-wider border-b border-slate-200/40 pb-1.5">Evidence Attachments</h5>
                   <div className="grid grid-cols-2 gap-4">
-                    {/* Damage Proof */}
-                    {(r.productImages || []).length > 0 && (
+                    {/* Damage Proof (Legacy fallback) */}
+                    {(!r.products || r.products.length === 0) && (r.productImages || []).length > 0 && (
                       <div className="space-y-1.5">
                         <p className="text-slate-400 dark:text-slate-500 text-[8px] uppercase font-bold">Product Damage Images</p>
                         <div className="flex flex-wrap gap-2">

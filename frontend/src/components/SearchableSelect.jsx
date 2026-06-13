@@ -128,6 +128,7 @@ export default function SearchableSelect({
                     index === activeIndex ? 'bg-slate-100 dark:bg-[#334155]' : ''
                   } ${String(value) === String(opt.value) ? 'bg-red-50 dark:bg-red-950/40 text-red-600 font-medium' : 'text-slate-700 dark:text-[#CBD5E1]'}`}
                   onClick={() => {
+                    console.log(`[DEBUG] SearchableSelect option clicked value=${opt.value} label=${opt.label}`);
                     onChange(opt.value);
                     setIsOpen(false);
                   }}

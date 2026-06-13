@@ -1588,37 +1588,92 @@ app.post('/api/replacements', catchAsync(async (req, res) => {
     productId, productName, productCategory, sku, batchNumber, qty, invoiceNumber, invoiceDate,
     reason, condition, productImages, invoiceCopy, damageProof, additionalDocs,
     status, approvalRemarks, approvedBy, dispatchDate, trackingNumber, courierPartner,
-    productValue, replacementCost, recoveryAmount, netLoss
+    productValue, replacementCost, recoveryAmount, netLoss,
+    products
   } = req.body;
 
-  if (!shopName || !productId || !productName || !reason || !condition) {
-    return res.status(400).json({ message: 'Shop name, product details, reason and condition are required' });
+  if (!shopName) {
+    return res.status(400).json({ message: 'Shop name is required' });
   }
 
-  const reqQty = Number(qty) || 1;
+  // Normalize products to support both legacy single product and array submissions
+  const reqProducts = products || (productId ? [
+    {
+      productId,
+      category: productCategory || 'General',
+      sku: sku || '',
+      batchNumber: batchNumber || '',
+      quantity: qty || 1,
+      invoiceNo: invoiceNumber || '',
+      invoiceDate: invoiceDate || '',
+      replacementReason: reason || '',
+      productCondition: condition || '',
+      damageImages: productImages || []
+    }
+  ] : []);
+
+  if (reqProducts.length === 0) {
+    return res.status(400).json({ message: 'At least one product is required' });
+  }
+
+  const finalStatus = status || 'Pending';
+  const isFulfilling = (finalStatus === 'Dispatched' || finalStatus === 'Completed');
+
+  // Verify product existences and check stock limits first
+  for (const item of reqProducts) {
+    if (!item.productId) {
+      return res.status(400).json({ message: 'Product selection is required for all items.' });
+    }
+    const p = await Product.findOne({ id: item.productId });
+    if (!p) {
+      return res.status(404).json({ message: `Product ${item.productId} not found` });
+    }
+    const itemQty = Number(item.quantity) || 1;
+    if (isFulfilling) {
+      if (p.availableQty < itemQty) {
+        return res.status(400).json({ message: `Insufficient stock for product ${p.name} to fulfill replacement.` });
+      }
+    }
+  }
+
+  // Deduct stock and compile subdocuments array
+  let stockAdjusted = false;
+  const processedProducts = [];
+
+  for (const item of reqProducts) {
+    const p = await Product.findOne({ id: item.productId });
+    const itemQty = Number(item.quantity) || 1;
+
+    if (isFulfilling) {
+      p.availableQty -= itemQty;
+      p.totalQty -= itemQty;
+      p.updatedAt = new Date().toISOString();
+      await p.save();
+      stockAdjusted = true;
+    }
+
+    processedProducts.push({
+      productId: item.productId,
+      productName: p.name,
+      productCategory: item.category || p.category || 'General',
+      sku: item.sku || p.sku || '',
+      batchNumber: item.batchNumber || '',
+      qty: itemQty,
+      invoiceNumber: item.invoiceNo || '',
+      invoiceDate: item.invoiceDate || '',
+      reason: item.replacementReason || '',
+      condition: item.productCondition || '',
+      productImages: item.damageImages || []
+    });
+  }
+
+  const totalQty = processedProducts.reduce((sum, item) => sum + item.qty, 0);
   const prodVal = Number(productValue) || 0;
   const repCost = Number(replacementCost) || 0;
   const recAmt = Number(recoveryAmount) || 0;
   const calculatedNetLoss = netLoss !== undefined ? Number(netLoss) : (repCost - recAmt);
 
-  const product = await Product.findOne({ id: productId });
-  if (!product) {
-    return res.status(404).json({ message: 'Product not found' });
-  }
-
-  let stockAdjusted = false;
-  const finalStatus = status || 'Pending';
-
-  if (finalStatus === 'Dispatched' || finalStatus === 'Completed') {
-    if (product.availableQty < reqQty) {
-      return res.status(400).json({ message: `Insufficient stock for product ${product.name} to fulfill replacement.` });
-    }
-    product.availableQty -= reqQty;
-    product.totalQty -= reqQty;
-    product.updatedAt = new Date().toISOString();
-    await product.save();
-    stockAdjusted = true;
-  }
+  const firstItem = processedProducts[0];
 
   const rep = new Replacement({
     id: uuidv4(),
@@ -1628,17 +1683,23 @@ app.post('/api/replacements', catchAsync(async (req, res) => {
     mobile: mobile || '',
     cityState: cityState || '',
     dealerCode: dealerCode || '',
-    productId,
-    productName: product.name,
-    productCategory: productCategory || product.category || 'General',
-    sku: sku || product.sku || '',
-    batchNumber: batchNumber || '',
-    qty: reqQty,
-    invoiceNumber: invoiceNumber || '',
-    invoiceDate: invoiceDate || '',
-    reason,
-    condition,
-    productImages: productImages || [],
+    
+    // Legacy support / fallback root fields
+    productId: firstItem.productId,
+    productName: firstItem.productName,
+    productCategory: firstItem.productCategory,
+    sku: firstItem.sku,
+    batchNumber: firstItem.batchNumber,
+    qty: totalQty,
+    invoiceNumber: firstItem.invoiceNumber,
+    invoiceDate: firstItem.invoiceDate,
+    reason: firstItem.reason,
+    condition: firstItem.condition,
+    productImages: firstItem.productImages,
+
+    // New products array
+    products: processedProducts,
+
     invoiceCopy: invoiceCopy || [],
     damageProof: damageProof || [],
     additionalDocs: additionalDocs || [],
@@ -1663,7 +1724,7 @@ app.post('/api/replacements', catchAsync(async (req, res) => {
     id: uuidv4(),
     user: requestUser,
     time: new Date().toISOString(),
-    action: `Created replacement request for ${shopName} (Product: ${product.name}, Qty: ${reqQty}, Status: ${finalStatus})`
+    action: `Created replacement request for ${shopName} (${processedProducts.length} product(s), Qty: ${totalQty}, Status: ${finalStatus})`
   });
   await audit.save();
 
@@ -1679,70 +1740,145 @@ app.put('/api/replacements/:id', catchAsync(async (req, res) => {
     return res.status(404).json({ message: 'Replacement request not found' });
   }
 
-  const oldQty = rep.qty;
-  const oldStatus = rep.status;
-  const oldProductId = rep.productId;
-
   const updateData = { ...req.body };
   const newStatus = updateData.status || rep.status;
-  const newQty = updateData.qty !== undefined ? Number(updateData.qty) : rep.qty;
-  const newProductId = updateData.productId || rep.productId;
 
-  const product = await Product.findOne({ id: newProductId });
-  if (!product) {
-    return res.status(404).json({ message: 'Product not found' });
+  // 1. Revert existing stock adjustments if they were made
+  if (rep.stockAdjusted) {
+    const items = (rep.products && rep.products.length > 0)
+      ? rep.products
+      : [{
+          productId: rep.productId,
+          qty: rep.qty || 1
+        }];
+
+    for (const item of items) {
+      const product = await Product.findOne({ id: item.productId });
+      if (product) {
+        product.availableQty += item.qty;
+        product.totalQty += item.qty;
+        product.updatedAt = new Date().toISOString();
+        await product.save();
+      }
+    }
+    rep.stockAdjusted = false;
   }
 
-  let stockAdjusted = rep.stockAdjusted;
+  // 2. Prepare new products list
+  const reqProducts = updateData.products || (updateData.productId ? [
+    {
+      productId: updateData.productId,
+      category: updateData.productCategory || 'General',
+      sku: updateData.sku || '',
+      batchNumber: updateData.batchNumber || '',
+      quantity: updateData.qty || 1,
+      invoiceNo: updateData.invoiceNumber || '',
+      invoiceDate: updateData.invoiceDate || '',
+      replacementReason: updateData.reason || '',
+      productCondition: updateData.condition || '',
+      damageImages: updateData.productImages || []
+    }
+  ] : null);
 
-  const wasFulfilling = (oldStatus === 'Dispatched' || oldStatus === 'Completed');
   const isFulfilling = (newStatus === 'Dispatched' || newStatus === 'Completed');
 
-  // Revert old product if product changed and we were already adjusted
-  if (oldProductId !== newProductId && stockAdjusted) {
-    const oldProduct = await Product.findOne({ id: oldProductId });
-    if (oldProduct) {
-      oldProduct.availableQty += oldQty;
-      oldProduct.totalQty += oldQty;
-      await oldProduct.save();
+  // Verify stock availability for all items to be fulfilled
+  if (reqProducts) {
+    if (reqProducts.length === 0) {
+      return res.status(400).json({ message: 'At least one product is required' });
     }
-    stockAdjusted = false;
+
+    if (isFulfilling) {
+      for (const item of reqProducts) {
+        const p = await Product.findOne({ id: item.productId });
+        if (!p) {
+          return res.status(404).json({ message: `Product ${item.productId} not found` });
+        }
+        const itemQty = Number(item.quantity) || 1;
+        if (p.availableQty < itemQty) {
+          return res.status(400).json({ message: `Insufficient stock for product ${p.name} to fulfill replacement.` });
+        }
+      }
+    }
+  } else {
+    // Check existing products if we don't supply new ones
+    const existingItems = (rep.products && rep.products.length > 0)
+      ? rep.products
+      : [{
+          productId: rep.productId,
+          qty: rep.qty || 1
+        }];
+
+    if (isFulfilling) {
+      for (const item of existingItems) {
+        const p = await Product.findOne({ id: item.productId });
+        if (!p) {
+          return res.status(404).json({ message: `Product ${item.productId} not found` });
+        }
+        const itemQty = item.qty;
+        if (p.availableQty < itemQty) {
+          return res.status(400).json({ message: `Insufficient stock for product ${p.name} to fulfill replacement.` });
+        }
+      }
+    }
   }
 
-  if (isFulfilling) {
-    if (!stockAdjusted) {
-      if (product.availableQty < newQty) {
-        return res.status(400).json({ message: `Insufficient stock for product ${product.name} to fulfill replacement.` });
+  // 3. Deduct stock if fulfilling
+  let stockAdjusted = false;
+  let processedProducts = [];
+
+  if (reqProducts) {
+    for (const item of reqProducts) {
+      const p = await Product.findOne({ id: item.productId });
+      const itemQty = Number(item.quantity) || 1;
+      if (isFulfilling) {
+        p.availableQty -= itemQty;
+        p.totalQty -= itemQty;
+        p.updatedAt = new Date().toISOString();
+        await p.save();
+        stockAdjusted = true;
       }
-      product.availableQty -= newQty;
-      product.totalQty -= newQty;
-      stockAdjusted = true;
-    } else {
-      const diff = newQty - oldQty;
-      if (diff !== 0) {
-        if (product.availableQty < diff) {
-          return res.status(400).json({ message: `Insufficient stock for product ${product.name} to adjust replacement quantity.` });
-        }
-        product.availableQty -= diff;
-        product.totalQty -= diff;
-      }
+      processedProducts.push({
+        productId: item.productId,
+        productName: p ? p.name : 'Unknown Product',
+        productCategory: item.category || (p ? p.category : 'General'),
+        sku: item.sku || (p ? p.sku : ''),
+        batchNumber: item.batchNumber || '',
+        qty: itemQty,
+        invoiceNumber: item.invoiceNo || '',
+        invoiceDate: item.invoiceDate || '',
+        reason: item.replacementReason || '',
+        condition: item.productCondition || '',
+        productImages: item.damageImages || []
+      });
     }
-    await product.save();
   } else {
-    if (stockAdjusted) {
-      product.availableQty += oldQty;
-      product.totalQty += oldQty;
-      await product.save();
-      stockAdjusted = false;
+    // Re-apply stock adjustments to existing products
+    const existingItems = (rep.products && rep.products.length > 0)
+      ? rep.products
+      : [{
+          productId: rep.productId,
+          qty: rep.qty || 1
+        }];
+
+    for (const item of existingItems) {
+      const p = await Product.findOne({ id: item.productId });
+      const itemQty = item.qty;
+      if (isFulfilling) {
+        p.availableQty -= itemQty;
+        p.totalQty -= itemQty;
+        p.updatedAt = new Date().toISOString();
+        await p.save();
+        stockAdjusted = true;
+      }
     }
   }
 
   const fields = [
     'shopId', 'shopName', 'contactPerson', 'mobile', 'cityState', 'dealerCode',
-    'productId', 'productName', 'productCategory', 'sku', 'batchNumber', 'invoiceNumber', 'invoiceDate',
-    'reason', 'condition', 'productImages', 'invoiceCopy', 'damageProof', 'additionalDocs',
     'approvalRemarks', 'approvedBy', 'dispatchDate', 'trackingNumber', 'courierPartner',
-    'productValue', 'replacementCost', 'recoveryAmount', 'netLoss'
+    'productValue', 'replacementCost', 'recoveryAmount', 'netLoss',
+    'invoiceCopy', 'damageProof', 'additionalDocs'
   ];
 
   fields.forEach(f => {
@@ -1751,7 +1887,24 @@ app.put('/api/replacements/:id', catchAsync(async (req, res) => {
     }
   });
 
-  rep.qty = newQty;
+  if (reqProducts) {
+    rep.products = processedProducts;
+    
+    // Update root fields for legacy support
+    const firstItem = processedProducts[0];
+    rep.productId = firstItem.productId;
+    rep.productName = firstItem.productName;
+    rep.productCategory = firstItem.productCategory;
+    rep.sku = firstItem.sku;
+    rep.batchNumber = firstItem.batchNumber;
+    rep.qty = processedProducts.reduce((sum, item) => sum + item.qty, 0);
+    rep.invoiceNumber = firstItem.invoiceNumber;
+    rep.invoiceDate = firstItem.invoiceDate;
+    rep.reason = firstItem.reason;
+    rep.condition = firstItem.condition;
+    rep.productImages = firstItem.productImages;
+  }
+
   rep.status = newStatus;
   rep.stockAdjusted = stockAdjusted;
 
@@ -1783,13 +1936,23 @@ app.delete('/api/replacements/:id', catchAsync(async (req, res) => {
     return res.status(404).json({ message: 'Replacement request not found' });
   }
 
+  // Restore inventory stock for all items
   if (rep.stockAdjusted) {
-    const product = await Product.findOne({ id: rep.productId });
-    if (product) {
-      product.availableQty += rep.qty;
-      product.totalQty += rep.qty;
-      product.updatedAt = new Date().toISOString();
-      await product.save();
+    const items = (rep.products && rep.products.length > 0)
+      ? rep.products
+      : [{
+          productId: rep.productId,
+          qty: rep.qty || 1
+        }];
+
+    for (const item of items) {
+      const product = await Product.findOne({ id: item.productId });
+      if (product) {
+        product.availableQty += item.qty;
+        product.totalQty += item.qty;
+        product.updatedAt = new Date().toISOString();
+        await product.save();
+      }
     }
   }
 
@@ -1800,7 +1963,7 @@ app.delete('/api/replacements/:id', catchAsync(async (req, res) => {
     id: uuidv4(),
     user: requestUser,
     time: new Date().toISOString(),
-    action: `Deleted replacement request ${rep.id} (Shop: ${rep.shopName}, Product: ${rep.productName}, Qty: ${rep.qty})`
+    action: `Deleted replacement request ${rep.id} (Shop: ${rep.shopName}, Total Products: ${(rep.products && rep.products.length) || 1}, Total Qty: ${rep.qty})`
   });
   await audit.save();
 

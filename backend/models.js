@@ -250,6 +250,21 @@ const auditLogSchema = new mongoose.Schema({
 }, { timestamps: true });
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 
+// Replacement Item Schema for Multi-Product support
+const replacementItemSchema = new mongoose.Schema({
+  productId: { type: String, required: true },
+  productName: { type: String, required: true },
+  productCategory: { type: String, default: 'General' },
+  sku: { type: String, default: '' },
+  batchNumber: { type: String, default: '' },
+  qty: { type: Number, required: true, default: 1 },
+  invoiceNumber: { type: String, default: '' },
+  invoiceDate: { type: String, default: '' },
+  reason: { type: String, required: true },
+  condition: { type: String, required: true },
+  productImages: { type: [String], default: [] }
+}, { _id: false });
+
 // Replacement Model
 const replacementSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
@@ -262,19 +277,22 @@ const replacementSchema = new mongoose.Schema({
   cityState: { type: String, default: '' },
   dealerCode: { type: String, default: '' },
   
-  // Product details
-  productId: { type: String, required: true },
-  productName: { type: String, required: true },
+  // Legacy Product details / Fallback root fields
+  productId: { type: String },
+  productName: { type: String },
   productCategory: { type: String, default: 'General' },
   sku: { type: String, default: '' },
   batchNumber: { type: String, default: '' },
-  qty: { type: Number, required: true, default: 1 },
+  qty: { type: Number, default: 1 },
   invoiceNumber: { type: String, default: '' },
   invoiceDate: { type: String, default: '' },
   
-  // Reason & Condition
-  reason: { type: String, required: true },
-  condition: { type: String, required: true },
+  // Legacy Reason & Condition
+  reason: { type: String },
+  condition: { type: String },
+  
+  // Products list for multi-product support
+  products: { type: [replacementItemSchema], default: [] },
   
   // Evidence
   productImages: { type: [String], default: [] },
