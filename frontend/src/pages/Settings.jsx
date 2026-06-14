@@ -89,7 +89,8 @@ export default function Settings() {
     sidebar: 'expanded',
     density: 'comfortable',
     accentColor: 'red',
-    fontSize: 'medium'
+    fontSize: 'medium',
+    soundNotification: true
   });
 
   // --- 5. Account & Security states (All Users) ---
@@ -154,7 +155,8 @@ export default function Settings() {
         sidebar: currentUser.appearance.sidebar || 'expanded',
         density: currentUser.appearance.density || 'comfortable',
         accentColor: currentUser.appearance.accentColor || 'red',
-        fontSize: currentUser.appearance.fontSize || 'medium'
+        fontSize: currentUser.appearance.fontSize || 'medium',
+        soundNotification: currentUser.appearance.soundNotification !== undefined ? currentUser.appearance.soundNotification : true
       });
     }
   }, [currentUser]);
@@ -1639,6 +1641,37 @@ export default function Settings() {
                   title="TEE Purple"
                 >
                   {appearanceForm.accentColor === 'purple' && <CheckCircle2 size={16} className="text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Sound Notification Preferences */}
+            <div className="pt-6 border-t border-slate-900 space-y-3">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Smartphone size={13} className="text-[#EF4444]" />
+                Team Chat Audio Alerts
+              </h4>
+              <p className="text-[11px] text-slate-500 font-semibold leading-normal">
+                Enable or disable sound alerts when new messages arrive.
+              </p>
+              <div className="grid grid-cols-2 gap-2 bg-slate-950/45 p-1 rounded-xl border border-slate-900 max-w-xs">
+                <button
+                  type="button"
+                  onClick={() => handleUpdateAppearance({ soundNotification: true })}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                    appearanceForm.soundNotification === true ? 'bg-red-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Enabled
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateAppearance({ soundNotification: false })}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                    appearanceForm.soundNotification === false ? 'bg-red-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Disabled
                 </button>
               </div>
             </div>

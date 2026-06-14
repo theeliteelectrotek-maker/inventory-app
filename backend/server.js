@@ -91,6 +91,18 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+let statsCache = {};
+function clearStatsCache() {
+  statsCache = {};
+}
+app.use((req, res, next) => {
+  if (req.method !== 'GET') {
+    clearStatsCache();
+  }
+  next();
+});
+
+
 // Connect to MongoDB
 async function runProductMigration() {
   try {
@@ -2391,20 +2403,35 @@ app.get('/api/analytics', catchAsync(async (req, res) => {
 }));
 
 // DASHBOARD STATS
-app.get('/api/stats', catchAsync(async (_req, res) => {
-  const today = normalizeToLocalYYYYMMDD(new Date());
-  const systemDateStr = new Date().toISOString();
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown';
-  const offset = new Date().getTimezoneOffset();
-  
+app.get('/api/stats', catchAsync(async (req, res) => {
+  const { startDate = normalizeToLocalYYYYMMDD(new Date()), endDate = normalizeToLocalYYYYMMDD(new Date()) } = req.query;
+
+  // Caching
+  const cacheKey = `${startDate}_${endDate}`;
+  if (statsCache[cacheKey]) {
+    console.log(`[DEBUG STATS] Returning cached stats for key: ${cacheKey}`);
+    return res.json(statsCache[cacheKey]);
+  }
+
   const dbShops = await Shop.find({});
-  const totalShops = dbShops.filter(s => s.type === 'shop').length;
-  const totalIndividuals = dbShops.filter(s => s.type === 'individual' || s.type === 'walk-in').length;
-  
+  // Filter shops by date range
+  const shopsInPeriod = dbShops.filter(s => {
+    if (!s.createdAt) return false;
+    const shopDate = s.createdAt.substring(0, 10);
+    return shopDate >= startDate && shopDate <= endDate;
+  });
+  const totalShops = shopsInPeriod.filter(s => s.type === 'shop').length;
+  const totalIndividuals = shopsInPeriod.filter(s => s.type === 'individual' || s.type === 'walk-in').length;
+
   const products = await Product.find({});
-  const onlineSalesRaw = await OnlineSale.find({ status: { $ne: 'Cancelled' } });
-  const offlineSales = await OfflineSale.find({});
-  const returns = await Return.find({});
+  const onlineSalesRaw = await OnlineSale.find({ date: { $gte: startDate, $lte: endDate }, status: { $ne: 'Cancelled' } });
+  const offlineSalesRaw = await OfflineSale.find({
+    $or: [
+      { date: { $gte: startDate, $lte: endDate } },
+      { 'transactions.date': { $gte: startDate, $lte: endDate } }
+    ]
+  });
+  const returns = await Return.find({ date: { $gte: startDate, $lte: endDate } });
 
   // Product cache map
   const prodMap = {};
@@ -2422,12 +2449,14 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
 
   const getCost = (productId) => prodMap[productId]?.costPrice || 0;
 
-  // Inventory value
+  // Inventory value (computed on current stock status but products registered up to endDate)
   let inventoryValue = 0;
   let totalUnitsInStock = 0;
   products.forEach(p => {
-    inventoryValue += (p.availableQty || 0) * (p.costPrice || 0);
-    totalUnitsInStock += (p.availableQty || 0);
+    if (!p.createdAt || p.createdAt.substring(0, 10) <= endDate) {
+      inventoryValue += (p.availableQty || 0) * (p.costPrice || 0);
+      totalUnitsInStock += (p.availableQty || 0);
+    }
   });
 
   // Map onlineSales to handle fallback pricing
@@ -2450,54 +2479,58 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
     return sObj;
   });
 
-  // Today's Sales and Profit
-  let todayOnlineSales = 0;
-  let todayOnlineCost = 0;
+  // Sales and Profit in range
+  let onlineRevenue = 0;
+  let onlineCost = 0;
   onlineSales.forEach(s => {
-    const saleDateNormalized = normalizeToLocalYYYYMMDD(s.date);
-    const match = saleDateNormalized === today;
-    console.log(`[DEBUG ONLINE] System Date: ${systemDateStr}, Timezone: ${tz} (Offset: ${offset}m), Sale Date: ${s.date}, Normalized: ${saleDateNormalized}, Today: ${today}, Match: ${match}`);
-    if (match) {
-      todayOnlineSales += s.amount || 0;
-      todayOnlineCost += getCost(s.productId) * s.qty;
-    }
+    onlineRevenue += s.amount || 0;
+    onlineCost += getCost(s.productId) * s.qty;
   });
 
-  let todayOfflineSales = 0;
-  let todayOfflineCost = 0;
-  offlineSales.forEach(s => {
+  let offlineRevenue = 0;
+  let offlineCost = 0;
+  let pendingPayments = 0;
+  
+  offlineSalesRaw.forEach(s => {
+    const saleInPeriod = s.date >= startDate && s.date <= endDate;
+    if (saleInPeriod) {
+      pendingPayments += s.amountLeft || 0;
+    }
     const items = s.items || [];
     if (items.length > 0) {
       items.forEach(item => {
-        const itemDateNormalized = normalizeToLocalYYYYMMDD(item.date || s.date);
-        const match = itemDateNormalized === today;
-        console.log(`[DEBUG OFFLINE ITEM] System Date: ${systemDateStr}, Timezone: ${tz} (Offset: ${offset}m), Item Date: ${item.date || s.date}, Normalized: ${itemDateNormalized}, Today: ${today}, Match: ${match}`);
-        if (match) {
-          todayOfflineSales += item.amount || 0;
-          todayOfflineCost += getCost(item.productId) * item.qty;
+        const itemDate = item.date || s.date;
+        if (itemDate >= startDate && itemDate <= endDate) {
+          offlineRevenue += item.amount || 0;
+          offlineCost += getCost(item.productId) * item.qty;
         }
       });
     } else {
-      const saleDateNormalized = normalizeToLocalYYYYMMDD(s.date);
-      const match = saleDateNormalized === today;
-      console.log(`[DEBUG OFFLINE LEGACY] System Date: ${systemDateStr}, Timezone: ${tz} (Offset: ${offset}m), Sale Date: ${s.date}, Normalized: ${saleDateNormalized}, Today: ${today}, Match: ${match}`);
-      if (match) {
-        todayOfflineSales += s.totalAmount || 0;
-        todayOfflineCost += getCost(s.productId) * s.qty;
+      if (saleInPeriod) {
+        offlineRevenue += s.totalAmount || 0;
+        offlineCost += getCost(s.productId) * s.qty;
       }
     }
   });
 
-  const todaySales = todayOnlineSales + todayOfflineSales;
-  const todayCost = todayOnlineCost + todayOfflineCost;
+  const todaySales = onlineRevenue + offlineRevenue;
+  const todayCost = onlineCost + offlineCost;
   const todayProfit = todaySales - todayCost;
 
-  // Totals
-  const onlineRevenueTotal = onlineSales.reduce((s, x) => s + (x.amount || 0), 0);
-  const offlineRevenueTotal = offlineSales.reduce((s, x) => s + (x.totalAmount || 0), 0);
-  const pendingPayments = offlineSales.reduce((s, x) => s + (x.amountLeft || 0), 0);
+  // Collections inside the date range
+  let collectionsToday = 0;
+  onlineSales.forEach(s => {
+    collectionsToday += s.amount || 0;
+  });
+  offlineSalesRaw.forEach(s => {
+    (s.transactions || []).forEach(t => {
+      if (t.date >= startDate && t.date <= endDate) {
+        collectionsToday += t.amount || 0;
+      }
+    });
+  });
 
-  // Best Selling Product & Top 5 Products
+  // Best Selling Product & Top Selling Products in the range
   const productQuantities = {};
   const updateProductQty = (name, qty) => {
     if (!name) return;
@@ -2505,18 +2538,31 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
   };
 
   onlineSales.forEach(s => updateProductQty(s.productName, s.qty));
-  offlineSales.forEach(s => (s.items || []).forEach(item => updateProductQty(item.productName, item.qty)));
+  offlineSalesRaw.forEach(s => {
+    const items = s.items || [];
+    if (items.length > 0) {
+      items.forEach(item => {
+        const itemDate = item.date || s.date;
+        if (itemDate >= startDate && itemDate <= endDate) {
+          updateProductQty(item.productName, item.qty);
+        }
+      });
+    } else {
+      if (s.date >= startDate && s.date <= endDate) {
+        updateProductQty(s.productName, s.qty || 1);
+      }
+    }
+  });
 
   const productQtyList = Object.entries(productQuantities).map(([name, qty]) => ({ name, qty }));
   const sortedProductQty = [...productQtyList].sort((a, b) => b.qty - a.qty);
-  
-  const bestSellingProduct = sortedProductQty[0]?.name || 'No Sales Yet';
+  const bestSellingProduct = sortedProductQty[0]?.name || 'No Sales In Range';
   const top5SellingProducts = sortedProductQty.slice(0, 5);
 
-  // Biggest Pending Customer
+  // Biggest Pending Customer in range
   const customerPending = {};
-  offlineSales.forEach(s => {
-    if (s.amountLeft > 0 && s.buyerName) {
+  offlineSalesRaw.forEach(s => {
+    if (s.date >= startDate && s.date <= endDate && s.amountLeft > 0 && s.buyerName) {
       customerPending[s.buyerName] = (customerPending[s.buyerName] || 0) + s.amountLeft;
     }
   });
@@ -2524,98 +2570,27 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
   const sortedCustomerPending = [...customerPendingList].sort((a, b) => b.amount - a.amount);
   const biggestPendingCustomer = sortedCustomerPending[0] || { name: 'None', amount: 0 };
 
-  // Returns Cost (Loss)
+  // Returns Cost in range
   const getReturnPrice = (productId, platform) => {
-    const p = products.find(x => x.id === productId);
-    if (!p) return 0;
-    if (platform === 'amazon') return p.amazonPrice || p.onlinePrice || p.unitPrice || 0;
-    if (platform === 'flipkart') return p.flipkartPrice || p.onlinePrice || p.unitPrice || 0;
-    if (platform === 'meesho') return p.meeshoPrice || p.onlinePrice || p.unitPrice || 0;
-    return p.offlinePrice || p.unitPrice || 0;
+    const pm = prodMap[productId];
+    if (!pm) return 0;
+    const plat = platform ? platform.toLowerCase() : '';
+    if (plat === 'amazon') return pm.amazonPrice;
+    if (plat === 'flipkart') return pm.flipkartPrice;
+    if (plat === 'meesho') return pm.meeshoPrice;
+    return pm.offlinePrice;
   };
+
   const returnsValue = returns.reduce((sum, r) => {
     const items = (r.items && r.items.length > 0) ? r.items : [{ productId: r.productId, qty: r.qty || 1 }];
     return sum + items.reduce((s, item) => s + (getReturnPrice(item.productId, r.platform) * item.qty), 0);
   }, 0);
 
-  // Net Profit
-  // Net Profit = (Online Sales + Offline Sales) - Product Cost of Sold Items - Returns Value
-  let totalProductCostOfSoldItems = 0;
-  onlineSales.forEach(s => {
-    totalProductCostOfSoldItems += getCost(s.productId) * s.qty;
-  });
-  offlineSales.forEach(s => {
-    (s.items || []).forEach(item => {
-      totalProductCostOfSoldItems += getCost(item.productId) * item.qty;
-    });
-  });
-  const netProfit = (onlineRevenueTotal + offlineRevenueTotal) - totalProductCostOfSoldItems - returnsValue;
+  // Net Profit in range
+  const netProfit = todaySales - todayCost - returnsValue;
 
-  // Sales Trends (Last 30 Days)
-  const trendData = {};
-  const dateList = [];
-  const now = new Date();
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(now.getDate() - i);
-    const dStr = getSystemLocalDate(d);
-    dateList.push(dStr);
-    trendData[dStr] = { date: dStr, online: 0, offline: 0, combined: 0 };
-  }
-
-  onlineSales.forEach(s => {
-    const sDate = normalizeToLocalYYYYMMDD(s.date);
-    if (trendData[sDate]) {
-      trendData[sDate].online += s.amount || 0;
-      trendData[sDate].combined += s.amount || 0;
-    }
-  });
-
-  offlineSales.forEach(s => {
-    const items = s.items || [];
-    items.forEach(item => {
-      const itemDate = normalizeToLocalYYYYMMDD(item.date || s.date);
-      if (trendData[itemDate]) {
-        trendData[itemDate].offline += item.amount || 0;
-        trendData[itemDate].combined += item.amount || 0;
-      }
-    });
-  });
-
-  const dailyTrend = Object.values(trendData).sort((a,b) => a.date.localeCompare(b.date));
-
-  // Business Health Score
-  // Base score 100
-  let healthScore = 100;
-  
-  // 1. Stock Levels deduction
-  const lowStockCount = products.filter((p) => p.availableQty > 0 && p.availableQty < 20).length;
-  const outOfStockCount = products.filter((p) => p.availableQty === 0).length;
-  healthScore -= (lowStockCount * 1.5) + (outOfStockCount * 4);
-
-  // 2. Pending Payments deduction
-  const totalRevenue = onlineRevenueTotal + offlineRevenueTotal;
-  if (totalRevenue > 0) {
-    const pendingRatio = pendingPayments / totalRevenue;
-    if (pendingRatio > 0.20) healthScore -= 15;
-    else if (pendingRatio > 0.10) healthScore -= 10;
-    else if (pendingRatio > 0.05) healthScore -= 5;
-  }
-
-  // 3. Returns Rate deduction
-  const totalSoldUnits = onlineSales.reduce((s, x) => s + x.qty, 0) + offlineSales.reduce((s, x) => s + (x.items || []).reduce((a, i) => a + i.qty, 0), 0);
-  const totalReturnedUnits = returns.reduce((s, x) => s + ((x.items && x.items.length > 0) ? x.items.reduce((sum, item) => sum + item.qty, 0) : x.qty || 1), 0);
-  if (totalSoldUnits > 0) {
-    const returnRatio = totalReturnedUnits / totalSoldUnits;
-    if (returnRatio > 0.10) healthScore -= 15;
-    else if (returnRatio > 0.05) healthScore -= 10;
-    else if (returnRatio > 0.02) healthScore -= 5;
-  }
-
-  // Bound to [10, 100]
-  healthScore = Math.max(10, Math.min(100, Math.round(healthScore)));
-
-  // Piece/Box Selling statistics
+  // Pie chart stats (for reasons breakdown of returns/claims)
+  // Piece/Box Selling statistics in range
   let totalPiecesSold = 0;
   let totalBoxesSold = 0;
   let revenueFromPieceSales = 0;
@@ -2632,32 +2607,365 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
     }
   });
 
-  offlineSales.forEach(s => {
-    (s.items || []).forEach(item => {
-      const rev = item.amount || 0;
-      if (item.saleType === 'Box') {
-        totalBoxesSold += (item.saleQty || 0);
-        revenueFromBoxSales += rev;
-      } else {
-        totalPiecesSold += item.qty;
-        revenueFromPieceSales += rev;
+  offlineSalesRaw.forEach(s => {
+    const items = s.items || [];
+    if (items.length > 0) {
+      items.forEach(item => {
+        const itemDate = item.date || s.date;
+        if (itemDate >= startDate && itemDate <= endDate) {
+          const rev = item.amount || 0;
+          if (item.saleType === 'Box') {
+            totalBoxesSold += (item.saleQty || 0);
+            revenueFromBoxSales += rev;
+          } else {
+            totalPiecesSold += item.qty;
+            revenueFromPieceSales += rev;
+          }
+        }
+      });
+    } else {
+      if (s.date >= startDate && s.date <= endDate) {
+        const rev = s.totalAmount || 0;
+        if (s.saleType === 'Box') {
+          totalBoxesSold += (s.saleQty || 0);
+          revenueFromBoxSales += rev;
+        } else {
+          totalPiecesSold += s.qty || 1;
+          revenueFromPieceSales += rev;
+        }
+      }
+    }
+  });
+
+  // Recent Sales combined list
+  const recentOnlineSales = onlineSales.map(s => ({
+    id: `on-${s.id}`,
+    productName: s.productName,
+    buyerName: (s.platform || '').toUpperCase(),
+    date: s.date,
+    amount: s.amount,
+    type: 'online',
+    createdAt: s.createdAt || s.date
+  }));
+
+  const recentOfflineSales = [];
+  offlineSalesRaw.forEach(s => {
+    if (s.date >= startDate && s.date <= endDate) {
+      recentOfflineSales.push({
+        id: `off-${s.id}`,
+        productName: s.items && s.items.length > 0 
+          ? s.items[0].productName + (s.items.length > 1 ? ` (+${s.items.length - 1} more)` : '')
+           : s.productName || 'Unknown Product',
+        buyerName: s.buyerName,
+        date: s.date,
+        amount: s.totalAmount,
+        type: 'offline',
+        createdAt: s.createdAt || s.date
+      });
+    }
+  });
+
+  const allSales = [...recentOnlineSales, ...recentOfflineSales];
+  allSales.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // Recent Payments combined list (simplified to only offline collections)
+  const allPayments = [];
+
+  const shopTypeMap = {};
+  dbShops.forEach(s => {
+    shopTypeMap[s.name] = s.type || 'shop';
+  });
+
+  const normalizeOfflineMethod = (m) => {
+    const method = (m || '').toLowerCase().trim();
+    if (method === 'cash') return 'Cash';
+    if (method === 'upi') return 'UPI';
+    if (method === 'cheque') return 'Cheque';
+    return 'Bank Transfer';
+  };
+
+  offlineSalesRaw.forEach(s => {
+    // Exclude any online platforms/marketplaces from Recent Payments ledger
+    const isOnlinePlatform = ['amazon', 'flipkart', 'meesho', 'website'].includes((s.buyerName || '').toLowerCase().trim());
+    if (isOnlinePlatform) return;
+
+    (s.transactions || []).forEach((t, i) => {
+      if (t.date >= startDate && t.date <= endDate) {
+        const type = shopTypeMap[s.buyerName] || 'walk-in';
+        let source = 'Shop Payment';
+        if (type === 'individual' || type === 'walk-in' || s.buyerName.toLowerCase().includes('walk-in')) {
+          source = 'Walk-in Customer';
+        } else if (type === 'shop') {
+          source = 'Dealer Payment';
+        }
+        allPayments.push({
+          id: `offpay-${s.id}-${i}`,
+          buyerName: s.buyerName,
+          amount: t.amount,
+          method: normalizeOfflineMethod(t.method),
+          referenceNumber: t.referenceNumber || t.chequeNumber || 'N/A',
+          invoiceNumber: s.invoiceNumber || 'N/A',
+          date: t.date,
+          createdBy: t.createdBy || 'Unknown',
+          type: 'offline',
+          source: source,
+          createdAt: t.date + 'T12:00:00.000Z'
+        });
+      }
+    });
+  });
+  allPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime() || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // Action required metrics
+  const todayMs = new Date().setHours(0, 0, 0, 0);
+  const overdueInvoices = offlineSalesRaw.filter(s => {
+    if (s.date >= startDate && s.date <= endDate && s.amountLeft > 0 && s.date) {
+      const saleMs = parseLocalDate(s.date).setHours(0, 0, 0, 0);
+      const ageDays = Math.floor((todayMs - saleMs) / (1000 * 60 * 60 * 24));
+      return ageDays > 10;
+    }
+    return false;
+  });
+  const overduePaymentsCount = overdueInvoices.length;
+  const lowStockCountItems = products.filter(p => (!p.createdAt || p.createdAt.substring(0, 10) <= endDate) && p.availableQty > 0 && p.availableQty <= 20).length;
+  const outOfStockCount = products.filter(p => (!p.createdAt || p.createdAt.substring(0, 10) <= endDate) && p.availableQty === 0).length;
+  const pendingReturnsCount = returns.filter(r => r.date >= startDate && r.date <= endDate && r.condition === 'inspection').length;
+
+  // Live Activity Feed in range
+  const liveActivities = [];
+  offlineSalesRaw.forEach(s => {
+    if (s.date >= startDate && s.date <= endDate) {
+      liveActivities.push({
+        id: `offsale-${s.id}`,
+        title: `Offline Invoice Logged`,
+        details: `${s.buyerName} · ${s.items?.length || 0} line items`,
+        valueText: `₹${(s.totalAmount || 0).toLocaleString('en-IN')}`,
+        valueType: 'positive',
+        timestamp: s.createdAt || s.date,
+        icon: 'Store',
+        iconColor: 'text-blue-600 bg-blue-50 border-blue-150'
+      });
+    }
+    (s.transactions || []).forEach((t, ti) => {
+      if (t.date >= startDate && t.date <= endDate) {
+        liveActivities.push({
+          id: `offpay-${s.id}-${ti}-${t.amount}`,
+          title: `Payment Received (${(t.method || '').toUpperCase()})`,
+          details: `From ${s.buyerName}`,
+          valueText: `+ ₹${(t.amount || 0).toLocaleString('en-IN')}`,
+          valueType: 'highlight',
+          timestamp: t.date + 'T12:00:00.000Z',
+          icon: 'IndianRupee',
+          iconColor: 'text-emerald-600 bg-emerald-50 border-emerald-150'
+        });
       }
     });
   });
 
-  res.json({
+  onlineSales.forEach(s => {
+    liveActivities.push({
+      id: `onsale-${s.id}`,
+      title: `Online Marketplace Sale`,
+      details: `${s.qty}x ${s.productName} via ${(s.platform || '').toUpperCase()}`,
+      valueText: `₹${(s.amount || 0).toLocaleString('en-IN')}`,
+      valueType: 'positive',
+      timestamp: s.createdAt || s.date,
+      icon: 'ShoppingCart',
+      iconColor: 'text-orange-600 bg-orange-50 border-orange-150'
+    });
+  });
+
+  returns.forEach(r => {
+    liveActivities.push({
+      id: `return-${r.id}`,
+      title: `Returned Stock Entry`,
+      details: `${r.qty}x ${r.productName} (${r.condition === 'good' ? 'Recovered' : 'Damaged'})`,
+      valueText: `Qty: ${r.qty}`,
+      valueType: 'negative',
+      timestamp: r.createdAt || r.date,
+      icon: 'RotateCcw',
+      iconColor: 'text-violet-600 bg-violet-50 border-violet-150'
+    });
+  });
+
+  products.forEach(p => {
+    if (p.createdAt && p.createdAt.substring(0, 10) >= startDate && p.createdAt.substring(0, 10) <= endDate) {
+      liveActivities.push({
+        id: `prod-${p.id}`,
+        title: `New Product Registered`,
+        details: `${p.name} · SKU: ${p.sku || 'N/A'}`,
+        valueText: `Stock: ${p.availableQty}`,
+        valueType: 'neutral',
+        timestamp: p.createdAt,
+        icon: 'Package',
+        iconColor: 'text-indigo-600 bg-indigo-50 border-indigo-150'
+      });
+    }
+  });
+
+  dbShops.forEach(sh => {
+    if (sh.createdAt && sh.createdAt.substring(0, 10) >= startDate && sh.createdAt.substring(0, 10) <= endDate) {
+      if (sh.name !== 'Individual Customer' && sh.name !== 'Walk-in Customer') {
+        liveActivities.push({
+          id: `shop-${sh.id}`,
+          title: `New Shop Registered`,
+          details: `${sh.name}`,
+          valueText: (sh.type || 'shop').toUpperCase(),
+          valueType: 'neutral',
+          timestamp: sh.createdAt,
+          icon: 'Building2',
+          iconColor: 'text-pink-600 bg-pink-50 border-pink-150'
+        });
+      }
+    }
+  });
+
+  liveActivities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const recentActivities = liveActivities.slice(0, 8);
+
+  // Sales Trend Chart grouping based on selected range length
+  const startD = new Date(startDate);
+  const endD = new Date(endDate);
+  const diffTime = Math.abs(endD - startD);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+  let trendData = [];
+  if (diffDays <= 2) {
+    // Hourly grouping
+    const hourlyData = {};
+    for (let h = 0; h < 24; h++) {
+      const hourLabel = h === 0 ? '12 AM' : h === 12 ? '12 PM' : h > 12 ? `${h - 12} PM` : `${h} AM`;
+      hourlyData[h] = { label: hourLabel, online: 0, offline: 0, combined: 0 };
+    }
+
+    onlineSales.forEach(s => {
+      const hour = s.createdAt ? new Date(s.createdAt).getHours() : 12;
+      if (hourlyData[hour]) {
+        hourlyData[hour].online += s.amount || 0;
+        hourlyData[hour].combined += s.amount || 0;
+      }
+    });
+
+    offlineSalesRaw.forEach(s => {
+      const items = s.items || [];
+      items.forEach(item => {
+        const itemDate = item.date || s.date;
+        if (itemDate >= startDate && itemDate <= endDate) {
+          const hour = s.createdAt ? new Date(s.createdAt).getHours() : 12;
+          if (hourlyData[hour]) {
+            hourlyData[hour].offline += item.amount || 0;
+            hourlyData[hour].combined += item.amount || 0;
+          }
+        }
+      });
+    });
+    trendData = Object.values(hourlyData);
+  } else if (diffDays > 2 && diffDays <= 60) {
+    // Daily grouping
+    const dailyData = {};
+    let curr = new Date(startDate);
+    while (curr <= new Date(endDate)) {
+      const dStr = curr.toISOString().split('T')[0];
+      dailyData[dStr] = { label: dStr, online: 0, offline: 0, combined: 0 };
+      curr.setDate(curr.getDate() + 1);
+    }
+
+    onlineSales.forEach(s => {
+      if (dailyData[s.date]) {
+        dailyData[s.date].online += s.amount || 0;
+        dailyData[s.date].combined += s.amount || 0;
+      }
+    });
+
+    offlineSalesRaw.forEach(s => {
+      const items = s.items || [];
+      items.forEach(item => {
+        const itemDate = item.date || s.date;
+        if (dailyData[itemDate]) {
+          dailyData[itemDate].offline += item.amount || 0;
+          dailyData[itemDate].combined += item.amount || 0;
+        }
+      });
+    });
+
+    trendData = Object.keys(dailyData).sort().map(k => ({
+      date: k,
+      label: k,
+      online: dailyData[k].online,
+      offline: dailyData[k].offline,
+      combined: dailyData[k].combined
+    }));
+  } else {
+    // Monthly grouping
+    const monthlyData = {};
+    onlineSales.forEach(s => {
+      const mStr = s.date.substring(0, 7);
+      if (!monthlyData[mStr]) {
+        monthlyData[mStr] = { label: mStr, online: 0, offline: 0, combined: 0 };
+      }
+      monthlyData[mStr].online += s.amount || 0;
+      monthlyData[mStr].combined += s.amount || 0;
+    });
+
+    offlineSalesRaw.forEach(s => {
+      const items = s.items || [];
+      items.forEach(item => {
+        const itemDate = item.date || s.date;
+        const mStr = itemDate.substring(0, 7);
+        if (!monthlyData[mStr]) {
+          monthlyData[mStr] = { label: mStr, online: 0, offline: 0, combined: 0 };
+        }
+        monthlyData[mStr].offline += item.amount || 0;
+        monthlyData[mStr].combined += item.amount || 0;
+      });
+    });
+
+    trendData = Object.keys(monthlyData).sort().map(k => {
+      const parts = k.split('-');
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const displayLabel = parts.length === 2 ? `${monthNames[parseInt(parts[1], 10) - 1]} ${parts[0].substring(2)}` : k;
+      return {
+        month: k,
+        label: displayLabel,
+        online: monthlyData[k].online,
+        offline: monthlyData[k].offline,
+        combined: monthlyData[k].combined
+      };
+    });
+  }
+
+  // Business Health Score inside range
+  let healthScore = 100;
+  healthScore -= (lowStockCountItems * 1.5) + (outOfStockCount * 4);
+  const totalRevenue = onlineRevenue + offlineRevenue;
+  if (totalRevenue > 0) {
+    const pendingRatio = pendingPayments / totalRevenue;
+    if (pendingRatio > 0.20) healthScore -= 15;
+    else if (pendingRatio > 0.10) healthScore -= 10;
+    else if (pendingRatio > 0.05) healthScore -= 5;
+  }
+  const totalSoldUnits = onlineSales.reduce((s, x) => s + x.qty, 0) + offlineSalesRaw.reduce((s, x) => s + (x.items || []).reduce((a, i) => a + i.qty, 0), 0);
+  const totalReturnedUnits = returns.reduce((s, x) => s + ((x.items && x.items.length > 0) ? x.items.reduce((sum, item) => sum + item.qty, 0) : x.qty || 1), 0);
+  if (totalSoldUnits > 0) {
+    const returnRatio = totalReturnedUnits / totalSoldUnits;
+    if (returnRatio > 0.10) healthScore -= 15;
+    else if (returnRatio > 0.05) healthScore -= 10;
+    else if (returnRatio > 0.02) healthScore -= 5;
+  }
+  healthScore = Math.max(10, Math.min(100, Math.round(healthScore)));
+
+  const statsResult = {
     totalProducts: products.length,
-    lowStock: lowStockCount,
+    lowStock: lowStockCountItems,
     outOfStock: outOfStockCount,
-    onlineSalesToday: onlineSales.filter((s) => normalizeToLocalYYYYMMDD(s.date) === today).length,
-    offlineSalesToday: offlineSales.filter((s) => normalizeToLocalYYYYMMDD(s.date) === today).length,
-    onlineRevenueTotal,
-    offlineRevenueTotal,
+    onlineSalesToday: onlineSales.length,
+    offlineSalesToday: offlineSalesRaw.filter(s => s.date >= startDate && s.date <= endDate).length,
+    onlineRevenueTotal: onlineRevenue,
+    offlineRevenueTotal: offlineRevenue,
     pendingPayments,
-    recentOnline: onlineSales.sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5),
-    recentOffline: offlineSales.sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5),
-    
-    // Redesign properties
+    recentOnline: onlineSales.sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100),
+    recentOffline: offlineSalesRaw.filter(s => s.date >= startDate && s.date <= endDate).sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100),
+
     todaySales,
     todayProfit,
     inventoryValue,
@@ -2667,16 +2975,29 @@ app.get('/api/stats', catchAsync(async (_req, res) => {
     returnsValue,
     netProfit,
     healthScore,
-    dailyTrend,
+    dailyTrend: trendData,
     totalShops,
     totalIndividuals,
     
-    // Piece/Box Selling statistics
     totalPiecesSold,
     totalBoxesSold,
     revenueFromPieceSales,
-    revenueFromBoxSales
-  });
+    revenueFromBoxSales,
+
+    // Overdue payments count, pending returns count
+    overduePaymentsCount,
+    pendingReturnsCount,
+
+    // Combined sales and payments list for range
+    allSales,
+    allPayments,
+    recentActivities
+  };
+
+  // Cache statsResult
+  statsCache[cacheKey] = statsResult;
+
+  res.json(statsResult);
 }));
 
 // ================= DATA IMPORT & EXPORT, BACKUP & RESTORE SYSTEM =================

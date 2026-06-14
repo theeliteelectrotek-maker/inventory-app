@@ -51,14 +51,16 @@ const userSchema = new mongoose.Schema({
       sidebar: { type: String, default: 'expanded' }, // 'expanded' | 'compact'
       density: { type: String, default: 'comfortable' }, // 'comfortable' | 'compact'
       accentColor: { type: String, default: 'red' }, // 'red' | 'blue' | 'green' | 'purple'
-      fontSize: { type: String, default: 'medium' } // 'small' | 'medium' | 'large'
+      fontSize: { type: String, default: 'medium' }, // 'small' | 'medium' | 'large'
+      soundNotification: { type: Boolean, default: true }
     },
     default: {
       theme: 'dark',
       sidebar: 'expanded',
       density: 'comfortable',
       accentColor: 'red',
-      fontSize: 'medium'
+      fontSize: 'medium',
+      soundNotification: true
     }
   },
   activeSessions: {

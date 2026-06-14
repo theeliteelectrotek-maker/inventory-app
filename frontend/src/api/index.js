@@ -89,7 +89,13 @@ export const api = {
   deleteReplacement: (id) => request('DELETE', `/replacements/${id}`),
 
   // Stats
-  getStats: () => request('GET', '/stats'),
+  getStats: (startDate, endDate) => {
+    let url = '/stats';
+    if (startDate && endDate) {
+      url += `?startDate=${startDate}&endDate=${endDate}`;
+    }
+    return request('GET', url);
+  },
 
   // Analytics
   getAnalytics: (startDate, endDate, customerType = 'all') => request('GET', `/analytics?startDate=${startDate}&endDate=${endDate}&customerType=${customerType}`),
