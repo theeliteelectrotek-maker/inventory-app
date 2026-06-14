@@ -151,6 +151,21 @@ export default function Shops() {
     }
   }, [shops]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const searchParam = params.get('search');
+    const idParam = params.get('id');
+    if (searchParam) {
+      setSearch(searchParam);
+    }
+    if (idParam && shops.length > 0) {
+      const match = shops.find(s => s.id === idParam);
+      if (match) {
+        setSelectedShop(match);
+      }
+    }
+  }, [location.search, shops]);
+
   function openAdd() { setForm(empty); setEditing(null); setError(''); setShowModal(true); }
   function openEdit(s) { 
     setForm({ 

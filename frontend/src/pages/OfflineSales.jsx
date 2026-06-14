@@ -1037,6 +1037,18 @@ export default function OfflineSales() {
     }
   }, [location.state]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const searchParam = params.get('search');
+    const idParam = params.get('id');
+    if (searchParam) {
+      setSearch(searchParam);
+    }
+    if (idParam) {
+      setExpandedIds((prev) => ({ ...prev, [idParam]: true }));
+    }
+  }, [location.search]);
+
   // ── Add-form order handlers ────────────────────────────────
   function setOrderDate(oi, date) {
     setForm((f) => { const orders = [...f.orders]; orders[oi] = { ...orders[oi], date }; return { ...f, orders }; });

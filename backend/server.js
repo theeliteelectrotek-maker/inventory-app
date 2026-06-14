@@ -11,7 +11,7 @@ const AdmZip = require('adm-zip');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 
-const { User, Product, OnlineSale, OfflineSale, Shop, Return, Setting, AuditLog, Replacement, ChatChannel, ChatMessage, PasswordChangeRequest, Supplier, Purchase, GRN, SupplierPayment, PurchaseAuditLog, OnlineSaleCancelLog } = require('./models');
+const { User, Product, OnlineSale, OfflineSale, Shop, Return, Setting, AuditLog, Replacement, ChatChannel, ChatMessage, PasswordChangeRequest, Supplier, Purchase, GRN, SupplierPayment, PurchaseAuditLog, OnlineSaleCancelLog, Notification } = require('./models');
 
 function isBcryptHash(str) {
   return typeof str === 'string' && /^\$2[ayb]\$[0-9]{2}\$[./A-Za-z0-9]{53}$/.test(str);
@@ -21,6 +21,83 @@ function legacySha256(password) {
   if (!password) return '';
   return crypto.createHash('sha256').update(password).digest('hex');
 }
+
+// Global push notifier
+const sendPushNotification = async ({ type, title, body, data = {}, targetUserIds = null }) => {
+  try {
+    // 1. Get notification settings
+    const settingsDoc = await Setting.findOne({ key: 'notification_alerts' });
+    const settings = settingsDoc ? settingsDoc.value : {
+      sales: true,
+      payment: true,
+      inventory: true,
+      return: true,
+      replacement: true,
+      teamMessage: true
+    };
+
+    // Check if type is enabled in settings
+    if (type === 'sale' && !settings.sales) return;
+    if (type === 'payment' && !settings.payment) return;
+    if (type === 'inventory' && !settings.inventory) return;
+    if (type === 'return' && !settings.return) return;
+    if (type === 'replacement' && !settings.replacement) return;
+    if (type === 'teamMessage' && !settings.teamMessage) return;
+
+    // 2. Resolve target users
+    let users = [];
+    if (targetUserIds) {
+      users = await User.find({ id: { $in: targetUserIds } });
+    } else {
+      // Send to all Admins & Super Admins
+      users = await User.find({
+        $or: [
+          { role: { $in: ['ADMIN', 'admin'] } },
+          { username: 'admin' }
+        ]
+      });
+    }
+
+    const activeIo = typeof io !== 'undefined' ? io : null;
+
+    for (const user of users) {
+      // Role-based security check: Staff NEVER receives business alerts
+      const isAdminUser = user.role === 'ADMIN' || user.role === 'admin' || user.username === 'admin';
+      if (!isAdminUser && ['sale', 'payment', 'inventory', 'return', 'replacement'].includes(type)) {
+        continue; // strictly forbidden
+      }
+
+      // Save notification to database
+      const notif = new Notification({
+        id: uuidv4(),
+        userId: user.id,
+        title,
+        body,
+        type,
+        read: false,
+        data,
+        createdAt: new Date().toISOString()
+      });
+      await notif.save();
+
+      // Emit real-time notification update to user via socket room
+      if (activeIo) {
+        activeIo.to(`user_${user.id}`).emit('new_notification', {
+          id: notif.id,
+          userId: user.id,
+          title,
+          body,
+          type,
+          read: false,
+          data,
+          createdAt: notif.createdAt
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error in sendPushNotification:', err);
+  }
+};
 
 function hashPassword(password) {
   if (!password) return '';
@@ -1020,6 +1097,31 @@ const postOnlineSalesHandler = catchAsync(async (req, res) => {
     saleQty: resolvedSaleQty
   });
   await sale.save();
+
+  // Trigger New Online Sale Created notification
+  sendPushNotification({
+    type: 'sale',
+    title: '🔔 New Online Sale Created',
+    body: `Platform: ${platform}\nProduct: ${product.name}\nOrderId: ${orderId || 'N/A'}\nAmount: ₹${saleAmount.toLocaleString('en-IN')}`,
+    data: { clickAction: `/online-sales?search=${orderId || product.name}` }
+  });
+
+  // Check product stock for low/out of stock alerts
+  if (product.availableQty === 0) {
+    sendPushNotification({
+      type: 'inventory',
+      title: '🔔 Out Of Stock Alert',
+      body: `Product: ${product.name}\nRemaining: 0 Units`,
+      data: { clickAction: `/products/details?search=${product.sku || product.name}` }
+    });
+  } else if (product.availableQty <= 10) {
+    sendPushNotification({
+      type: 'inventory',
+      title: '🔔 Low Stock Alert',
+      body: `Product: ${product.name}\nRemaining: ${product.availableQty} Units`,
+      data: { clickAction: `/products/details?search=${product.sku || product.name}` }
+    });
+  }
   
   const saleObj = sale.toObject();
   delete saleObj._id;
@@ -1057,6 +1159,15 @@ const deleteOnlineSalesHandler = catchAsync(async (req, res) => {
   }
   
   console.log(`[DELETE ONLINE SALE COMPLETED] Successfully deleted and responded`);
+  
+  // Trigger Online Sale Deleted notification
+  sendPushNotification({
+    type: 'sale',
+    title: '🔔 Online Sale Deleted',
+    body: `Platform: ${sale.platform}\nProduct: ${sale.productName}\nOrderId: ${sale.orderId || 'N/A'}\nAmount: ₹${sale.amount.toLocaleString('en-IN')}`,
+    data: { clickAction: `/online-sales` }
+  });
+
   res.json({ message: sale.status === 'Cancelled' ? 'Deleted' : 'Deleted and stock restored' });
 });
 app.delete('/api/sales/online/:id', deleteOnlineSalesHandler);
@@ -1120,6 +1231,15 @@ const cancelOnlineSalesHandler = catchAsync(async (req, res) => {
   await audit.save();
   
   console.log(`[CANCEL ONLINE SALE COMPLETED] Successfully updated and responded`);
+  
+  // Trigger Online Sale Cancelled notification
+  sendPushNotification({
+    type: 'sale',
+    title: '🔔 Online Sale Cancelled',
+    body: `Platform: ${sale.platform}\nProduct: ${sale.productName}\nOrderId: ${sale.orderId || 'N/A'}\nAmount: ₹${sale.amount.toLocaleString('en-IN')}`,
+    data: { clickAction: `/online-sales?search=${sale.orderId || sale.productName}` }
+  });
+
   res.json({ message: 'Order cancelled and stock restored', sale });
 });
 app.post('/api/sales/online/:id/cancel', requireAuth, cancelOnlineSalesHandler);
@@ -1249,6 +1369,46 @@ const postOfflineSalesHandler = catchAsync(async (req, res) => {
   });
   await sale.save();
   
+  // Trigger New Sale Created notification
+  sendPushNotification({
+    type: 'sale',
+    title: '🔔 New Sale Created',
+    body: `Customer: ${buyerName}\nInvoice: ${sale.invoiceNumber || generatedInvoiceNumber}\nAmount: ₹${totalAmount.toLocaleString('en-IN')}`,
+    data: { clickAction: `/offline-sales?id=${sale.id}&search=${sale.invoiceNumber || generatedInvoiceNumber}` }
+  });
+
+  // Check if initial payment received is logged
+  if (calculatedReceived > 0) {
+    sendPushNotification({
+      type: 'payment',
+      title: '🔔 Payment Received',
+      body: `Customer: ${buyerName}\nAmount: ₹${calculatedReceived.toLocaleString('en-IN')}\nMode: ${mappedTransactions[0]?.method?.toUpperCase() || 'UPI'}`,
+      data: { clickAction: `/offline-sales?id=${sale.id}&search=${sale.invoiceNumber || generatedInvoiceNumber}` }
+    });
+  }
+
+  // Check product stocks for low/out of stock alerts
+  for (const item of items) {
+    const product = products.find(p => p.id === item.productId);
+    if (product) {
+      if (product.availableQty === 0) {
+        sendPushNotification({
+          type: 'inventory',
+          title: '🔔 Out Of Stock Alert',
+          body: `Product: ${product.name}\nRemaining: 0 Units`,
+          data: { clickAction: `/products/details?search=${product.sku || product.name}` }
+        });
+      } else if (product.availableQty <= 10) {
+        sendPushNotification({
+          type: 'inventory',
+          title: '🔔 Low Stock Alert',
+          body: `Product: ${product.name}\nRemaining: ${product.availableQty} Units`,
+          data: { clickAction: `/products/details?search=${product.sku || product.name}` }
+        });
+      }
+    }
+  }
+  
   const saleObj = sale.toObject();
   delete saleObj._id;
   delete saleObj.__v;
@@ -1270,6 +1430,15 @@ const deleteOfflineSalesHandler = catchAsync(async (req, res) => {
       await product.save();
     }
   }
+
+  // Trigger Sale Deleted notification
+  sendPushNotification({
+    type: 'sale',
+    title: '🔔 Sale Deleted',
+    body: `Customer: ${sale.buyerName}\nInvoice: ${sale.invoiceNumber || sale.id}\nAmount: ₹${sale.totalAmount.toLocaleString('en-IN')}`,
+    data: { clickAction: `/offline-sales` }
+  });
+
   res.json({ message: 'Deleted and stock restored' });
 });
 app.delete('/api/sales/offline/:id', deleteOfflineSalesHandler);
@@ -1414,6 +1583,49 @@ const putOfflineSalesHandler = catchAsync(async (req, res) => {
   sale.updatedAt = new Date().toISOString();
   await sale.save();
 
+  // Trigger Sale Updated notification
+  sendPushNotification({
+    type: 'sale',
+    title: '🔔 Sale Updated',
+    body: `Customer: ${sale.buyerName}\nInvoice: ${sale.invoiceNumber || sale.id}\nAmount: ₹${sale.totalAmount.toLocaleString('en-IN')}`,
+    data: { clickAction: `/offline-sales?id=${sale.id}&search=${sale.invoiceNumber || sale.id}` }
+  });
+
+  // Trigger Payment Updated notification
+  if (transactions || (newTransactions && newTransactions.length > 0)) {
+    sendPushNotification({
+      type: 'payment',
+      title: '🔔 Payment Updated',
+      body: `Customer: ${sale.buyerName}\nTotal Settled: ₹${sale.amountReceived.toLocaleString('en-IN')}\nPending: ₹${sale.amountLeft.toLocaleString('en-IN')}`,
+      data: { clickAction: `/offline-sales?id=${sale.id}&search=${sale.invoiceNumber || sale.id}` }
+    });
+  }
+
+  // Trigger stock alerts if new items added
+  if (newItems && newItems.length > 0) {
+    const products = await Product.find({ id: { $in: newItems.map(i => i.productId) } });
+    for (const item of newItems) {
+      const product = products.find(p => p.id === item.productId);
+      if (product) {
+        if (product.availableQty === 0) {
+          sendPushNotification({
+            type: 'inventory',
+            title: '🔔 Out Of Stock Alert',
+            body: `Product: ${product.name}\nRemaining: 0 Units`,
+            data: { clickAction: `/products/details?search=${product.sku || product.name}` }
+          });
+        } else if (product.availableQty <= 10) {
+          sendPushNotification({
+            type: 'inventory',
+            title: '🔔 Low Stock Alert',
+            body: `Product: ${product.name}\nRemaining: ${product.availableQty} Units`,
+            data: { clickAction: `/products/details?search=${product.sku || product.name}` }
+          });
+        }
+      }
+    }
+  }
+
   const saleObj = sale.toObject();
   delete saleObj._id;
   delete saleObj.__v;
@@ -1442,6 +1654,15 @@ app.post('/api/shops', catchAsync(async (req, res) => {
     gstNumber: gstNumber || ''
   });
   await shop.save();
+
+  // Trigger New Customer/Shop Added notification
+  sendPushNotification({
+    type: 'customer',
+    title: shop.type === 'shop' ? '🔔 New Shop Added' : '🔔 New Customer Added',
+    body: `Name: ${name}\nMobile: ${mobile || 'N/A'}\nType: ${shop.type === 'shop' ? 'Shop' : 'Individual'}`,
+    data: { clickAction: `/shops?id=${shop.id}&search=${name}` }
+  });
+
   res.json(shop);
 }));
 
@@ -1533,6 +1754,14 @@ app.post('/api/returns', catchAsync(async (req, res) => {
   });
 
   await ret.save();
+
+  // Trigger Return Request Created notification
+  sendPushNotification({
+    type: 'return',
+    title: '🔔 Return Request Created',
+    body: `Customer: ${shopName || platform}\nItems: ${processedItems.length} product(s)\nDate: ${ret.date}`,
+    data: { clickAction: `/returns?search=${shopName || platform}` }
+  });
 
   const requestUser = await getRequestUser(req);
   const audit = new AuditLog({
@@ -1731,6 +1960,14 @@ app.post('/api/replacements', catchAsync(async (req, res) => {
 
   await rep.save();
 
+  // Trigger Replacement Request Created notification
+  sendPushNotification({
+    type: 'replacement',
+    title: '🔔 Replacement Request Created',
+    body: `Shop: ${shopName}\nContact: ${contactPerson || 'N/A'}\nItems: ${processedProducts.length} product(s)\nStatus: ${finalStatus}`,
+    data: { clickAction: `/replacements?search=${shopName}` }
+  });
+
   const requestUser = await getRequestUser(req);
   const audit = new AuditLog({
     id: uuidv4(),
@@ -1917,6 +2154,7 @@ app.put('/api/replacements/:id', catchAsync(async (req, res) => {
     rep.productImages = firstItem.productImages;
   }
 
+  const oldStatus = rep.status;
   rep.status = newStatus;
   rep.stockAdjusted = stockAdjusted;
 
@@ -1926,6 +2164,23 @@ app.put('/api/replacements/:id', catchAsync(async (req, res) => {
 
   rep.updatedAt = new Date().toISOString();
   await rep.save();
+
+  // Trigger notifications on replacement status update/approval
+  if (newStatus === 'Approved' && oldStatus !== 'Approved') {
+    sendPushNotification({
+      type: 'replacement',
+      title: '🔔 Replacement Approved',
+      body: `Shop: ${rep.shopName}\nItems: ${rep.products?.length || 1} product(s)\nRemarks: ${updateData.approvalRemarks || 'Approved by Admin'}`,
+      data: { clickAction: `/replacements?search=${rep.shopName}` }
+    });
+  } else if (newStatus !== oldStatus && ['Dispatched', 'Completed', 'Rejected'].includes(newStatus)) {
+    sendPushNotification({
+      type: 'replacement',
+      title: `🔔 Replacement Request ${newStatus}`,
+      body: `Shop: ${rep.shopName}\nStatus updated to ${newStatus}.\nTracking: ${updateData.trackingNumber || 'N/A'}\nCourier: ${updateData.courierPartner || 'N/A'}`,
+      data: { clickAction: `/replacements?search=${rep.shopName}` }
+    });
+  }
 
   const requestUser = await getRequestUser(req);
   const audit = new AuditLog({
@@ -4297,6 +4552,88 @@ app.put('/api/profile/appearance', requireAuth, catchAsync(async (req, res) => {
   res.json({ success: true, appearance: user.appearance });
 }));
 
+// Register FCM token
+app.post('/api/profile/fcm-token', requireAuth, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const { token } = req.body;
+  if (!token) return res.status(400).json({ message: 'Token is required' });
+
+  if (!user.fcmTokens) user.fcmTokens = [];
+  if (!user.fcmTokens.includes(token)) {
+    user.fcmTokens.push(token);
+    await user.save();
+  }
+  res.json({ success: true, message: 'FCM Token registered successfully' });
+}));
+
+// Retrieve user's notifications
+app.get('/api/notifications', requireAuth, catchAsync(async (req, res) => {
+  const notifications = await Notification.find({ userId: req.userId }).sort({ createdAt: -1 });
+  res.json(notifications);
+}));
+
+// Mark notification as read
+app.put('/api/notifications/:id/read', requireAuth, catchAsync(async (req, res) => {
+  const notif = await Notification.findOneAndUpdate(
+    { id: req.params.id, userId: req.userId },
+    { read: true },
+    { new: true }
+  );
+  if (!notif) return res.status(404).json({ message: 'Notification not found' });
+  res.json(notif);
+}));
+
+// Mark all notifications as read
+app.put('/api/notifications/read-all', requireAuth, catchAsync(async (req, res) => {
+  await Notification.updateMany({ userId: req.userId, read: false }, { read: true });
+  res.json({ success: true, message: 'All notifications marked as read' });
+}));
+
+// Delete notification
+app.delete('/api/notifications/:id', requireAuth, catchAsync(async (req, res) => {
+  const result = await Notification.findOneAndDelete({ id: req.params.id, userId: req.userId });
+  if (!result) return res.status(404).json({ message: 'Notification not found' });
+  res.json({ success: true, message: 'Notification deleted' });
+}));
+
+// Get notification settings (global)
+app.get('/api/settings/notifications', requireAuth, catchAsync(async (req, res) => {
+  const doc = await Setting.findOne({ key: 'notification_alerts' });
+  const settings = doc ? doc.value : {
+    sales: true,
+    payment: true,
+    inventory: true,
+    return: true,
+    replacement: true,
+    teamMessage: true
+  };
+  res.json(settings);
+}));
+
+// Update notification settings (global, Admin/Super Admin only)
+app.put('/api/settings/notifications', requireAuth, catchAsync(async (req, res) => {
+  const isAdminUser = req.userObj?.role === 'ADMIN' || req.userObj?.role === 'admin' || req.userObj?.username === 'admin';
+  if (!isAdminUser) return res.status(403).json({ message: 'Admin permissions required' });
+
+  const { sales, payment, inventory, return: returnAlert, replacement, teamMessage } = req.body;
+  const nextSettings = {
+    sales: sales !== undefined ? !!sales : true,
+    payment: payment !== undefined ? !!payment : true,
+    inventory: inventory !== undefined ? !!inventory : true,
+    return: returnAlert !== undefined ? !!returnAlert : true,
+    replacement: replacement !== undefined ? !!replacement : true,
+    teamMessage: teamMessage !== undefined ? !!teamMessage : true
+  };
+
+  await Setting.findOneAndUpdate(
+    { key: 'notification_alerts' },
+    { value: nextSettings },
+    { upsert: true, new: true }
+  );
+
+  res.json({ success: true, settings: nextSettings });
+}));
+
 // Admin endpoint: View employee full profile
 app.get('/api/admin/employees/:id/profile', requireAuth, requireAdmin, catchAsync(async (req, res) => {
   const emp = await User.findOne({ id: req.params.id });
@@ -4569,6 +4906,41 @@ app.post('/api/communication/messages', requireAuth, catchAsync(async (req, res)
     createdAt: new Date().toISOString()
   });
   await message.save();
+
+  // Resolve target user IDs for message push alerts
+  let targetUserIdsForMessage = [];
+  const isDM = channelId.includes('-');
+  if (isDM) {
+    const parts = channelId.split('-');
+    const otherId = parts.find(id => id !== user.id);
+    if (otherId) targetUserIdsForMessage.push(otherId);
+  } else if (channelObj && channelObj.members && channelObj.members.length > 0) {
+    targetUserIdsForMessage = channelObj.members.filter(mId => mId !== user.id);
+  } else {
+    // If it's team wide or official, send to all other users
+    const allUsers = await User.find({ id: { $ne: user.id } });
+    targetUserIdsForMessage = allUsers.map(u => u.id);
+  }
+
+  // Also include any users mentioned by username
+  if (mentions && mentions.length > 0) {
+    const mentionedUsers = await User.find({ username: { $in: mentions } });
+    mentionedUsers.forEach(mu => {
+      if (mu.id !== user.id && !targetUserIdsForMessage.includes(mu.id)) {
+        targetUserIdsForMessage.push(mu.id);
+      }
+    });
+  }
+
+  if (targetUserIdsForMessage.length > 0) {
+    sendPushNotification({
+      type: 'teamMessage',
+      title: user.name,
+      body: content || 'Sent an attachment',
+      data: { clickAction: `/communication`, channelId: channelId },
+      targetUserIds: targetUserIdsForMessage
+    });
+  }
 
   const socketio = req.app.get('socketio');
   if (socketio) {
@@ -5657,6 +6029,7 @@ io.on('connection', (socket) => {
   // Register online
   socket.on('register', async (userId) => {
     socket.userId = userId;
+    socket.join(`user_${userId}`);
     try {
       await User.findOneAndUpdate({ id: userId }, { status: 'Online', lastSeen: new Date().toISOString() });
       io.emit('userStatusChanged', { userId, status: 'Online', lastSeen: new Date().toISOString() });

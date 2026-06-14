@@ -71,7 +71,8 @@ const userSchema = new mongoose.Schema({
       lastLogin: { type: String }
     }],
     default: []
-  }
+  },
+  fcmTokens: { type: [String], default: [] }
 });
 const User = mongoose.model('User', userSchema);
 
@@ -516,6 +517,19 @@ const purchaseAuditLogSchema = new mongoose.Schema({
 });
 const PurchaseAuditLog = mongoose.model('PurchaseAuditLog', purchaseAuditLogSchema);
 
+// Notification Model
+const notificationSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  userId: { type: String, required: true },
+  title: { type: String, required: true },
+  body: { type: String, required: true },
+  type: { type: String, required: true }, // 'sale', 'payment', 'customer', 'return', 'replacement', 'stock', 'message'
+  read: { type: Boolean, default: false },
+  data: { type: mongoose.Schema.Types.Mixed, default: {} },
+  createdAt: { type: String, default: () => new Date().toISOString() }
+});
+const Notification = mongoose.model('Notification', notificationSchema);
+
 module.exports = {
   User,
   Product,
@@ -534,7 +548,8 @@ module.exports = {
   GRN,
   SupplierPayment,
   PurchaseAuditLog,
-  OnlineSaleCancelLog
+  OnlineSaleCancelLog,
+  Notification
 };
 
 

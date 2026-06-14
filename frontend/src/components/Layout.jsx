@@ -8,9 +8,11 @@ import { io } from 'socket.io-client';
 import {
   LayoutDashboard, Package, ShoppingCart, Store,
   LogOut, Menu, Building2, Undo2, BarChart3, Database, Settings, ArrowLeftRight, MessageSquare, KeyRound,
-  Factory, X, Box
+  Factory, X, Box, Bell, AlertTriangle
 } from 'lucide-react';
 import logo from '../logo.png';
+import { api } from '../api';
+import { initFCM } from '../firebase-messaging';
 
 
 const nav = [
@@ -44,8 +46,47 @@ export default function Layout() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [chatNotifications, setChatNotifications] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const [showPermissionBanner, setShowPermissionBanner] = useState(false);
   const notifTimersRef = React.useRef({});
   const myChannelIdsRef = React.useRef(new Set());
+
+  // Listen to service worker navigate events
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      const handleSWMessage = (event) => {
+        if (event.data && event.data.type === 'NAVIGATE') {
+          navigate(event.data.url);
+        }
+      };
+      navigator.serviceWorker.addEventListener('message', handleSWMessage);
+      return () => {
+        navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+      };
+    }
+  }, [navigate]);
+
+  // Request notification permissions after login
+  useEffect(() => {
+    if (user) {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        if (Notification.permission === 'default') {
+          Notification.requestPermission().then(perm => {
+            if (perm === 'denied') {
+              setShowPermissionBanner(true);
+            } else {
+              initFCM(user.id);
+            }
+          });
+        } else if (Notification.permission === 'denied') {
+          setShowPermissionBanner(true);
+        } else {
+          initFCM(user.id);
+        }
+      }
+    }
+  }, [user]);
 
   // Connection state listeners
   useEffect(() => {
@@ -365,6 +406,57 @@ export default function Layout() {
             Notification.requestPermission();
           }
         }
+      }
+    });
+
+    // Fetch notifications list
+    const fetchNotificationsList = async () => {
+      try {
+        const data = await api.getNotifications();
+        setNotifications(data);
+      } catch (err) {
+        console.error('Failed to fetch notifications:', err);
+      }
+    };
+    fetchNotificationsList();
+
+    // Listen to new_notification socket event
+    socket.on('new_notification', (notif) => {
+      setNotifications(prev => [notif, ...prev]);
+
+      // Sound double-chime trigger
+      if (user.appearance?.soundNotification !== false) {
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const playTone = (freq, start, duration) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(0.15, start + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+            osc.start(start);
+            osc.stop(start + duration);
+          };
+          playTone(660, audioCtx.currentTime, 0.15);
+          playTone(660, audioCtx.currentTime + 0.12, 0.15);
+        } catch (e) {
+          console.warn('Double chime audio play failed:', e);
+        }
+      }
+
+      // Show native system notification via service worker
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification(notif.title, {
+            body: notif.body,
+            icon: '/icon-192.png',
+            badge: '/favicon.png',
+            data: { clickAction: notif.data?.clickAction || '/' }
+          });
+        });
       }
     });
 
@@ -719,13 +811,140 @@ export default function Layout() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile topbar */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white dark:bg-[#111827] border-b border-slate-200 dark:border-[#1E293B] shadow-sm">
-          <button onClick={() => setOpen(true)} className="p-1 rounded-lg text-slate-600 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#1E293B]">
-            <Menu size={22} />
-          </button>
-          <span className="font-semibold text-slate-800 dark:text-[#F8FAFC]">StockTrack</span>
+        {/* Unified Header */}
+        <header className="flex h-16 items-center justify-between px-4 lg:px-6 bg-white dark:bg-[#0B1220] border-b border-slate-200 dark:border-[#1E293B] shadow-sm z-30 select-none">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setOpen(true)} className="lg:hidden p-1 rounded-lg text-slate-600 dark:text-[#CBD5E1] hover:bg-slate-100 dark:hover:bg-[#1E293B]">
+              <Menu size={22} />
+            </button>
+            <span className="font-black text-slate-805 dark:text-[#F8FAFC] text-base tracking-tight uppercase">TEE ERP</span>
+          </div>
+
+          {/* Right Header Panel - Notification Bell */}
+          <div className="relative flex items-center gap-2">
+            <button 
+              id="notification-bell-btn"
+              onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+              className="relative p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-[#1E293B] hover:text-slate-805 dark:hover:text-[#F8FAFC] transition-all"
+            >
+              <Bell size={19} />
+              {notifications.filter(n => !n.read).length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-red-650 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-white dark:border-[#0B1220] animate-pulse">
+                  {notifications.filter(n => !n.read).length}
+                </span>
+              )}
+            </button>
+
+            {/* Glassmorphic Dropdown Panel */}
+            {showNotificationsDropdown && (
+              <div 
+                id="notifications-dropdown-menu"
+                className="absolute right-0 top-12 w-80 sm:w-96 bg-slate-900/95 dark:bg-[#0B1220]/95 backdrop-blur-md border border-slate-850 rounded-2xl shadow-2xl p-4 z-40 max-h-[480px] flex flex-col animate-fadeIn"
+              >
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-2.5">
+                  <h3 className="font-extrabold text-sm text-slate-100 flex items-center gap-1.5">
+                    <Bell size={14} className="text-red-500" /> Notifications
+                  </h3>
+                  <div className="flex gap-2">
+                    {notifications.some(n => !n.read) && (
+                      <button 
+                        onClick={async () => {
+                          try {
+                            await api.markAllNotificationsRead();
+                            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                          } catch (err) { console.error(err); }
+                        }}
+                        className="text-[10px] font-black text-red-400 hover:text-red-300 transition-colors uppercase tracking-wider bg-transparent border-none outline-none cursor-pointer"
+                      >
+                        Mark All Read
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Notifications list */}
+                <div className="flex-1 overflow-y-auto space-y-2 max-h-[300px] scrollbar-thin">
+                  {notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-slate-500">
+                      <Bell size={28} className="opacity-25 mb-1.5" />
+                      <span className="text-xs font-semibold text-slate-400">No notifications found</span>
+                    </div>
+                  ) : (
+                    notifications.map((notif) => {
+                      const handleClick = async () => {
+                        try {
+                          await api.markNotificationRead(notif.id);
+                          setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+                        } catch (err) { console.error(err); }
+
+                        setShowNotificationsDropdown(false);
+                        const redirectUrl = notif.data?.clickAction || '/';
+                        
+                        if (notif.type === 'teamMessage' && notif.data?.channelId) {
+                          localStorage.setItem('tee_goto_channel_id', notif.data.channelId);
+                          window.dispatchEvent(new CustomEvent('tee_goto_channel', { detail: { channelId: notif.data.channelId } }));
+                        }
+                        
+                        navigate(redirectUrl);
+                      };
+
+                      const handleDeleteNotif = async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await api.deleteNotification(notif.id);
+                          setNotifications(prev => prev.filter(n => n.id !== notif.id));
+                        } catch (err) { console.error(err); }
+                      };
+
+                      return (
+                        <div 
+                          key={notif.id}
+                          onClick={handleClick}
+                          className={`group relative flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer hover:bg-slate-800/40 hover:border-slate-800 transition-all ${
+                            notif.read ? 'bg-transparent border-transparent text-slate-400' : 'bg-slate-955/20 border-slate-900 text-slate-100 font-bold'
+                          }`}
+                        >
+                          {!notif.read && (
+                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-red-500 rounded-full" />
+                          )}
+                          <div className="flex-1 pl-1.5 min-w-0 text-left">
+                            <p className="text-xs font-bold leading-normal truncate">{notif.title}</p>
+                            <p className="text-[11px] text-slate-400 font-medium leading-relaxed mt-0.5 whitespace-pre-wrap">{notif.body}</p>
+                            <span className="text-[9px] text-slate-500 block mt-1.5">{formatNotifTime(notif.createdAt)}</span>
+                          </div>
+                          <button 
+                            onClick={handleDeleteNotif}
+                            className="opacity-0 group-hover:opacity-100 absolute right-2 top-2 p-1 text-slate-550 hover:text-red-400 rounded transition-all bg-transparent border-none cursor-pointer"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </header>
+
+        {/* Permission Denied Warning Banner */}
+        {showPermissionBanner && (
+          <div className="bg-amber-600/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between text-xs text-amber-200 select-none">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+              <span>Enable notifications to receive sales and payment alerts.</span>
+            </div>
+            <button 
+              onClick={() => {
+                alert("To enable notifications, please click the lock/settings icon in your browser address bar and allow Notification permissions for this site.");
+              }}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm cursor-pointer border-none"
+            >
+              Enable Now
+            </button>
+          </div>
+        )}
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-[#F8FAFC] dark:bg-[#0F172A]">
           <ErrorBoundary>

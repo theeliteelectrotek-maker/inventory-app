@@ -97,3 +97,42 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(data.title, options)
   );
 });
+
+// Click action handler
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const clickAction = event.notification.data?.clickAction || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Find an open client page and navigate it
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.focus();
+          client.postMessage({ type: 'NAVIGATE', url: clickAction });
+          return;
+        }
+      }
+      // If no open client exists, open a new window
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(clickAction);
+      }
+    })
+  );
+});
+
+// Listener for simulated push events from client / E2E test script
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SIMULATE_PUSH') {
+    const { title, body, data } = event.data;
+    const options = {
+      body,
+      icon: '/icon-192.png',
+      badge: '/favicon.png',
+      data: data || {}
+    };
+    event.waitUntil(
+      self.registration.showNotification(title, options)
+    );
+  }
+});

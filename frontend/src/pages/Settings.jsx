@@ -7,7 +7,8 @@ import {
   History, Save, QrCode, AlertCircle, Eye, RefreshCw, X, ShieldAlert,
   Mail, Phone, FileText, CheckCircle2, ChevronRight, HelpCircle,
   Sun, Moon, Monitor, User, Palette, Lock, MapPin, Calendar, Globe,
-  Trash2, KeyRound, Smartphone, Laptop, ShieldCheck, UserCog, XCircle, Clock
+  Trash2, KeyRound, Smartphone, Laptop, ShieldCheck, UserCog, XCircle, Clock,
+  Bell
 } from 'lucide-react';
 
 export default function Settings() {
@@ -114,6 +115,20 @@ export default function Settings() {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState('');
 
+  // --- Notifications settings states (Admin Only) ---
+  const [notificationSettings, setNotificationSettings] = useState({
+    sales: true,
+    payments: true,
+    inventory: true,
+    returns: true,
+    replacements: true,
+    messages: true
+  });
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
+  const [notificationsError, setNotificationsError] = useState('');
+  const [notificationsSuccess, setNotificationsSuccess] = useState('');
+
   // --- 6. Admin Extra Controls (Employee Profile Modal) ---
   const [showEmpProfileModal, setShowEmpProfileModal] = useState(false);
   const [selectedEmpProfile, setSelectedEmpProfile] = useState(null);
@@ -141,6 +156,7 @@ export default function Settings() {
     if (isAdmin) {
       fetchCompanySettings();
       fetchEmployees();
+      fetchNotificationSettings();
     } else {
       fetchMyPasswordRequests();
     }
@@ -299,6 +315,45 @@ export default function Settings() {
       console.error(err);
     } finally {
       setLoadingPasswordRequests(false);
+    }
+  };
+
+  const fetchNotificationSettings = async () => {
+    try {
+      setLoadingNotifications(true);
+      const data = await api.getNotificationSettings();
+      if (data) {
+        setNotificationSettings({
+          sales: data.sales !== undefined ? data.sales : true,
+          payments: data.payments !== undefined ? data.payments : true,
+          inventory: data.inventory !== undefined ? data.inventory : true,
+          returns: data.returns !== undefined ? data.returns : true,
+          replacements: data.replacements !== undefined ? data.replacements : true,
+          messages: data.messages !== undefined ? data.messages : true
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch notification settings:', err);
+      setNotificationsError('Failed to load notification settings.');
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const handleSaveNotifications = async (e) => {
+    e.preventDefault();
+    setSavingNotifications(true);
+    setNotificationsError('');
+    setNotificationsSuccess('');
+    try {
+      await api.updateNotificationSettings(notificationSettings);
+      setNotificationsSuccess('Notification settings saved successfully!');
+      setTimeout(() => setNotificationsSuccess(''), 4000);
+    } catch (err) {
+      console.error('Failed to save notification settings:', err);
+      setNotificationsError(err.message || 'Failed to update notification settings.');
+    } finally {
+      setSavingNotifications(false);
     }
   };
 
@@ -728,6 +783,17 @@ export default function Settings() {
               >
                 <UserPlus size={14} />
                 Employee Directory
+              </button>
+              <button
+                onClick={() => setActiveTab('notifications')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 ${
+                  activeTab === 'notifications'
+                    ? 'bg-red-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Bell size={14} />
+                Notifications
               </button>
             </>
           )}
@@ -1975,6 +2041,155 @@ export default function Settings() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {isAdmin && activeTab === 'notifications' && (
+        <div className="bg-slate-900/40 dark:bg-[#020617]/35 rounded-3xl shadow-xl border border-slate-900 overflow-hidden transition-all duration-300">
+          <div className="p-6 border-b border-slate-900 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-slate-200">Global Notification Settings</h2>
+              <p className="text-xs font-semibold text-slate-400">Enable or disable system-wide alerts for business events. These preferences affect Admin push alerts.</p>
+            </div>
+            <button
+              onClick={fetchNotificationSettings}
+              className="text-slate-400 hover:text-slate-250 hover:bg-slate-900/60 p-2 rounded-xl border border-slate-900 flex items-center gap-1.5 text-xs font-bold transition-all"
+            >
+              <RefreshCw size={14} className={loadingNotifications ? 'animate-spin text-red-500' : ''} />
+              Reload
+            </button>
+          </div>
+
+          {loadingNotifications ? (
+            <div className="py-20 text-center text-slate-400 font-semibold flex flex-col items-center justify-center gap-2">
+              <RefreshCw className="animate-spin text-[#EF4444] w-8 h-8" />
+              Loading notification preferences...
+            </div>
+          ) : (
+            <form onSubmit={handleSaveNotifications} className="p-6 md:p-8 space-y-6">
+              {notificationsError && (
+                <div className="bg-red-955/20 border-l-4 border-red-500 p-4 rounded-xl text-xs font-bold text-red-400 flex items-center gap-2.5">
+                  <AlertCircle size={16} className="shrink-0" />
+                  {notificationsError}
+                </div>
+              )}
+              {notificationsSuccess && (
+                <div className="bg-emerald-955/25 border-l-4 border-emerald-500 p-4 rounded-xl text-xs font-bold text-emerald-400 flex items-center gap-2.5">
+                  <CheckCircle2 size={16} className="shrink-0" />
+                  {notificationsSuccess}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-200">Sales Alerts</h4>
+                    <p className="text-[11px] text-slate-550 font-semibold">Notify on creation, updates, and cancellations of offline/online sales</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={notificationSettings.sales} 
+                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, sales: e.target.checked }))}
+                    />
+                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-200">Payment Alerts</h4>
+                    <p className="text-[11px] text-slate-550 font-semibold">Notify when customer payments are recorded or updated</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={notificationSettings.payments} 
+                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, payments: e.target.checked }))}
+                    />
+                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-200">Inventory Stock Alerts</h4>
+                    <p className="text-[11px] text-slate-550 font-semibold">Notify when products run low on stock or are depleted</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={notificationSettings.inventory} 
+                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, inventory: e.target.checked }))}
+                    />
+                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-200">Return Requests</h4>
+                    <p className="text-[11px] text-slate-550 font-semibold">Notify when customers submit return/credit request alerts</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={notificationSettings.returns} 
+                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, returns: e.target.checked }))}
+                    />
+                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-200">Replacement Requests</h4>
+                    <p className="text-[11px] text-slate-550 font-semibold">Notify when replacements are requested or their status changes</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={notificationSettings.replacements} 
+                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, replacements: e.target.checked }))}
+                    />
+                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-200">Team Messages</h4>
+                    <p className="text-[11px] text-slate-550 font-semibold">Notify on team chat messages, DMs and username @mentions</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={notificationSettings.messages} 
+                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, messages: e.target.checked }))}
+                    />
+                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
+                  </label>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-slate-900 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={savingNotifications}
+                  className="bg-red-650 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider py-3 px-6 rounded-2xl shadow-lg shadow-red-600/10 flex items-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer"
+                >
+                  {savingNotifications ? <RefreshCw className="animate-spin text-white" size={14} /> : <Save size={14} />}
+                  Save Preferences
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       )}
 

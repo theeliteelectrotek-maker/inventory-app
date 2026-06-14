@@ -176,5 +176,14 @@ export const api = {
   getSupplierLedger: (id) => request('GET', `/purchases/suppliers/${id}/ledger`),
   getPurchaseStats: () => request('GET', '/purchases/stats'),
   getPurchaseAuditLogs: () => request('GET', '/purchases/audit-logs'),
+  
+  // Notifications
+  registerFCMToken: (token) => request('POST', '/profile/fcm-token', { token }),
+  getNotifications: () => request('GET', '/notifications'),
+  markNotificationRead: (id) => request('PUT', `/notifications/${id}/read`),
+  markAllNotificationsRead: () => request('PUT', '/notifications/read-all'),
+  deleteNotification: (id) => request('DELETE', `/notifications/${id}`),
+  getNotificationSettings: () => request('GET', '/settings/notifications'),
+  updateNotificationSettings: (settings) => request('PUT', '/settings/notifications', settings),
 };
 
