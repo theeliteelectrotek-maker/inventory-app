@@ -39,6 +39,156 @@ export default function Layout() {
   const [hasAnnouncement, setHasAnnouncement] = useState(false);
   const [toast, setToast] = useState(null);
 
+  // Unified PWA & Notification system states
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [chatNotifications, setChatNotifications] = useState([]);
+  const notifTimersRef = React.useRef({});
+  const myChannelIdsRef = React.useRef(new Set());
+
+  // Connection state listeners
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Capture install prompts
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      const dismissed = localStorage.getItem('tee_install_banner_dismissed') === 'true';
+      if (!dismissed) {
+        setShowInstallBanner(true);
+      }
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setShowInstallBanner(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`PWA Install Choice: ${outcome}`);
+    setDeferredPrompt(null);
+    setShowInstallBanner(false);
+  };
+
+  const handleDismissInstall = () => {
+    setShowInstallBanner(false);
+    localStorage.setItem('tee_install_banner_dismissed', 'true');
+  };
+
+  // Toast Notification utilities
+  const startNotifTimer = (msgId) => {
+    if (notifTimersRef.current[msgId]) {
+      clearTimeout(notifTimersRef.current[msgId]);
+    }
+    notifTimersRef.current[msgId] = setTimeout(() => {
+      dismissNotification(msgId);
+    }, 6000);
+  };
+
+  const dismissNotification = (msgId) => {
+    if (notifTimersRef.current[msgId]) {
+      clearTimeout(notifTimersRef.current[msgId]);
+      delete notifTimersRef.current[msgId];
+    }
+    setChatNotifications((prev) => prev.filter(n => n.id !== msgId));
+  };
+
+  const addNotification = (msg) => {
+    setChatNotifications((prev) => {
+      if (prev.some(n => n.id === msg.id)) return prev;
+      startNotifTimer(msg.id);
+      return [msg, ...prev].slice(0, 5);
+    });
+  };
+
+  const handleMouseEnterNotif = (msgId) => {
+    if (notifTimersRef.current[msgId]) {
+      clearTimeout(notifTimersRef.current[msgId]);
+      notifTimersRef.current[msgId] = null;
+    }
+  };
+
+  const handleMouseLeaveNotif = (msgId) => {
+    startNotifTimer(msgId);
+  };
+
+  const formatNotifTime = (createdAt) => {
+    if (!createdAt) return 'Just now';
+    const diffMs = Date.now() - new Date(createdAt).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    return new Date(createdAt).toLocaleDateString();
+  };
+
+  const handleNotifClick = async (msg) => {
+    try {
+      const token = localStorage.getItem('inv_token');
+      if (token) {
+        const socketUrl = window.location.port === '5173' ? 'http://localhost:3001' : window.location.origin;
+        await fetch(`${socketUrl}/api/communication/read`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ channelId: msg.channelId })
+        });
+      }
+    } catch (e) {
+      console.error('Error marking as read on click:', e);
+    }
+
+    localStorage.setItem('tee_goto_channel_id', msg.channelId);
+    window.dispatchEvent(new CustomEvent('tee_goto_channel', { detail: { channelId: msg.channelId } }));
+
+    // Re-fetch count
+    try {
+      const token = localStorage.getItem('inv_token');
+      if (token) {
+        const socketUrl = window.location.port === '5173' ? 'http://localhost:3001' : window.location.origin;
+        const res = await fetch(`${socketUrl}/api/communication/unread-count`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadCount(data.unreadCount ?? 0);
+          setHasMention(data.hasMention ?? false);
+          setHasAnnouncement(data.hasAnnouncement ?? false);
+        }
+      }
+    } catch (err) {
+      console.error('Error updating unread count:', err);
+    }
+
+    dismissNotification(msg.id);
+    navigate('/communication');
+  };
+
   useEffect(() => {
     if (location.state?.message) {
       setToast(location.state.message);
@@ -62,8 +212,57 @@ export default function Layout() {
     // Connect to WebSockets
     const socketUrl = window.location.port === '5173' ? 'http://localhost:3001' : window.location.origin;
     const socket = io(socketUrl);
+    socket.on('connect', () => {
+      socket.emit('register', user.id);
+    });
+    if (socket.connected) {
+      socket.emit('register', user.id);
+    }
 
-    socket.emit('register', user.id);
+    // Fetch channels for member check cache
+    const fetchMyChannels = async () => {
+      try {
+        const token = localStorage.getItem('inv_token');
+        if (!token) return;
+        const res = await fetch(`${socketUrl}/api/communication/channels`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const chans = await res.json();
+          chans.forEach(c => {
+            if (!c.members || c.members.length === 0 || c.members.includes(user.id)) {
+              myChannelIdsRef.current.add(c.id);
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Layout fetchMyChannels error:', err);
+      }
+    };
+    fetchMyChannels();
+
+    // Fetch stored unread messages for sequential staggering on login
+    const fetchUnreadMsgs = async () => {
+      try {
+        const token = localStorage.getItem('inv_token');
+        if (!token) return;
+        const res = await fetch(`${socketUrl}/api/communication/unread-messages`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const msgs = await res.json();
+          // Stagger displaying notifications sequentially
+          msgs.forEach((msg, idx) => {
+            setTimeout(() => {
+              addNotification(msg);
+            }, idx * 400); // 400ms stagger delay
+          });
+        }
+      } catch (err) {
+        console.error('Layout fetchUnreadMsgs error:', err);
+      }
+    };
+    fetchUnreadMsgs();
 
     // Initial check for unread alerts or updates
     const fetchUnread = async () => {
@@ -98,6 +297,16 @@ export default function Layout() {
     socket.on('newMessage', (msg) => {
       if (msg.senderId === user.id) return;
 
+      // Filter relevance based on user membership
+      const isDM = msg.channelId.includes('-');
+      const isMyDM = isDM && msg.channelId.includes(user.id);
+      const isMyGroupChannel = !isDM && myChannelIdsRef.current.has(msg.channelId);
+
+      if (!isMyDM && !isMyGroupChannel) {
+        // Ignore messages not addressed to current user
+        return;
+      }
+
       const activeChannelId = localStorage.getItem('tee_active_channel_id');
       const isDMMatch = (id1, id2) => {
         if (!id1 || !id2) return false;
@@ -123,21 +332,26 @@ export default function Layout() {
           setHasAnnouncement(true);
         }
 
-        // Sound Notification using Web Audio API
-        try {
-          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 Note
-          gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.18);
-          osc.start();
-          osc.stop(audioCtx.currentTime + 0.18);
-        } catch (e) {
-          // Audio context might be blocked
+        // Trigger vertical notification popup toast!
+        addNotification(msg);
+
+        // Sound Notification using Web Audio API (if not disabled by settings)
+        if (user.appearance?.soundNotification !== false) {
+          try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 Note
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.18);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.18);
+          } catch (e) {
+            // Audio context might be blocked
+          }
         }
 
         // HTML5 Browser Notification for user mentions
@@ -151,6 +365,13 @@ export default function Layout() {
             Notification.requestPermission();
           }
         }
+      }
+    });
+
+    // Also listen to channelCreated to update myChannelIdsRef cache dynamically
+    socket.on('channelCreated', (newChan) => {
+      if (!newChan.members || newChan.members.length === 0 || newChan.members.includes(user.id)) {
+        myChannelIdsRef.current.add(newChan.id);
       }
     });
 
@@ -287,41 +508,46 @@ export default function Layout() {
 
       {/* Nav */}
       <nav className={`flex-1 space-y-1 overflow-y-auto scrollbar-thin w-full transition-all duration-300 ${isCompactSidebar ? 'px-2 py-4' : 'px-3 py-4'}`}>
-        {allowedNav.map(({ to, label, icon: Icon, exact, isSubItem }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={exact}
-            onClick={() => setOpen(false)}
-            title={isCompactSidebar ? label : ''}
-            className={({ isActive }) => {
-              let baseClass = `relative flex items-center rounded-lg text-sm font-medium transition-all ${
-                isCompactSidebar 
-                  ? 'justify-center p-2.5' 
-                  : (isSubItem ? 'gap-3 pl-8 pr-3 py-2' : 'gap-3 px-3 py-2.5')
-              } ${
-                isActive
-                  ? 'bg-red-600 text-white shadow-md'
-                  : 'text-slate-400 hover:bg-zinc-800 dark:hover:bg-[#1E293B] hover:text-white'
-              }`;
+        {allowedNav.map(({ to, label, icon: Icon, exact, isSubItem }) => {
+          const displayLabel = (label === 'Team Communication' && unreadCount > 0)
+            ? `${label} (${unreadCount})`
+            : label;
 
-              if (label === 'Team Communication') {
-                if (hasMention) {
-                  baseClass += ' animate-mention-pulse border border-amber-500/40';
-                  if (!isActive) baseClass += ' text-amber-400 bg-amber-500/5 hover:text-amber-300';
-                } else if (hasAnnouncement) {
-                  baseClass += ' animate-announce-pulse border border-red-500/40';
-                  if (!isActive) baseClass += ' text-red-400 bg-red-655/5 hover:text-red-300';
-                } else if (unreadCount > 0) {
-                  baseClass += ' animate-glow-pulse border border-red-600/30';
-                  if (!isActive) baseClass += ' text-red-400/90 hover:text-red-300';
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={exact}
+              onClick={() => setOpen(false)}
+              title={isCompactSidebar ? label : ''}
+              className={({ isActive }) => {
+                let baseClass = `relative flex items-center rounded-lg text-sm font-medium transition-all ${
+                  isCompactSidebar 
+                    ? 'justify-center p-2.5' 
+                    : (isSubItem ? 'gap-3 pl-8 pr-3 py-2' : 'gap-3 px-3 py-2.5')
+                } ${
+                  isActive
+                    ? 'bg-red-650 text-white shadow-md'
+                    : 'text-slate-400 hover:bg-zinc-800 dark:hover:bg-[#1E293B] hover:text-white'
+                }`;
+
+                if (label === 'Team Communication') {
+                  if (hasMention) {
+                    baseClass += ' animate-mention-pulse border border-amber-500/40';
+                    if (!isActive) baseClass += ' text-amber-400 bg-amber-500/5 hover:text-amber-300';
+                  } else if (hasAnnouncement) {
+                    baseClass += ' animate-announce-pulse border border-red-500/40';
+                    if (!isActive) baseClass += ' text-red-400 bg-red-655/5 hover:text-red-300';
+                  } else if (unreadCount > 0) {
+                    baseClass += ' animate-glow-pulse border border-red-600/30';
+                    if (!isActive) baseClass += ' text-red-400/90 hover:text-red-300';
+                  }
                 }
-              }
-              return baseClass;
-            }}
-          >
-            <Icon size={isSubItem ? 15 : 18} className="shrink-0" />
-            {!isCompactSidebar && <span className={`flex-1 ${isSubItem ? 'text-xs text-slate-350 font-semibold' : ''}`}>{label}</span>}
+                return baseClass;
+              }}
+            >
+              <Icon size={isSubItem ? 15 : 18} className="shrink-0" />
+              {!isCompactSidebar && <span className={`flex-1 ${isSubItem ? 'text-xs text-slate-350 font-semibold' : ''}`}>{displayLabel}</span>}
             
             {label === 'Team Communication' && (
               <>
@@ -343,7 +569,7 @@ export default function Layout() {
               </>
             )}
           </NavLink>
-        ))}
+        ); })}
       </nav>
 
       {/* User */}
@@ -378,6 +604,100 @@ export default function Layout() {
   return (
     <div className="flex h-screen overflow-hidden bg-[#F8FAFC] dark:bg-[#0F172A]">
       <SessionTimeoutManager />
+      
+      {/* PWA Offline Overlay */}
+      {!isOnline && (
+        <div className="fixed inset-0 z-[999999] flex flex-col items-center justify-center bg-[#0B1220] p-6 text-center">
+          <div className="relative mb-6">
+            <img 
+              src={logo} 
+              alt="TEE Logo" 
+              className="h-24 w-auto object-contain animate-pulse" 
+              style={{ filter: 'drop-shadow(0 0 20px rgba(239, 68, 68, 0.4)) brightness(0) invert(1)' }}
+            />
+          </div>
+          <h2 className="text-2xl font-black text-slate-100 mb-2 tracking-tight">TEE Inventory is Offline</h2>
+          <p className="text-slate-400 text-sm max-w-sm mb-6 leading-relaxed">
+            TEE Inventory is currently offline. Please reconnect to continue.
+          </p>
+          <div className="flex items-center gap-2 text-xs text-red-500 font-bold uppercase tracking-wider bg-red-950/20 border border-red-500/20 rounded-full px-4 py-1.5 animate-pulse">
+            <span className="w-2 h-2 bg-red-500 rounded-full" />
+            Waiting for Connection
+          </div>
+        </div>
+      )}
+
+      {/* PWA Custom Install Banner */}
+      {showInstallBanner && deferredPrompt && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:left-6 md:translate-x-0 z-[99999] w-[calc(100%-2rem)] max-w-sm bg-[#0B0F19]/90 backdrop-blur-md border border-slate-800 rounded-2xl p-4 shadow-2xl flex flex-col gap-3 transition-all duration-300 animate-slide-up">
+          <div className="flex items-start gap-3">
+            <img 
+              src={logo} 
+              alt="TEE Logo" 
+              className="h-10 w-10 object-contain rounded-xl bg-slate-900 border border-slate-800 p-1.5 shrink-0" 
+              style={{ filter: 'brightness(0) invert(1)' }}
+            />
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-bold text-slate-100">Install TEE Inventory App</h4>
+              <p className="text-xs text-slate-400 mt-0.5 leading-normal">Access TEE ERP directly from your desktop or home screen with native full-screen offline mode.</p>
+            </div>
+            <button onClick={handleDismissInstall} className="text-slate-500 hover:text-slate-300 transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+          <div className="flex gap-2.5">
+            <button 
+              onClick={handleInstallClick}
+              className="flex-1 rounded-xl bg-red-650 py-2.5 text-xs font-bold text-white shadow-lg shadow-red-600/20 transition-all hover:bg-red-700 active:scale-[0.98]"
+            >
+              Install Now
+            </button>
+            <button 
+              onClick={handleDismissInstall}
+              className="flex-1 rounded-xl border border-slate-850 bg-transparent py-2.5 text-xs font-bold text-slate-400 transition-all hover:border-slate-700 hover:bg-slate-900 hover:text-slate-200 active:scale-[0.98]"
+            >
+              Later
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Team Communication Toast Notifications Stack */}
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 max-w-sm w-full md:w-80 pointer-events-none">
+        {chatNotifications.map((notif) => (
+          <div 
+            key={notif.id}
+            onMouseEnter={() => handleMouseEnterNotif(notif.id)}
+            onMouseLeave={() => handleMouseLeaveNotif(notif.id)}
+            onClick={() => handleNotifClick(notif)}
+            className="pointer-events-auto cursor-pointer relative w-full overflow-hidden rounded-2xl border border-slate-800/80 bg-[#0F172A]/85 backdrop-blur-md p-4 text-left shadow-2xl shadow-slate-950/60 hover:scale-[1.02] hover:border-slate-700 hover:shadow-red-500/5 transition-all duration-300 flex gap-3 animate-slide-up"
+          >
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-red-500 to-red-600" />
+            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-sm font-black text-white shadow-md shrink-0 border border-red-500/20 select-none">
+              {notif.senderName?.[0]?.toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-baseline mb-0.5">
+                <span className="text-xs font-bold tracking-wide text-slate-100">{notif.senderName}</span>
+                <span className="text-[9px] font-medium text-slate-500">{formatNotifTime(notif.createdAt)}</span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium truncate pr-4">
+                {notif.content || "Sent an attachment"}
+              </p>
+            </div>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                dismissNotification(notif.id);
+              }}
+              className="absolute top-3 right-3 text-slate-500 hover:text-slate-300 p-0.5 rounded-lg transition-colors"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+
       {toast && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-red-650 text-white px-4 py-3 rounded-xl shadow-xl shadow-red-950/20 border border-red-500/30 transition-all duration-300 animate-slide-in">
           <span className="font-bold text-sm">{toast}</span>

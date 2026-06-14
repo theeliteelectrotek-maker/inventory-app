@@ -138,6 +138,45 @@ export default function CommunicationHub() {
     };
   }, [activeChannel]);
 
+  // Auto-navigate to correct conversation from custom notification clicks
+  useEffect(() => {
+    const handleGotoChannel = (e) => {
+      const targetId = e.detail?.channelId || localStorage.getItem('tee_goto_channel_id');
+      if (!targetId) return;
+
+      const isDM = targetId.includes('-');
+      if (isDM) {
+        if (chatUsers.length > 0) {
+          const parts = targetId.split('-');
+          const otherUserId = parts.find(id => id !== user.id);
+          const otherUser = chatUsers.find(u => u.id === otherUserId);
+          if (otherUser) {
+            selectUserDM(otherUser);
+            localStorage.removeItem('tee_goto_channel_id');
+          }
+        }
+      } else {
+        if (channels.length > 0) {
+          const channel = channels.find(c => c.id === targetId);
+          if (channel) {
+            selectChannel(channel);
+            localStorage.removeItem('tee_goto_channel_id');
+          }
+        }
+      }
+    };
+
+    window.addEventListener('tee_goto_channel', handleGotoChannel);
+
+    if (channels.length > 0 && chatUsers.length > 0) {
+      handleGotoChannel({ detail: {} });
+    }
+
+    return () => {
+      window.removeEventListener('tee_goto_channel', handleGotoChannel);
+    };
+  }, [channels, chatUsers, user.id]);
+
   // Handle auto-scroll to bottom on new messages
   useEffect(() => {
     scrollToBottom();
@@ -160,7 +199,8 @@ export default function CommunicationHub() {
     try {
       const chans = await api.getChannels();
       setChannels(chans);
-      if (chans.length > 0 && !activeChannel) {
+      const targetChannelId = localStorage.getItem('tee_goto_channel_id');
+      if (chans.length > 0 && !activeChannel && !targetChannelId) {
         // Set TEE Official Group as default active
         const official = chans.find((c) => c.id === 'tee_official') || chans[0];
         setActiveChannel(official);

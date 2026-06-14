@@ -4414,6 +4414,33 @@ app.get('/api/communication/unread-count', requireAuth, catchAsync(async (req, r
   res.json(state);
 }));
 
+// Fetch unread messages for the logged-in user (chronologically sorted)
+app.get('/api/communication/unread-messages', requireAuth, catchAsync(async (req, res) => {
+  const userId = req.userObj.id;
+  const user = await User.findOne({ id: userId });
+  const username = user ? user.username : '';
+
+  const userChannels = await ChatChannel.find({
+    $or: [
+      { type: { $in: ['group', 'announcement', 'department'] }, members: { $size: 0 } },
+      { members: userId }
+    ]
+  });
+  const channelIds = userChannels.map(c => c.id);
+
+  const unreadMessages = await ChatMessage.find({
+    senderId: { $ne: userId },
+    readers: { $ne: userId },
+    deleted: { $ne: true },
+    $or: [
+      { channelId: { $in: channelIds } },
+      { channelId: { $regex: userId } }
+    ]
+  }).sort({ createdAt: 1 });
+
+  res.json(unreadMessages);
+}));
+
 // Mark messages in a channel as read
 app.post('/api/communication/read', requireAuth, catchAsync(async (req, res) => {
   const { channelId } = req.body;
