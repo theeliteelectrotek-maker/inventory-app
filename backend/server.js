@@ -147,6 +147,7 @@ const sendPushNotification = async ({ type, title, body, data = {}, targetUserId
       // ── Channel 3: FCM push (works when app is closed / PWA) ───────────────
       if (firebaseMessaging && user.fcmTokens && user.fcmTokens.length > 0) {
         const invalidTokens = [];
+        console.log(`[FCM BACKEND] Preparing push notification dispatch for user "${user.username}" (ID: ${user.id}). Total tokens: ${user.fcmTokens.length}. Notification Type: ${type}`);
 
         for (const token of user.fcmTokens) {
           try {
@@ -190,9 +191,11 @@ const sendPushNotification = async ({ type, title, body, data = {}, targetUserId
               },
             };
 
-            await firebaseMessaging.send(message);
-            console.log(`[FCM] ✅ Push sent to user ${user.username} via token ...${token.slice(-10)}`);
+            console.log(`[FCM BACKEND] Sending push via token starting with: "${token.substring(0, 15)}..."`);
+            const response = await firebaseMessaging.send(message);
+            console.log(`[FCM BACKEND] ✅ Push successfully delivered to user "${user.username}". Firebase Response ID: ${response}`);
           } catch (fcmErr) {
+            console.error(`[FCM BACKEND] ❌ Firebase dispatch error via token "${token.substring(0, 15)}..." for user "${user.username}":`, fcmErr);
             // Token is invalid/expired — queue for removal
             if (
               fcmErr.code === 'messaging/registration-token-not-registered' ||
@@ -200,9 +203,7 @@ const sendPushNotification = async ({ type, title, body, data = {}, targetUserId
               fcmErr.code === 'messaging/invalid-argument'
             ) {
               invalidTokens.push(token);
-              console.warn(`[FCM] ⚠️  Invalid token removed for user ${user.username}: ${fcmErr.code}`);
-            } else {
-              console.error(`[FCM] ❌ Send error for user ${user.username}:`, fcmErr.message);
+              console.warn(`[FCM BACKEND] ⚠️ Invalid token queued for pruning: "${token.substring(0, 15)}..." (Error Code: ${fcmErr.code})`);
             }
           }
         }
@@ -211,6 +212,13 @@ const sendPushNotification = async ({ type, title, body, data = {}, targetUserId
         if (invalidTokens.length > 0) {
           user.fcmTokens = user.fcmTokens.filter(t => !invalidTokens.includes(t));
           await user.save();
+          console.log(`[FCM BACKEND] Pruned ${invalidTokens.length} invalid token(s) from user "${user.username}". Remaining active tokens: ${user.fcmTokens.length}`);
+        }
+      } else {
+        if (!firebaseMessaging) {
+          console.log(`[FCM BACKEND] Skip push for user "${user.username}": Firebase Messaging is not initialised.`);
+        } else if (!user.fcmTokens || user.fcmTokens.length === 0) {
+          console.log(`[FCM BACKEND] Skip push for user "${user.username}": No registered FCM tokens found in DB.`);
         }
       }
     }
@@ -4684,12 +4692,19 @@ app.put('/api/profile/appearance', requireAuth, catchAsync(async (req, res) => {
 app.post('/api/profile/fcm-token', requireAuth, catchAsync(async (req, res) => {
   const user = req.userObj;
   const { token } = req.body;
-  if (!token) return res.status(400).json({ message: 'Token is required' });
+  console.log(`[FCM BACKEND] Token registration request received for user: "${user.username}" (ID: ${user.id}, Role: ${user.role})`);
+  if (!token) {
+    console.warn('[FCM BACKEND] Token registration failed: Token is missing from request body');
+    return res.status(400).json({ message: 'Token is required' });
+  }
 
   if (!user.fcmTokens) user.fcmTokens = [];
   if (!user.fcmTokens.includes(token)) {
     user.fcmTokens.push(token);
     await user.save();
+    console.log(`[FCM BACKEND] Successfully saved new FCM token for user "${user.username}". Total registered tokens: ${user.fcmTokens.length}`);
+  } else {
+    console.log(`[FCM BACKEND] FCM token already exists in database for user "${user.username}". Skip saving duplicate. Total tokens: ${user.fcmTokens.length}`);
   }
   res.json({ success: true, message: 'FCM Token registered successfully' });
 }));
@@ -4793,10 +4808,12 @@ app.post('/api/notifications/test', requireAuth, catchAsync(async (req, res) => 
 
   const invalidTokens = [];
   let successCount = 0;
+  console.log(`[FCM BACKEND TEST] Sending test push for admin user "${user.username}". Registered tokens count: ${tokens.length}. Alert Type: ${type}`);
 
   for (const token of tokens) {
     try {
-      await firebaseMessaging.send({
+      console.log(`[FCM BACKEND TEST] Dispatching test notification via token starting with: "${token.substring(0, 15)}..."`);
+      const response = await firebaseMessaging.send({
         token,
         notification: { title, body },
         data: { clickAction: '/settings?tab=notifications', type, notifId: notif.id, isTest: 'true' },
@@ -4812,15 +4829,17 @@ app.post('/api/notifications/test', requireAuth, catchAsync(async (req, res) => 
         },
       });
       successCount++;
+      console.log(`[FCM BACKEND TEST] ✅ Test push successfully delivered via token "${token.substring(0, 15)}...". Response ID: ${response}`);
     } catch (fcmErr) {
+      console.error(`[FCM BACKEND TEST] ❌ Test push failed via token "${token.substring(0, 15)}...". Error:`, fcmErr);
       if (
         fcmErr.code === 'messaging/registration-token-not-registered' ||
         fcmErr.code === 'messaging/invalid-registration-token' ||
         fcmErr.code === 'messaging/invalid-argument'
       ) {
         invalidTokens.push(token);
+        console.warn(`[FCM BACKEND TEST] ⚠️ Queued invalid test token for removal: "${token.substring(0, 15)}..." (Reason: ${fcmErr.code})`);
       }
-      console.error('[FCM Test] Send error:', fcmErr.code, fcmErr.message);
     }
   }
 
@@ -4828,6 +4847,7 @@ app.post('/api/notifications/test', requireAuth, catchAsync(async (req, res) => 
   if (invalidTokens.length > 0) {
     user.fcmTokens = user.fcmTokens.filter(t => !invalidTokens.includes(t));
     await user.save();
+    console.log(`[FCM BACKEND TEST] Pruned ${invalidTokens.length} invalid token(s) from user "${user.username}". Active tokens count: ${user.fcmTokens.length}`);
   }
 
   res.json({

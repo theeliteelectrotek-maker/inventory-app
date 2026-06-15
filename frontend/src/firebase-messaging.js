@@ -41,7 +41,9 @@ export const initFCM = async (userId) => {
     }
 
     // 1. Request / confirm notification permission
+    console.log('[FCM] Requesting notification permission...');
     const permission = await Notification.requestPermission();
+    console.log('[FCM] Notification permission response:', permission);
     if (permission !== 'granted') {
       console.warn('[FCM] Notification permission denied.');
       return null;
@@ -49,14 +51,16 @@ export const initFCM = async (userId) => {
 
     // 2. Register the dedicated Firebase messaging service worker
     //    FCM REQUIRES this file to be at /firebase-messaging-sw.js (root scope)
+    console.log('[FCM] Registering/retrieving service worker: /firebase-messaging-sw.js');
     const swRegistration = await navigator.serviceWorker.register(
       '/firebase-messaging-sw.js',
       { scope: '/' }
     );
     await navigator.serviceWorker.ready;
-    console.log('[FCM] firebase-messaging-sw.js registered:', swRegistration.scope);
+    console.log('[FCM] Service worker active and ready. Scope:', swRegistration.scope);
 
     // 3. Obtain a real FCM token (VAPID key links your server to FCM)
+    console.log('[FCM] Getting FCM token from Firebase SDK using VAPID key: %s', import.meta.env.VITE_FIREBASE_VAPID_KEY);
     const messaging = getMessagingInstance();
     const token = await getToken(messaging, {
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
@@ -68,11 +72,13 @@ export const initFCM = async (userId) => {
       return null;
     }
 
-    console.log('[FCM] Token obtained:', token.substring(0, 20) + '...');
+    console.log('[FCM] Token generated successfully:');
+    console.log('[FCM] Full generated token:', token);
 
     // 4. Register token in the backend (stored in user.fcmTokens[])
+    console.log(`[FCM] Saving token to database for user ID: ${userId}...`);
     await api.registerFCMToken(token);
-    console.log('[FCM] Token registered with backend successfully.');
+    console.log('[FCM] Token registered with backend successfully. Added to user.fcmTokens.');
 
     // Cache token presence in localStorage so Settings panel can show status
     localStorage.setItem('fcm_token_cached', '1');
