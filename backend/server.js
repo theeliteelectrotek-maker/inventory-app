@@ -24,28 +24,50 @@ try {
   const { initializeApp, cert, getApps } = require('firebase-admin/app');
   const { getMessaging } = require('firebase-admin/messaging');
 
-  const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH
-    ? path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH)
-    : path.join(__dirname, 'firebase-service-account.json');
+  let serviceAccount = null;
 
-  if (fs.existsSync(serviceAccountPath)) {
-    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-
-    // Validate that the service account JSON is real (not the placeholder)
-    if (serviceAccount.project_id && serviceAccount.project_id !== '__REPLACE__') {
-      const existingApps = getApps();
-      const app = existingApps.length === 0
-        ? initializeApp({ credential: cert(serviceAccount) })
-        : existingApps[0];
-
-      firebaseMessaging = getMessaging(app);
-      firebaseAdmin = true; // flag — we don't need the full admin object
-      console.log(`✅ Firebase Admin SDK initialised for project: ${serviceAccount.project_id}`);
-    } else {
-      console.warn('⚠️  Firebase service account file contains placeholder values. FCM push disabled. Replace firebase-service-account.json with the real file.');
+  // 1. Try to load service account credentials from the environment variable JSON string (useful for Render deployment)
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    try {
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+      console.log('[FCM INIT] Loaded service account credentials from process.env.FIREBASE_SERVICE_ACCOUNT_JSON string.');
+    } catch (parseErr) {
+      console.error('[FCM INIT] ❌ Error parsing FIREBASE_SERVICE_ACCOUNT_JSON env variable:', parseErr.message);
     }
+  }
+
+  // 2. If not loaded from env, fall back to file path
+  if (!serviceAccount) {
+    const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH
+      ? path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH)
+      : path.join(__dirname, 'firebase-service-account.json');
+
+    if (fs.existsSync(serviceAccountPath)) {
+      try {
+        serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+        console.log(`[FCM INIT] Loaded service account credentials from file: ${serviceAccountPath}`);
+      } catch (fileParseErr) {
+        console.error(`[FCM INIT] ❌ Error parsing service account file at ${serviceAccountPath}:`, fileParseErr.message);
+      }
+    }
+  }
+
+  // 3. Initialize Firebase Admin App
+  if (serviceAccount && serviceAccount.project_id && serviceAccount.project_id !== '__REPLACE__') {
+    const existingApps = getApps();
+    const app = existingApps.length === 0
+      ? initializeApp({ credential: cert(serviceAccount) })
+      : existingApps[0];
+
+    firebaseMessaging = getMessaging(app);
+    firebaseAdmin = true;
+    console.log(`✅ Firebase Admin SDK initialised successfully for project: ${serviceAccount.project_id}`);
   } else {
-    console.warn('⚠️  firebase-service-account.json not found. FCM push disabled. Download it from Firebase Console > Project Settings > Service Accounts.');
+    if (serviceAccount) {
+      console.warn('⚠️  Firebase service account credentials contain placeholder values. FCM push disabled.');
+    } else {
+      console.warn('⚠️  No Firebase service account credentials found (checked process.env.FIREBASE_SERVICE_ACCOUNT_JSON and firebase-service-account.json). FCM push disabled.');
+    }
   }
 } catch (err) {
   console.error('❌ Firebase Admin SDK initialisation error:', err.message);
