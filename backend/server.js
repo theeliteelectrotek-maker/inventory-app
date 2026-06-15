@@ -10,6 +10,51 @@ const AdmZip = require('adm-zip');
 
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const path = require('path');
+const fs = require('fs');
+
+// ─── Firebase Admin SDK (v14 submodule imports) ───────────────────────────────
+// firebase-admin v11+ uses submodule imports:
+//   firebase-admin/app   → initializeApp, cert, getApps
+//   firebase-admin/messaging → getMessaging
+let firebaseAdmin = null;
+let firebaseMessaging = null;
+
+try {
+  const { initializeApp, cert, getApps } = require('firebase-admin/app');
+  const { getMessaging } = require('firebase-admin/messaging');
+
+  const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH
+    ? path.resolve(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH)
+    : path.join(__dirname, 'firebase-service-account.json');
+
+  if (fs.existsSync(serviceAccountPath)) {
+    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+
+    // Validate that the service account JSON is real (not the placeholder)
+    if (serviceAccount.project_id && serviceAccount.project_id !== '__REPLACE__') {
+      const existingApps = getApps();
+      const app = existingApps.length === 0
+        ? initializeApp({ credential: cert(serviceAccount) })
+        : existingApps[0];
+
+      firebaseMessaging = getMessaging(app);
+      firebaseAdmin = true; // flag — we don't need the full admin object
+      console.log(`✅ Firebase Admin SDK initialised for project: ${serviceAccount.project_id}`);
+    } else {
+      console.warn('⚠️  Firebase service account file contains placeholder values. FCM push disabled. Replace firebase-service-account.json with the real file.');
+    }
+  } else {
+    console.warn('⚠️  firebase-service-account.json not found. FCM push disabled. Download it from Firebase Console > Project Settings > Service Accounts.');
+  }
+} catch (err) {
+  console.error('❌ Firebase Admin SDK initialisation error:', err.message);
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+
+
 
 const { User, Product, OnlineSale, OfflineSale, Shop, Return, Setting, AuditLog, Replacement, ChatChannel, ChatMessage, PasswordChangeRequest, Supplier, Purchase, GRN, SupplierPayment, PurchaseAuditLog, OnlineSaleCancelLog, Notification } = require('./models');
 
@@ -22,7 +67,12 @@ function legacySha256(password) {
   return crypto.createHash('sha256').update(password).digest('hex');
 }
 
-// Global push notifier
+// ─── Global Push Notifier ─────────────────────────────────────────────────────
+// Handles three delivery channels:
+//  1. Saves notification to MongoDB (notification bell / center)
+//  2. Emits via Socket.IO (real-time, requires open browser tab)
+//  3. Sends real FCM push via Firebase Admin SDK (works when app is closed/PWA)
+// ─────────────────────────────────────────────────────────────────────────────
 const sendPushNotification = async ({ type, title, body, data = {}, targetUserIds = null }) => {
   try {
     // 1. Get notification settings
@@ -37,19 +87,19 @@ const sendPushNotification = async ({ type, title, body, data = {}, targetUserId
     };
 
     // Check if type is enabled in settings
-    if (type === 'sale' && !settings.sales) return;
-    if (type === 'payment' && !settings.payment) return;
-    if (type === 'inventory' && !settings.inventory) return;
-    if (type === 'return' && !settings.return) return;
+    if (type === 'sale'        && !settings.sales)       return;
+    if (type === 'payment'     && !settings.payment)     return;
+    if (type === 'inventory'   && !settings.inventory)   return;
+    if (type === 'return'      && !settings.return)      return;
     if (type === 'replacement' && !settings.replacement) return;
     if (type === 'teamMessage' && !settings.teamMessage) return;
 
-    // 2. Resolve target users
+    // 2. Resolve target users (default: all Admins)
     let users = [];
     if (targetUserIds) {
       users = await User.find({ id: { $in: targetUserIds } });
     } else {
-      // Send to all Admins & Super Admins
+      // Business alerts go to Admins only
       users = await User.find({
         $or: [
           { role: { $in: ['ADMIN', 'admin'] } },
@@ -61,13 +111,13 @@ const sendPushNotification = async ({ type, title, body, data = {}, targetUserId
     const activeIo = typeof io !== 'undefined' ? io : null;
 
     for (const user of users) {
-      // Role-based security check: Staff NEVER receives business alerts
+      // Role-based security: Staff NEVER receives business alerts
       const isAdminUser = user.role === 'ADMIN' || user.role === 'admin' || user.username === 'admin';
       if (!isAdminUser && ['sale', 'payment', 'inventory', 'return', 'replacement'].includes(type)) {
-        continue; // strictly forbidden
+        continue;
       }
 
-      // Save notification to database
+      // ── Channel 1: Persist to database ─────────────────────────────────────
       const notif = new Notification({
         id: uuidv4(),
         userId: user.id,
@@ -80,7 +130,7 @@ const sendPushNotification = async ({ type, title, body, data = {}, targetUserId
       });
       await notif.save();
 
-      // Emit real-time notification update to user via socket room
+      // ── Channel 2: Socket.IO real-time emit ─────────────────────────────────
       if (activeIo) {
         activeIo.to(`user_${user.id}`).emit('new_notification', {
           id: notif.id,
@@ -93,9 +143,79 @@ const sendPushNotification = async ({ type, title, body, data = {}, targetUserId
           createdAt: notif.createdAt
         });
       }
+
+      // ── Channel 3: FCM push (works when app is closed / PWA) ───────────────
+      if (firebaseMessaging && user.fcmTokens && user.fcmTokens.length > 0) {
+        const invalidTokens = [];
+
+        for (const token of user.fcmTokens) {
+          try {
+            const message = {
+              token,
+              notification: {
+                title,
+                body,
+              },
+              data: {
+                // FCM data payload must be string key-value pairs
+                clickAction: data.clickAction || '/',
+                type,
+                notifId: notif.id,
+              },
+              // Android-specific settings
+              android: {
+                notification: {
+                  icon: 'ic_stat_ic_notification',
+                  color: '#EF4444',
+                  priority: 'high',
+                  defaultSound: true,
+                },
+                priority: 'high',
+              },
+              // Web Push (PWA) settings
+              webpush: {
+                notification: {
+                  title,
+                  body,
+                  icon: '/icon-192.png',
+                  badge: '/favicon.png',
+                  requireInteraction: false,
+                  data: {
+                    clickAction: data.clickAction || '/',
+                  },
+                },
+                fcmOptions: {
+                  link: data.clickAction || '/',
+                },
+              },
+            };
+
+            await firebaseMessaging.send(message);
+            console.log(`[FCM] ✅ Push sent to user ${user.username} via token ...${token.slice(-10)}`);
+          } catch (fcmErr) {
+            // Token is invalid/expired — queue for removal
+            if (
+              fcmErr.code === 'messaging/registration-token-not-registered' ||
+              fcmErr.code === 'messaging/invalid-registration-token' ||
+              fcmErr.code === 'messaging/invalid-argument'
+            ) {
+              invalidTokens.push(token);
+              console.warn(`[FCM] ⚠️  Invalid token removed for user ${user.username}: ${fcmErr.code}`);
+            } else {
+              console.error(`[FCM] ❌ Send error for user ${user.username}:`, fcmErr.message);
+            }
+          }
+        }
+
+        // Prune invalid/expired tokens from the database
+        if (invalidTokens.length > 0) {
+          user.fcmTokens = user.fcmTokens.filter(t => !invalidTokens.includes(t));
+          await user.save();
+        }
+      }
     }
   } catch (err) {
-    console.error('Error in sendPushNotification:', err);
+    console.error('[FCM] Error in sendPushNotification:', err);
   }
 };
 
@@ -1263,15 +1383,21 @@ app.get('/api/sales/offline', getOfflineSalesHandler);
 app.get('/api/offline-sales', getOfflineSalesHandler);
 
 const postOfflineSalesHandler = catchAsync(async (req, res) => {
+  console.log('[DEBUG OFFLINE SALE] Incoming payload:', JSON.stringify(req.body, null, 2));
   const { buyerName, items, totalAmount, transactions, date, notes, gst, isGSTInvoice } = req.body;
-  if (!buyerName || !items || !items.length)
+  if (!buyerName || !items || !items.length) {
+    console.log('[DEBUG OFFLINE SALE] Reject 400: Buyer name and at least one product required');
     return res.status(400).json({ message: 'Buyer name and at least one product required' });
+  }
   
   const products = await Product.find({ id: { $in: items.map(i => i.productId) } });
   
   for (const item of items) {
     const product = products.find(p => p.id === item.productId);
-    if (!product) return res.status(404).json({ message: `Product ${item.productId} not found` });
+    if (!product) {
+      console.log(`[DEBUG OFFLINE SALE] Reject 404: Product ${item.productId} not found`);
+      return res.status(404).json({ message: `Product ${item.productId} not found` });
+    }
     
     const resolvedSaleType = item.saleType || 'Piece';
     const resolvedSaleQty = item.saleQty !== undefined ? Number(item.saleQty) : Number(item.qty);
@@ -1279,8 +1405,10 @@ const postOfflineSalesHandler = catchAsync(async (req, res) => {
       ? resolvedSaleQty * (product.piecesPerBox || 1)
       : resolvedSaleQty;
 
-    if (product.availableQty < deductQty)
+    if (product.availableQty < deductQty) {
+      console.log(`[DEBUG OFFLINE SALE] Reject 400: Insufficient stock for ${product.name} (deductQty=${deductQty}, availableQty=${product.availableQty})`);
       return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
+    }
   }
 
   for (const item of items) {
@@ -4568,14 +4696,16 @@ app.post('/api/profile/fcm-token', requireAuth, catchAsync(async (req, res) => {
 
 // Retrieve user's notifications
 app.get('/api/notifications', requireAuth, catchAsync(async (req, res) => {
-  const notifications = await Notification.find({ userId: req.userId }).sort({ createdAt: -1 });
+  const userId = req.userObj.id;
+  const notifications = await Notification.find({ userId }).sort({ createdAt: -1 });
   res.json(notifications);
 }));
 
 // Mark notification as read
 app.put('/api/notifications/:id/read', requireAuth, catchAsync(async (req, res) => {
+  const userId = req.userObj.id;
   const notif = await Notification.findOneAndUpdate(
-    { id: req.params.id, userId: req.userId },
+    { id: req.params.id, userId },
     { read: true },
     { new: true }
   );
@@ -4585,16 +4715,134 @@ app.put('/api/notifications/:id/read', requireAuth, catchAsync(async (req, res) 
 
 // Mark all notifications as read
 app.put('/api/notifications/read-all', requireAuth, catchAsync(async (req, res) => {
-  await Notification.updateMany({ userId: req.userId, read: false }, { read: true });
+  const userId = req.userObj.id;
+  await Notification.updateMany({ userId, read: false }, { read: true });
   res.json({ success: true, message: 'All notifications marked as read' });
 }));
 
 // Delete notification
 app.delete('/api/notifications/:id', requireAuth, catchAsync(async (req, res) => {
-  const result = await Notification.findOneAndDelete({ id: req.params.id, userId: req.userId });
+  const userId = req.userObj.id;
+  const result = await Notification.findOneAndDelete({ id: req.params.id, userId });
   if (!result) return res.status(404).json({ message: 'Notification not found' });
   res.json({ success: true, message: 'Notification deleted' });
 }));
+
+// ─── Test Push Notification (Admin only) ─────────────────────────────────────
+// Sends a real FCM test push to the requesting admin user's stored FCM tokens.
+// Used by the "Push Notification Test" panel in Admin Settings.
+app.post('/api/notifications/test', requireAuth, catchAsync(async (req, res) => {
+  const user = req.userObj;
+  const isAdminUser = user.role === 'ADMIN' || user.role === 'admin' || user.username === 'admin';
+  if (!isAdminUser) {
+    return res.status(403).json({ message: 'Only admins can send test notifications.' });
+  }
+
+  const typeLabels = {
+    sale:        { title: '🛒 Test — New Sale Created',      body: 'TEE Inventory: A new sale was created. (This is a test push.)' },
+    payment:     { title: '💰 Test — Payment Received',      body: 'TEE Inventory: Payment received successfully. (This is a test push.)' },
+    return:      { title: '↩️ Test — Return Created',        body: 'TEE Inventory: A return was logged. (This is a test push.)' },
+    replacement: { title: '🔄 Test — Replacement Request',   body: 'TEE Inventory: A replacement was requested. (This is a test push.)' },
+    inventory:   { title: '📦 Test — Low Stock Alert',       body: 'TEE Inventory: A product is running low on stock. (This is a test push.)' },
+    teamMessage: { title: '💬 Test — Team Message',          body: 'TEE Inventory: You have a new team message. (This is a test push.)' },
+  };
+
+  const type = req.body.type || 'sale';
+  const { title, body } = typeLabels[type] || typeLabels.sale;
+
+  // 1. Always save to notification center
+  const notif = new Notification({
+    id:        uuidv4(),
+    userId:    user.id,
+    title,
+    body,
+    type,
+    read:      false,
+    data:      { clickAction: '/settings?tab=notifications', isTest: true },
+    createdAt: new Date().toISOString()
+  });
+  await notif.save();
+
+  // 2. Emit via Socket.IO (works if browser tab is open)
+  if (typeof io !== 'undefined') {
+    io.to(`user_${user.id}`).emit('new_notification', {
+      id: notif.id, userId: user.id, title, body, type, read: false,
+      data: notif.data, createdAt: notif.createdAt
+    });
+  }
+
+  // 3. Send real FCM push
+  if (!firebaseMessaging) {
+    return res.json({
+      success: true,
+      fcmPushed: false,
+      message: 'Notification saved to bell center. FCM push skipped — Firebase Admin SDK not initialised. Check service account JSON.',
+      tokenCount: 0,
+    });
+  }
+
+  const tokens = user.fcmTokens || [];
+  if (tokens.length === 0) {
+    return res.json({
+      success: true,
+      fcmPushed: false,
+      message: 'Notification saved to bell center. No FCM tokens registered for your account. Make sure you allowed notifications and the app registered your device.',
+      tokenCount: 0,
+    });
+  }
+
+  const invalidTokens = [];
+  let successCount = 0;
+
+  for (const token of tokens) {
+    try {
+      await firebaseMessaging.send({
+        token,
+        notification: { title, body },
+        data: { clickAction: '/settings?tab=notifications', type, notifId: notif.id, isTest: 'true' },
+        webpush: {
+          notification: {
+            title, body,
+            icon:  '/icon-192.png',
+            badge: '/favicon.png',
+            requireInteraction: false,
+            data: { clickAction: '/settings?tab=notifications' },
+          },
+          fcmOptions: { link: '/settings?tab=notifications' },
+        },
+      });
+      successCount++;
+    } catch (fcmErr) {
+      if (
+        fcmErr.code === 'messaging/registration-token-not-registered' ||
+        fcmErr.code === 'messaging/invalid-registration-token' ||
+        fcmErr.code === 'messaging/invalid-argument'
+      ) {
+        invalidTokens.push(token);
+      }
+      console.error('[FCM Test] Send error:', fcmErr.code, fcmErr.message);
+    }
+  }
+
+  // Prune invalid tokens
+  if (invalidTokens.length > 0) {
+    user.fcmTokens = user.fcmTokens.filter(t => !invalidTokens.includes(t));
+    await user.save();
+  }
+
+  res.json({
+    success: true,
+    fcmPushed: successCount > 0,
+    message: successCount > 0
+      ? `Test push sent to ${successCount} device(s). Check your phone — it should arrive within a few seconds.`
+      : `FCM push failed for all ${tokens.length} token(s). Tokens may be expired — try reloading the app to re-register.`,
+    tokenCount: tokens.length,
+    successCount,
+    invalidTokensRemoved: invalidTokens.length,
+  });
+}));
+
+
 
 // Get notification settings (global)
 app.get('/api/settings/notifications', requireAuth, catchAsync(async (req, res) => {

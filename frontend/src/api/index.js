@@ -185,5 +185,6 @@ export const api = {
   deleteNotification: (id) => request('DELETE', `/notifications/${id}`),
   getNotificationSettings: () => request('GET', '/settings/notifications'),
   updateNotificationSettings: (settings) => request('PUT', '/settings/notifications', settings),
+  sendTestPushNotification: (type) => request('POST', '/notifications/test', { type }),
 };
 

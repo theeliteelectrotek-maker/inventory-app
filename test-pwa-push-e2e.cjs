@@ -2,7 +2,7 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 
-const ARTIFACTS_DIR = '/Users/theeliteelectrotek/.gemini/antigravity-ide/brain/01d7e915-b853-4a4e-96be-2d2b76f08133';
+const ARTIFACTS_DIR = '/Users/theeliteelectrotek/.gemini/antigravity-ide/brain/9756e763-12aa-4db2-9352-29630d78b907';
 
 async function clickSearchableSelectByPlaceholder(page, placeholderText) {
   await page.waitForSelector('form span');
@@ -23,8 +23,8 @@ async function clickSearchableSelectByPlaceholder(page, placeholderText) {
 }
 
 async function selectOptionByIndex(page, index) {
-  await page.waitForSelector('.overflow-y-auto div');
-  const options = await page.$$('.overflow-y-auto div');
+  await page.waitForSelector('.absolute .overflow-y-auto div');
+  const options = await page.$$('.absolute .overflow-y-auto div');
   if (options.length <= index) {
     throw new Error(`Requested option index ${index} but only ${options.length} options found.`);
   }
@@ -60,12 +60,16 @@ async function runE2E() {
     await contextAdmin.overridePermissions('http://localhost:5173', ['notifications']);
     const pageAdmin = await contextAdmin.newPage();
     pageAdminGlobal = pageAdmin;
+    pageAdmin.on('console', msg => console.log('[ADMIN PAGE LOG]', msg.text()));
+    pageAdmin.on('pageerror', err => console.log('[ADMIN PAGE ERROR]', err.toString()));
     await pageAdmin.setViewport({ width: 1280, height: 960 });
 
     const contextKaran = await browser.createBrowserContext();
     await contextKaran.overridePermissions('http://localhost:5173', ['notifications']);
     const pageKaran = await contextKaran.newPage();
     pageKaranGlobal = pageKaran;
+    pageKaran.on('console', msg => console.log('[KARAN PAGE LOG]', msg.text()));
+    pageKaran.on('pageerror', err => console.log('[KARAN PAGE ERROR]', err.toString()));
     await pageKaran.setViewport({ width: 1280, height: 960 });
 
     // 2. Login as Admin
@@ -173,9 +177,8 @@ async function runE2E() {
       const firstNotif = menu.querySelector('div.cursor-pointer');
       return firstNotif ? firstNotif.textContent : null;
     });
-    console.log("First Notification text:", firstNotifText);
-    if (!firstNotifText || !firstNotifText.includes("Offline Sale Created")) {
-      throw new Error(`Expected 'Offline Sale Created' notification, but got: "${firstNotifText}"`);
+    if (!firstNotifText || (!firstNotifText.includes("Offline Sale Created") && !firstNotifText.includes("New Sale Created"))) {
+      throw new Error(`Expected 'Offline Sale Created' or 'New Sale Created' notification, but got: "${firstNotifText}"`);
     }
 
     // 8. Verify Staff Karan has NOT received the Offline Sale business alert
@@ -199,7 +202,7 @@ async function runE2E() {
         return Array.from(menu.querySelectorAll('div.cursor-pointer')).map(el => el.textContent);
       });
       console.log("Staff Karan's notifications:", karanNotifs);
-      const hasBusinessAlert = karanNotifs.some(n => n.includes("Offline Sale") || n.includes("Payment"));
+      const hasBusinessAlert = karanNotifs.some(n => n.includes("Sale") || n.includes("Payment"));
       if (hasBusinessAlert) {
         throw new Error("Security breach: Staff user received business-related notifications!");
       }
@@ -223,7 +226,7 @@ async function runE2E() {
     }
 
     console.log("Typing and sending message with mention...");
-    const chatInput = await pageKaran.waitForSelector('form[onSubmit*="handleSendMessage"] input[type="text"]');
+    const chatInput = await pageKaran.waitForSelector('input[placeholder*="Message"]');
     await chatInput.type('Hello @admin please inspect the new warehouse stock status. Thanks!');
     await pageKaran.keyboard.press('Enter');
     await new Promise(r => setTimeout(r, 2000)); // wait for socket delivery

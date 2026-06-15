@@ -8,7 +8,7 @@ import {
   Mail, Phone, FileText, CheckCircle2, ChevronRight, HelpCircle,
   Sun, Moon, Monitor, User, Palette, Lock, MapPin, Calendar, Globe,
   Trash2, KeyRound, Smartphone, Laptop, ShieldCheck, UserCog, XCircle, Clock,
-  Bell
+  Bell, BellRing, Zap, Wifi, CheckCheck, AlertTriangle
 } from 'lucide-react';
 
 export default function Settings() {
@@ -128,6 +128,46 @@ export default function Settings() {
   const [savingNotifications, setSavingNotifications] = useState(false);
   const [notificationsError, setNotificationsError] = useState('');
   const [notificationsSuccess, setNotificationsSuccess] = useState('');
+
+  // --- FCM Push Notification Test Panel state (Admin Only) ---
+  const [fcmStatus, setFcmStatus] = useState(null);   // populated by checkFCMStatus()
+  const [fcmTestSending, setFcmTestSending] = useState(false);
+  const [fcmTestResult, setFcmTestResult] = useState(null);  // { ok, message }
+  const [fcmTestType, setFcmTestType] = useState('sale');
+
+  const checkFCMStatus = async () => {
+    const status = {
+      permissionGranted: Notification?.permission === 'granted',
+      swSupported:       'serviceWorker' in navigator,
+      swRegistered:      false,
+      tokenPresent:      false,
+      fcmSwRegistered:   false,
+    };
+    try {
+      // Check if firebase-messaging-sw.js is registered
+      const regs = await navigator.serviceWorker.getRegistrations();
+      const fcmSw = regs.find(r => r.active?.scriptURL?.includes('firebase-messaging-sw'));
+      status.fcmSwRegistered = !!fcmSw;
+      status.swRegistered    = regs.length > 0;
+      // Check if we already have an FCM token stored (rough check via localStorage)
+      status.tokenPresent    = !!localStorage.getItem('fcm_token_cached');
+    } catch {}
+    setFcmStatus(status);
+    return status;
+  };
+
+  const handleSendTestNotification = async () => {
+    setFcmTestSending(true);
+    setFcmTestResult(null);
+    try {
+      const res = await api.sendTestPushNotification(fcmTestType);
+      setFcmTestResult({ ok: true, message: res.message || 'Test push sent successfully!' });
+    } catch (err) {
+      setFcmTestResult({ ok: false, message: err.message || 'Failed to send test push.' });
+    } finally {
+      setFcmTestSending(false);
+    }
+  };
 
   // --- 6. Admin Extra Controls (Employee Profile Modal) ---
   const [showEmpProfileModal, setShowEmpProfileModal] = useState(false);
@@ -2045,151 +2085,300 @@ export default function Settings() {
       )}
 
       {isAdmin && activeTab === 'notifications' && (
-        <div className="bg-slate-900/40 dark:bg-[#020617]/35 rounded-3xl shadow-xl border border-slate-900 overflow-hidden transition-all duration-300">
-          <div className="p-6 border-b border-slate-900 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-slate-200">Global Notification Settings</h2>
-              <p className="text-xs font-semibold text-slate-400">Enable or disable system-wide alerts for business events. These preferences affect Admin push alerts.</p>
+        <div className="space-y-6">
+          {/* ─── Global Notification Preferences Card ─────────────────────── */}
+          <div className="bg-slate-900/40 dark:bg-[#020617]/35 rounded-3xl shadow-xl border border-slate-900 overflow-hidden transition-all duration-300">
+            <div className="p-6 border-b border-slate-900 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-200">Global Notification Settings</h2>
+                <p className="text-xs font-semibold text-slate-400">Enable or disable system-wide alerts for business events. These preferences affect Admin push alerts.</p>
+              </div>
+              <button
+                onClick={fetchNotificationSettings}
+                className="text-slate-400 hover:text-slate-250 hover:bg-slate-900/60 p-2 rounded-xl border border-slate-900 flex items-center gap-1.5 text-xs font-bold transition-all"
+              >
+                <RefreshCw size={14} className={loadingNotifications ? 'animate-spin text-red-500' : ''} />
+                Reload
+              </button>
             </div>
-            <button
-              onClick={fetchNotificationSettings}
-              className="text-slate-400 hover:text-slate-250 hover:bg-slate-900/60 p-2 rounded-xl border border-slate-900 flex items-center gap-1.5 text-xs font-bold transition-all"
-            >
-              <RefreshCw size={14} className={loadingNotifications ? 'animate-spin text-red-500' : ''} />
-              Reload
-            </button>
+
+            {loadingNotifications ? (
+              <div className="py-20 text-center text-slate-400 font-semibold flex flex-col items-center justify-center gap-2">
+                <RefreshCw className="animate-spin text-[#EF4444] w-8 h-8" />
+                Loading notification preferences...
+              </div>
+            ) : (
+              <form onSubmit={handleSaveNotifications} className="p-6 md:p-8 space-y-6">
+                {notificationsError && (
+                  <div className="bg-red-955/20 border-l-4 border-red-500 p-4 rounded-xl text-xs font-bold text-red-400 flex items-center gap-2.5">
+                    <AlertCircle size={16} className="shrink-0" />
+                    {notificationsError}
+                  </div>
+                )}
+                {notificationsSuccess && (
+                  <div className="bg-emerald-955/25 border-l-4 border-emerald-500 p-4 rounded-xl text-xs font-bold text-emerald-400 flex items-center gap-2.5">
+                    <CheckCircle2 size={16} className="shrink-0" />
+                    {notificationsSuccess}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-200">Sales Alerts</h4>
+                      <p className="text-[11px] text-slate-550 font-semibold">Notify on creation, updates, and cancellations of offline/online sales</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={notificationSettings.sales} 
+                        onChange={(e) => setNotificationSettings(prev => ({ ...prev, sales: e.target.checked }))}
+                      />
+                      <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-200">Payment Alerts</h4>
+                      <p className="text-[11px] text-slate-550 font-semibold">Notify when customer payments are recorded or updated</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={notificationSettings.payments} 
+                        onChange={(e) => setNotificationSettings(prev => ({ ...prev, payments: e.target.checked }))}
+                      />
+                      <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-200">Inventory Stock Alerts</h4>
+                      <p className="text-[11px] text-slate-550 font-semibold">Notify when products run low on stock or are depleted</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={notificationSettings.inventory} 
+                        onChange={(e) => setNotificationSettings(prev => ({ ...prev, inventory: e.target.checked }))}
+                      />
+                      <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-200">Return Requests</h4>
+                      <p className="text-[11px] text-slate-550 font-semibold">Notify when customers submit return/credit request alerts</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={notificationSettings.returns} 
+                        onChange={(e) => setNotificationSettings(prev => ({ ...prev, returns: e.target.checked }))}
+                      />
+                      <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-200">Replacement Requests</h4>
+                      <p className="text-[11px] text-slate-550 font-semibold">Notify when replacements are requested or their status changes</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={notificationSettings.replacements} 
+                        onChange={(e) => setNotificationSettings(prev => ({ ...prev, replacements: e.target.checked }))}
+                      />
+                      <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-200">Team Messages</h4>
+                      <p className="text-[11px] text-slate-550 font-semibold">Notify on team chat messages, DMs and username @mentions</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={notificationSettings.messages} 
+                        onChange={(e) => setNotificationSettings(prev => ({ ...prev, messages: e.target.checked }))}
+                      />
+                      <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-slate-900 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={savingNotifications}
+                    className="bg-red-650 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider py-3 px-6 rounded-2xl shadow-lg shadow-red-600/10 flex items-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer"
+                  >
+                    {savingNotifications ? <RefreshCw className="animate-spin text-white" size={14} /> : <Save size={14} />}
+                    Save Preferences
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
 
-          {loadingNotifications ? (
-            <div className="py-20 text-center text-slate-400 font-semibold flex flex-col items-center justify-center gap-2">
-              <RefreshCw className="animate-spin text-[#EF4444] w-8 h-8" />
-              Loading notification preferences...
-            </div>
-          ) : (
-            <form onSubmit={handleSaveNotifications} className="p-6 md:p-8 space-y-6">
-              {notificationsError && (
-                <div className="bg-red-955/20 border-l-4 border-red-500 p-4 rounded-xl text-xs font-bold text-red-400 flex items-center gap-2.5">
-                  <AlertCircle size={16} className="shrink-0" />
-                  {notificationsError}
+          {/* ─── FCM Push Notification Test Panel ────────────────────────── */}
+          <div className="bg-slate-900/40 dark:bg-[#020617]/35 rounded-3xl shadow-xl border border-slate-900 overflow-hidden">
+            <div className="p-6 border-b border-slate-900 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-red-950/40 border border-red-900/40">
+                  <BellRing className="text-red-400" size={18} />
                 </div>
-              )}
-              {notificationsSuccess && (
-                <div className="bg-emerald-955/25 border-l-4 border-emerald-500 p-4 rounded-xl text-xs font-bold text-emerald-400 flex items-center gap-2.5">
-                  <CheckCircle2 size={16} className="shrink-0" />
-                  {notificationsSuccess}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-200">Sales Alerts</h4>
-                    <p className="text-[11px] text-slate-550 font-semibold">Notify on creation, updates, and cancellations of offline/online sales</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={notificationSettings.sales} 
-                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, sales: e.target.checked }))}
-                    />
-                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-200">Payment Alerts</h4>
-                    <p className="text-[11px] text-slate-550 font-semibold">Notify when customer payments are recorded or updated</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={notificationSettings.payments} 
-                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, payments: e.target.checked }))}
-                    />
-                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-200">Inventory Stock Alerts</h4>
-                    <p className="text-[11px] text-slate-550 font-semibold">Notify when products run low on stock or are depleted</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={notificationSettings.inventory} 
-                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, inventory: e.target.checked }))}
-                    />
-                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-200">Return Requests</h4>
-                    <p className="text-[11px] text-slate-550 font-semibold">Notify when customers submit return/credit request alerts</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={notificationSettings.returns} 
-                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, returns: e.target.checked }))}
-                    />
-                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-200">Replacement Requests</h4>
-                    <p className="text-[11px] text-slate-550 font-semibold">Notify when replacements are requested or their status changes</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={notificationSettings.replacements} 
-                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, replacements: e.target.checked }))}
-                    />
-                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-2xl">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-200">Team Messages</h4>
-                    <p className="text-[11px] text-slate-550 font-semibold">Notify on team chat messages, DMs and username @mentions</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={notificationSettings.messages} 
-                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, messages: e.target.checked }))}
-                    />
-                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-650" />
-                  </label>
+                <div>
+                  <h2 className="text-base font-bold text-slate-200">Push Notification Test</h2>
+                  <p className="text-xs font-semibold text-slate-400">Send a live FCM test push to your device — works even when app is closed</p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={checkFCMStatus}
+                className="text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 p-2 rounded-xl border border-slate-900 flex items-center gap-1.5 text-xs font-bold transition-all"
+              >
+                <RefreshCw size={13} />
+                Refresh Status
+              </button>
+            </div>
 
-              <div className="pt-6 border-t border-slate-900 flex justify-end">
+            <div className="p-6 space-y-6">
+              {/* FCM Status Indicators */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  {
+                    label: 'Permission',
+                    ok: Notification?.permission === 'granted',
+                    okText: 'Granted',
+                    failText: Notification?.permission === 'denied' ? 'Blocked' : 'Not Asked',
+                    icon: <Bell size={14} />,
+                  },
+                  {
+                    label: 'Service Worker',
+                    ok: fcmStatus?.swRegistered ?? null,
+                    okText: 'Active',
+                    failText: 'Not Registered',
+                    icon: <Wifi size={14} />,
+                  },
+                  {
+                    label: 'FCM Worker',
+                    ok: fcmStatus?.fcmSwRegistered ?? null,
+                    okText: 'Registered',
+                    failText: 'Missing',
+                    icon: <Zap size={14} />,
+                  },
+                  {
+                    label: 'FCM Token',
+                    ok: fcmStatus?.tokenPresent ?? null,
+                    okText: 'Stored',
+                    failText: 'Not Generated',
+                    icon: <CheckCheck size={14} />,
+                  },
+                ].map(({ label, ok, okText, failText, icon }) => (
+                  <div key={label} className={`p-3 rounded-2xl border flex flex-col gap-1.5 ${
+                    ok === true  ? 'bg-emerald-950/20 border-emerald-900/40' :
+                    ok === false ? 'bg-red-950/20 border-red-900/40' :
+                                  'bg-slate-950/20 border-slate-900'
+                  }`}>
+                    <div className={`flex items-center gap-1.5 ${
+                      ok === true  ? 'text-emerald-400' :
+                      ok === false ? 'text-red-400' :
+                                    'text-slate-500'
+                    }`}>
+                      {icon}
+                      <span className="text-[10px] font-black uppercase tracking-wider">{label}</span>
+                    </div>
+                    <span className={`text-xs font-bold ${
+                      ok === true  ? 'text-emerald-300' :
+                      ok === false ? 'text-red-300' :
+                                    'text-slate-400'
+                    }`}>
+                      {ok === null ? 'Click Refresh' : ok ? okText : failText}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Test Type Selector + Send Button */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">Notification Type</label>
+                  <select
+                    value={fcmTestType}
+                    onChange={(e) => setFcmTestType(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-800 bg-slate-950/60 text-slate-100 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                  >
+                    <option value="sale">🛒 New Sale Created</option>
+                    <option value="payment">💰 Payment Received</option>
+                    <option value="return">↩️ Return Created</option>
+                    <option value="replacement">🔄 Replacement Request</option>
+                    <option value="inventory">📦 Low Stock Alert</option>
+                    <option value="teamMessage">💬 Team Message</option>
+                  </select>
+                </div>
+
                 <button
-                  type="submit"
-                  disabled={savingNotifications}
-                  className="bg-red-650 hover:bg-red-700 text-white font-extrabold text-xs uppercase tracking-wider py-3 px-6 rounded-2xl shadow-lg shadow-red-600/10 flex items-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 border-none cursor-pointer"
+                  id="fcm-test-send-btn"
+                  type="button"
+                  disabled={fcmTestSending}
+                  onClick={handleSendTestNotification}
+                  className="mt-5 sm:mt-0 flex-shrink-0 flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-red-600/20 transition-all active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {savingNotifications ? <RefreshCw className="animate-spin text-white" size={14} /> : <Save size={14} />}
-                  Save Preferences
+                  {fcmTestSending ? (
+                    <><RefreshCw size={14} className="animate-spin" /> Sending...</>
+                  ) : (
+                    <><BellRing size={14} /> Send Test Push</>
+                  )}
                 </button>
               </div>
-            </form>
-          )}
+
+              {/* Result readout */}
+              {fcmTestResult && (
+                <div className={`flex items-start gap-3 p-4 rounded-2xl border text-xs font-bold ${
+                  fcmTestResult.ok
+                    ? 'bg-emerald-950/25 border-emerald-900/40 text-emerald-300'
+                    : 'bg-red-950/25 border-red-900/40 text-red-300'
+                }`}>
+                  {fcmTestResult.ok
+                    ? <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-400" />
+                    : <AlertTriangle size={16} className="shrink-0 mt-0.5 text-red-400" />}
+                  <div>
+                    <p className="font-black mb-0.5">{fcmTestResult.ok ? 'Test Push Sent!' : 'Push Failed'}</p>
+                    <p className="font-medium opacity-80">{fcmTestResult.message}</p>
+                    {fcmTestResult.ok && (
+                      <p className="mt-1.5 text-[10px] font-semibold opacity-60">
+                        Check your phone — the notification should arrive within a few seconds even if the app is closed.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Info note */}
+              <div className="bg-slate-950/30 border border-slate-900 rounded-2xl p-4 flex items-start gap-3">
+                <AlertCircle size={14} className="text-slate-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-slate-500 font-semibold leading-relaxed">
+                  The test push is sent to <strong className="text-slate-400">your account only</strong> via Firebase Cloud Messaging. 
+                  To receive it on your phone, make sure the PWA is installed and you granted notification permission when prompted.
+                  If FCM Token shows "Not Stored", reload the page to re-register.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
