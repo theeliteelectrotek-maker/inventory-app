@@ -1,6 +1,14 @@
-const BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api';
+export const getBackendUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:3001';
+  }
+  return 'https://inventory-app-6aol.onrender.com';
+};
+
+const BASE = `${getBackendUrl()}/api`;
   
 function getToken() {
   return localStorage.getItem('inv_token') || '';

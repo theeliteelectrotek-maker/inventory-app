@@ -52,7 +52,7 @@ export default function CommunicationHub() {
   const [allTasks, setAllTasks] = useState([]);
 
   // Fetch initial data
-  const socketUrl = window.location.port === '5173' ? 'http://localhost:3001' : window.location.origin;
+  const socketUrl = import.meta.env.VITE_API_URL || (window.location.port === '5173' ? 'http://localhost:3001' : window.location.origin);
 
   const markChannelAsRead = async (channelId) => {
     try {

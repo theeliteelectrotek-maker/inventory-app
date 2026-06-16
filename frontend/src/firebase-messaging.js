@@ -60,10 +60,11 @@ export const initFCM = async (userId) => {
     console.log('[FCM] Service worker active and ready. Scope:', swRegistration.scope);
 
     // 3. Obtain a real FCM token (VAPID key links your server to FCM)
-    console.log('[FCM] Getting FCM token from Firebase SDK using VAPID key: %s', import.meta.env.VITE_FIREBASE_VAPID_KEY);
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || 'BOkyJNzEukc2q5N5ScyIReh9R0wDjSnCdh6CeyocXYgMLTdg4pgU27GIUxZfK3ChtQlIl9_3735UuEEKWkgSHGY';
+    console.log('[FCM] Getting FCM token from Firebase SDK using VAPID key: %s', vapidKey);
     const messaging = getMessagingInstance();
     const token = await getToken(messaging, {
-      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+      vapidKey: vapidKey,
       serviceWorkerRegistration: swRegistration,
     });
 

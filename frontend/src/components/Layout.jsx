@@ -190,7 +190,7 @@ export default function Layout() {
     try {
       const token = localStorage.getItem('inv_token');
       if (token) {
-        const socketUrl = window.location.port === '5173' ? 'http://localhost:3001' : window.location.origin;
+        const socketUrl = import.meta.env.VITE_API_URL || (window.location.port === '5173' ? 'http://localhost:3001' : window.location.origin);
         await fetch(`${socketUrl}/api/communication/read`, {
           method: 'POST',
           headers: {
@@ -211,7 +211,7 @@ export default function Layout() {
     try {
       const token = localStorage.getItem('inv_token');
       if (token) {
-        const socketUrl = window.location.port === '5173' ? 'http://localhost:3001' : window.location.origin;
+        const socketUrl = import.meta.env.VITE_API_URL || (window.location.port === '5173' ? 'http://localhost:3001' : window.location.origin);
         const res = await fetch(`${socketUrl}/api/communication/unread-count`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -251,7 +251,7 @@ export default function Layout() {
     if (!user) return;
 
     // Connect to WebSockets
-    const socketUrl = window.location.port === '5173' ? 'http://localhost:3001' : window.location.origin;
+    const socketUrl = import.meta.env.VITE_API_URL || (window.location.port === '5173' ? 'http://localhost:3001' : window.location.origin);
     const socket = io(socketUrl);
     socket.on('connect', () => {
       socket.emit('register', user.id);

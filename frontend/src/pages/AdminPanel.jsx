@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../api';
+import { api, getBackendUrl } from '../api';
 import {
   Database, Download, Upload, FileSpreadsheet, FileText,
   Calendar, AlertTriangle, CheckCircle2, Info, Lock,
   RefreshCw, FileDown, Play, Clock, Sparkles, AlertOctagon, HelpCircle
 } from 'lucide-react';
 
-const BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api';
+const BASE = `${getBackendUrl()}/api`;
 
 function getToken() {
   return localStorage.getItem('inv_token') || '';
