@@ -90,15 +90,19 @@ export const initFCM = async (userId) => {
     //    notifications when the tab is in the foreground.
     onMessage(messaging, (payload) => {
       console.log('[FCM] Foreground message received:', payload);
-      const { title, body, icon } = payload.notification || {};
+      // Data-only FCM messages: title/body come from payload.data
+      const title = payload.data?.title || payload.notification?.title;
+      const body  = payload.data?.body  || payload.notification?.body  || '';
+      const icon  = payload.notification?.icon || '/icon-192.png';
       const clickAction = payload.data?.clickAction || '/';
 
       if (Notification.permission === 'granted' && title) {
         navigator.serviceWorker.ready.then(reg => {
           reg.showNotification(title, {
             body: body || '',
-            icon: icon || '/icon-192.png',
+            icon,
             badge: '/favicon.png',
+            tag: payload.data?.notifId || title,
             data: { clickAction },
           });
         });

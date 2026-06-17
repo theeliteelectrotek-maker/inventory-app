@@ -446,18 +446,8 @@ export default function Layout() {
           console.warn('Double chime audio play failed:', e);
         }
       }
-
-      // Show native system notification via service worker
-      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(reg => {
-          reg.showNotification(notif.title, {
-            body: notif.body,
-            icon: '/icon-192.png',
-            badge: '/favicon.png',
-            data: { clickAction: notif.data?.clickAction || '/' }
-          });
-        });
-      }
+      // System notification is handled by FCM's onMessage handler —
+      // no need to show a duplicate from the socket event.
     });
 
     // Also listen to channelCreated to update myChannelIdsRef cache dynamically

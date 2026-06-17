@@ -173,40 +173,26 @@ const sendPushNotification = async ({ type, title, body, data = {}, targetUserId
 
         for (const token of user.fcmTokens) {
           try {
+            // DATA-ONLY message: no top-level `notification` or `webpush.notification`
+            // so the browser does NOT auto-display. The service worker's
+            // onBackgroundMessage handler is the single display path.
             const message = {
               token,
-              notification: {
-                title,
-                body,
-              },
               data: {
                 // FCM data payload must be string key-value pairs
+                title,
+                body,
                 clickAction: data.clickAction || '/',
                 type,
                 notifId: notif.id,
               },
               // Android-specific settings
               android: {
-                notification: {
-                  icon: 'ic_stat_ic_notification',
-                  color: '#EF4444',
-                  priority: 'high',
-                  defaultSound: true,
-                },
                 priority: 'high',
               },
-              // Web Push (PWA) settings
+              // Web Push headers (ensure prompt delivery, no display payload)
               webpush: {
-                notification: {
-                  title,
-                  body,
-                  icon: '/icon-192.png',
-                  badge: '/favicon.png',
-                  requireInteraction: false,
-                  data: {
-                    clickAction: data.clickAction || '/',
-                  },
-                },
+                headers: { Urgency: 'high' },
                 fcmOptions: {
                   link: data.clickAction || '/',
                 },
@@ -4837,16 +4823,9 @@ app.post('/api/notifications/test', requireAuth, catchAsync(async (req, res) => 
       console.log(`[FCM BACKEND TEST] Dispatching test notification via token starting with: "${token.substring(0, 15)}..."`);
       const response = await firebaseMessaging.send({
         token,
-        notification: { title, body },
-        data: { clickAction: '/settings?tab=notifications', type, notifId: notif.id, isTest: 'true' },
+        data: { title, body, clickAction: '/settings?tab=notifications', type, notifId: notif.id, isTest: 'true' },
         webpush: {
-          notification: {
-            title, body,
-            icon:  '/icon-192.png',
-            badge: '/favicon.png',
-            requireInteraction: false,
-            data: { clickAction: '/settings?tab=notifications' },
-          },
+          headers: { Urgency: 'high' },
           fcmOptions: { link: '/settings?tab=notifications' },
         },
       });
