@@ -395,18 +395,27 @@ export default function OnlineSales() {
   }
   useEffect(load, []);
 
+  // Returns the correct price for the given platform. Never falls back to offline price for online platforms.
   function getEffectivePrice(product, platform, saleType) {
     if (!product) return 0;
     if (saleType === 'Box') {
       return product.boxSellingPrice || 0;
     }
-    if (product.pieceSellingPrice > 0) {
-      return product.pieceSellingPrice;
-    }
-    if (platform === 'amazon') return product.amazonPrice !== undefined ? product.amazonPrice : (product.onlinePrice ?? product.unitPrice ?? 0);
-    if (platform === 'flipkart') return product.flipkartPrice !== undefined ? product.flipkartPrice : (product.onlinePrice ?? product.unitPrice ?? 0);
-    if (platform === 'meesho') return product.meeshoPrice !== undefined ? product.meeshoPrice : (product.onlinePrice ?? product.unitPrice ?? 0);
-    return product.onlinePrice ?? product.unitPrice ?? 0;
+    // For online platforms, always use the platform-specific price — never use offlinePrice / pieceSellingPrice.
+    if (platform === 'amazon') return Number(product.amazonPrice) || 0;
+    if (platform === 'flipkart') return Number(product.flipkartPrice) || 0;
+    if (platform === 'meesho') return Number(product.meeshoPrice) || 0;
+    // Offline / no platform selected — use offlinePrice first, then pieceSellingPrice as legacy fallback.
+    return Number(product.offlinePrice) || Number(product.pieceSellingPrice) || 0;
+  }
+
+  // Returns true when a platform is selected but its price is not configured on the product.
+  function isPlatformPriceMissing(product, platform, saleType) {
+    if (!product || !platform || saleType === 'Box') return false;
+    if (platform === 'amazon') return !(Number(product.amazonPrice) > 0);
+    if (platform === 'flipkart') return !(Number(product.flipkartPrice) > 0);
+    if (platform === 'meesho') return !(Number(product.meeshoPrice) > 0);
+    return false;
   }
 
   function handlePlatformChange(platformId) {
@@ -416,7 +425,7 @@ export default function OnlineSales() {
         const p = products.find((x) => x.id === item.productId);
         const effectivePrice = getEffectivePrice(p, platformId, item.saleType);
         const qty = Number(item.qty) || 1;
-        return { ...item, amount: effectivePrice ? String(effectivePrice * qty) : item.amount };
+        return { ...item, amount: effectivePrice > 0 ? String(effectivePrice * qty) : '' };
       });
       return { ...f, platform: platformId, items };
     });
@@ -428,7 +437,7 @@ export default function OnlineSales() {
     setForm((f) => {
       const items = [...f.items];
       const qty = Number(items[index].qty) || 1;
-      items[index] = { ...items[index], productId, amount: effectivePrice ? String(effectivePrice * qty) : '' };
+      items[index] = { ...items[index], productId, amount: effectivePrice > 0 ? String(effectivePrice * qty) : '' };
       return { ...f, items };
     });
   }
@@ -439,7 +448,7 @@ export default function OnlineSales() {
       const items = [...f.items];
       const p = products.find((x) => x.id === items[index].productId);
       const effectivePrice = getEffectivePrice(p, f.platform, items[index].saleType);
-      items[index] = { ...items[index], qty, amount: effectivePrice ? String(effectivePrice * qty) : items[index].amount };
+      items[index] = { ...items[index], qty, amount: effectivePrice > 0 ? String(effectivePrice * qty) : items[index].amount };
       return { ...f, items };
     });
   }
@@ -450,7 +459,7 @@ export default function OnlineSales() {
       const p = products.find((x) => x.id === items[index].productId);
       const effectivePrice = getEffectivePrice(p, f.platform, saleType);
       const qty = Number(items[index].qty) || 1;
-      items[index] = { ...items[index], saleType, amount: effectivePrice ? String(effectivePrice * qty) : items[index].amount };
+      items[index] = { ...items[index], saleType, amount: effectivePrice > 0 ? String(effectivePrice * qty) : items[index].amount };
       return { ...f, items };
     });
   }
@@ -1694,21 +1703,32 @@ export default function OnlineSales() {
                       </div>
 
                       {selProd && (
-                        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-550 dark:text-[#CBD5E1] bg-slate-100/40 dark:bg-[#1E293B]/40 px-3 py-2.5 rounded-xl border border-slate-200/40 dark:border-[#1E293B]">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium text-slate-400">Stock Available:</span>
-                            <span className={`font-semibold ${selProd.availableQty < 20 ? 'text-yellow-600 dark:text-[#F59E0B]' : 'text-slate-700 dark:text-[#F8FAFC]'}`}>
-                              {selProd.availableQty} units {selProd.piecesPerBox > 0 && `(${Math.floor(selProd.availableQty / selProd.piecesPerBox)} boxes)`}
-                            </span>
+                        <div className="mt-3 space-y-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-550 dark:text-[#CBD5E1] bg-slate-100/40 dark:bg-[#1E293B]/40 px-3 py-2.5 rounded-xl border border-slate-200/40 dark:border-[#1E293B]">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium text-slate-400">Stock Available:</span>
+                              <span className={`font-semibold ${selProd.availableQty < 20 ? 'text-yellow-600 dark:text-[#F59E0B]' : 'text-slate-700 dark:text-[#F8FAFC]'}`}>
+                                {selProd.availableQty} units {selProd.piecesPerBox > 0 && `(${Math.floor(selProd.availableQty / selProd.piecesPerBox)} boxes)`}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1 sm:mt-0">
+                              <span className="font-medium text-slate-400">
+                                {item.saleType === 'Box' ? 'Box Price:' : (form.platform ? `${PLATFORMS.find(p => p.id === form.platform)?.label} Price:` : 'Platform Price:')}
+                              </span>
+                              <span className={`font-bold ${isPlatformPriceMissing(selProd, form.platform, item.saleType) ? 'text-amber-500 dark:text-amber-400' : 'text-red-650 dark:text-[#EF4444]'}`}>
+                                {isPlatformPriceMissing(selProd, form.platform, item.saleType)
+                                  ? 'Not set'
+                                  : `₹${getEffectivePrice(selProd, form.platform, item.saleType)}`
+                                }
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5 mt-1 sm:mt-0">
-                            <span className="font-medium text-slate-400">
-                              {item.saleType === 'Box' ? 'Box Price:' : (form.platform ? `${PLATFORMS.find(p => p.id === form.platform)?.label} Price:` : 'Platform Price:')}
-                            </span>
-                            <span className="font-bold text-red-650 dark:text-[#EF4444]">
-                              ₹{getEffectivePrice(selProd, form.platform, item.saleType)}
-                            </span>
-                          </div>
+                          {isPlatformPriceMissing(selProd, form.platform, item.saleType) && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl text-xs text-amber-700 dark:text-amber-400 font-semibold">
+                              <AlertCircle size={13} className="flex-shrink-0" />
+                              Platform price not configured. Please set the {PLATFORMS.find(p => p.id === form.platform)?.label} price in Products Management, or enter the amount manually.
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

@@ -44,8 +44,9 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Background push received:', payload);
 
-  const title   = payload.notification?.title || 'TEE Inventory';
-  const body    = payload.notification?.body  || '';
+  // Data-only FCM messages: title/body come from payload.data
+  const title   = payload.data?.title   || payload.notification?.title || 'TEE Inventory';
+  const body    = payload.data?.body    || payload.notification?.body  || '';
   const icon    = payload.notification?.icon  || '/icon-192.png';
   const badge   = '/favicon.png';
 
@@ -107,34 +108,12 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // ─── Push event fallback ──────────────────────────────────────────────────────
-// Handles raw Web Push events in case Firebase SDK doesn't intercept them.
-// This is a safety net — normally onBackgroundMessage handles everything above.
-self.addEventListener('push', (event) => {
-  // If Firebase SDK already handled this, skip
-  if (!event.data) return;
-
-  let payload = { title: 'TEE Inventory', body: '' };
-  try {
-    payload = event.data.json();
-  } catch {
-    payload.body = event.data.text();
-  }
-
-  const title = payload.notification?.title || payload.title || 'TEE Inventory';
-  const body  = payload.notification?.body  || payload.body  || '';
-
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon:  '/icon-192.png',
-      badge: '/favicon.png',
-      data:  payload.data || {},
-    })
-  );
-});
+// REMOVED: Firebase SDK's onBackgroundMessage already handles all push events.
+// Having a separate 'push' listener caused duplicate notifications because
+// both handlers fire for the same incoming push event.
 
 // ─── Caching and PWA Offline Support (Merged from sw.js) ─────────────────────
-const CACHE_NAME = 'tee-erp-cache-v1';
+const CACHE_NAME = 'tee-erp-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
