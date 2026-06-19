@@ -1181,19 +1181,14 @@ app.get('/api/sales/online', getOnlineSalesHandler);
 app.get('/api/online-sales', getOnlineSalesHandler);
 
 const postOnlineSalesHandler = catchAsync(async (req, res) => {
-  const { productId, qty, platform, amount, orderId, date, notes, saleType, saleQty } = req.body;
-  if (!productId || !platform || (qty === undefined && saleQty === undefined))
+  const { productId, qty, platform, amount, orderId, date, notes } = req.body;
+  if (!productId || !platform || qty === undefined)
     return res.status(400).json({ message: 'Product, quantity and platform required' });
   
   const product = await Product.findOne({ id: productId });
   if (!product) return res.status(404).json({ message: 'Product not found' });
   
-  const resolvedSaleType = saleType || 'Piece';
-  const resolvedSaleQty = saleQty !== undefined ? Number(saleQty) : Number(qty);
-  
-  const deductQty = resolvedSaleType === 'Box'
-    ? resolvedSaleQty * (product.piecesPerBox || 1)
-    : resolvedSaleQty;
+  const deductQty = Number(qty);
 
   if (product.availableQty < deductQty)
     return res.status(400).json({ message: 'Insufficient stock' });
@@ -1205,32 +1200,24 @@ const postOnlineSalesHandler = catchAsync(async (req, res) => {
   
   const plat = platform.toLowerCase();
   let platPrice = 0;
-  if (resolvedSaleType === 'Box') {
-    platPrice = product.boxSellingPrice || 0;
+  if (plat === 'amazon') {
+    platPrice = product.amazonPrice !== undefined ? product.amazonPrice : (product.onlinePrice || product.unitPrice || 0);
+  } else if (plat === 'flipkart') {
+    platPrice = product.flipkartPrice !== undefined ? product.flipkartPrice : (product.onlinePrice || product.unitPrice || 0);
+  } else if (plat === 'meesho') {
+    platPrice = product.meeshoPrice !== undefined ? product.meeshoPrice : (product.onlinePrice || product.unitPrice || 0);
   } else {
-    if (product.pieceSellingPrice > 0) {
-      platPrice = product.pieceSellingPrice;
-    } else {
-      if (plat === 'amazon') {
-        platPrice = product.amazonPrice !== undefined ? product.amazonPrice : (product.onlinePrice || product.unitPrice || 0);
-      } else if (plat === 'flipkart') {
-        platPrice = product.flipkartPrice !== undefined ? product.flipkartPrice : (product.onlinePrice || product.unitPrice || 0);
-      } else if (plat === 'meesho') {
-        platPrice = product.meeshoPrice !== undefined ? product.meeshoPrice : (product.onlinePrice || product.unitPrice || 0);
-      } else {
-        platPrice = product.onlinePrice || product.unitPrice || 0;
-      }
-    }
+    platPrice = product.onlinePrice || product.unitPrice || 0;
   }
-  const saleAmount = amount !== undefined && amount !== null && Number(amount) > 0 ? Number(amount) : platPrice * resolvedSaleQty;
+  const saleAmount = amount !== undefined && amount !== null && Number(amount) > 0 ? Number(amount) : platPrice * deductQty;
 
   const sale = new OnlineSale({
     id: uuidv4(), productId, productName: product.name,
     platform, qty: deductQty, amount: saleAmount,
     orderId: orderId || '', date: normalizeToLocalYYYYMMDD(date || new Date()),
     notes: notes || '',
-    saleType: resolvedSaleType,
-    saleQty: resolvedSaleQty
+    saleType: 'Piece',
+    saleQty: deductQty
   });
   await sale.save();
 
@@ -2506,13 +2493,9 @@ app.get('/api/analytics', catchAsync(async (req, res) => {
     totalProductCost += cost;
     totalUnitsSold += s.qty;
 
-    if (s.saleType === 'Box') {
-      totalBoxesSold += (s.saleQty || 0);
-      revenueFromBoxSales += rev;
-    } else {
-      totalPiecesSold += s.qty;
-      revenueFromPieceSales += rev;
-    }
+    // Online sales are always piece sales
+    totalPiecesSold += s.qty;
+    revenueFromPieceSales += rev;
 
     const plat = s.platform ? s.platform.toLowerCase() : 'amazon';
     if (platformStats[plat]) {
@@ -2916,18 +2899,43 @@ app.get('/api/stats', catchAsync(async (req, res) => {
   const todayCost = onlineCost + offlineCost;
   const todayProfit = todaySales - todayCost;
 
-  // Collections inside the date range
+  // Collections inside the date range = actual settled/received payments only
+  // This must match the "Settled Amount" shown in Customer Management.
   let collectionsToday = 0;
+  let collectionsOnline = 0;
+  let collectionsOffline = 0;
+
+  // Online sales are always collected immediately via the platform
   onlineSales.forEach(s => {
-    collectionsToday += s.amount || 0;
+    collectionsOnline += s.amount || 0;
   });
+
+  // Offline: sum only RECEIVED transactions within the date range.
+  // Cash, UPI, Bank Transfer = received immediately.
+  // Cheque = only count if chequeStatus is 'cleared'.
+  // Skip pending, PDC cheques as they have not been received yet.
   offlineSalesRaw.forEach(s => {
     (s.transactions || []).forEach(t => {
       if (t.date >= startDate && t.date <= endDate) {
-        collectionsToday += t.amount || 0;
+        const method = (t.method || '').toLowerCase().trim();
+        const isReceived =
+          method === 'cash' ||
+          method === 'upi' ||
+          method === 'bank transfer' ||
+          (method === 'cheque' && (t.chequeStatus || '').toLowerCase() === 'cleared');
+        if (isReceived) {
+          collectionsOffline += Number(t.amount) || 0;
+        }
       }
     });
   });
+
+  collectionsToday = collectionsOnline + collectionsOffline;
+
+  console.log(`[STATS COLLECTIONS] Range: ${startDate} to ${endDate}`);
+  console.log(`[STATS COLLECTIONS] Online sales collected: ₹${collectionsOnline.toFixed(2)} (${onlineSales.length} orders)`);
+  console.log(`[STATS COLLECTIONS] Offline payments settled: ₹${collectionsOffline.toFixed(2)} (cash/upi/bt/cleared-cheques within range)`);
+  console.log(`[STATS COLLECTIONS] Total collectionsToday: ₹${collectionsToday.toFixed(2)}`);
 
   // Best Selling Product & Top Selling Products in the range
   const productQuantities = {};
@@ -2997,13 +3005,9 @@ app.get('/api/stats', catchAsync(async (req, res) => {
 
   onlineSales.forEach(s => {
     const rev = s.amount || 0;
-    if (s.saleType === 'Box') {
-      totalBoxesSold += (s.saleQty || 0);
-      revenueFromBoxSales += rev;
-    } else {
-      totalPiecesSold += s.qty;
-      revenueFromPieceSales += rev;
-    }
+    // Online sales are always piece sales
+    totalPiecesSold += s.qty;
+    revenueFromPieceSales += rev;
   });
 
   offlineSalesRaw.forEach(s => {
@@ -3367,6 +3371,7 @@ app.get('/api/stats', catchAsync(async (req, res) => {
 
     todaySales,
     todayProfit,
+    collectionsToday,
     inventoryValue,
     bestSellingProduct,
     biggestPendingCustomer,

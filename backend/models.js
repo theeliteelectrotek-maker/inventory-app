@@ -116,7 +116,7 @@ const onlineSaleSchema = new mongoose.Schema({
   cancelledBy: { type: String, default: '' },
   cancelledAt: { type: String, default: '' },
   cancelDate: { type: String, default: '' },
-  saleType: { type: String, enum: ['Piece', 'Box'], default: 'Piece' },
+  saleType: { type: String, default: 'Piece' }, // kept for backward-compat with existing records; new online sales are always 'Piece'
   saleQty: { type: Number, default: 0 },
   createdAt: { type: String, default: () => new Date().toISOString() }
 });

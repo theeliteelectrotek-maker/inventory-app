@@ -37,7 +37,7 @@ const formatFriendlyDate = (dateStr) => {
 
 const today = () => formatDateYYYYMMDD(new Date());
 
-const emptyItem = { productId: '', qty: 1, amount: '', saleType: 'Piece' };
+const emptyItem = { productId: '', qty: 1, amount: '' };
 const emptyForm = () => ({ items: [{ ...emptyItem }], platform: '', orderId: '', date: today(), notes: '' });
 
 function Modal({ onClose, children }) {
@@ -395,23 +395,20 @@ export default function OnlineSales() {
   }
   useEffect(load, []);
 
-  // Returns the correct price for the given platform. Never falls back to offline price for online platforms.
-  function getEffectivePrice(product, platform, saleType) {
+  // Returns the correct piece price for the given platform. Online sales are always piece sales.
+  function getEffectivePrice(product, platform) {
     if (!product) return 0;
-    if (saleType === 'Box') {
-      return product.boxSellingPrice || 0;
-    }
-    // For online platforms, always use the platform-specific price — never use offlinePrice / pieceSellingPrice.
+    // For online platforms, always use the platform-specific piece price.
     if (platform === 'amazon') return Number(product.amazonPrice) || 0;
     if (platform === 'flipkart') return Number(product.flipkartPrice) || 0;
     if (platform === 'meesho') return Number(product.meeshoPrice) || 0;
-    // Offline / no platform selected — use offlinePrice first, then pieceSellingPrice as legacy fallback.
+    // No platform selected — use offlinePrice as fallback.
     return Number(product.offlinePrice) || Number(product.pieceSellingPrice) || 0;
   }
 
   // Returns true when a platform is selected but its price is not configured on the product.
-  function isPlatformPriceMissing(product, platform, saleType) {
-    if (!product || !platform || saleType === 'Box') return false;
+  function isPlatformPriceMissing(product, platform) {
+    if (!product || !platform) return false;
     if (platform === 'amazon') return !(Number(product.amazonPrice) > 0);
     if (platform === 'flipkart') return !(Number(product.flipkartPrice) > 0);
     if (platform === 'meesho') return !(Number(product.meeshoPrice) > 0);
@@ -423,7 +420,7 @@ export default function OnlineSales() {
       const items = f.items.map((item) => {
         if (!item.productId) return item;
         const p = products.find((x) => x.id === item.productId);
-        const effectivePrice = getEffectivePrice(p, platformId, item.saleType);
+        const effectivePrice = getEffectivePrice(p, platformId);
         const qty = Number(item.qty) || 1;
         return { ...item, amount: effectivePrice > 0 ? String(effectivePrice * qty) : '' };
       });
@@ -433,7 +430,7 @@ export default function OnlineSales() {
 
   function handleItemProductChange(index, productId) {
     const p = products.find((x) => x.id === productId);
-    const effectivePrice = getEffectivePrice(p, form.platform, form.items[index].saleType);
+    const effectivePrice = getEffectivePrice(p, form.platform);
     setForm((f) => {
       const items = [...f.items];
       const qty = Number(items[index].qty) || 1;
@@ -447,19 +444,8 @@ export default function OnlineSales() {
     setForm((f) => {
       const items = [...f.items];
       const p = products.find((x) => x.id === items[index].productId);
-      const effectivePrice = getEffectivePrice(p, f.platform, items[index].saleType);
+      const effectivePrice = getEffectivePrice(p, f.platform);
       items[index] = { ...items[index], qty, amount: effectivePrice > 0 ? String(effectivePrice * qty) : items[index].amount };
-      return { ...f, items };
-    });
-  }
-
-  function handleItemSaleTypeChange(index, saleType) {
-    setForm((f) => {
-      const items = [...f.items];
-      const p = products.find((x) => x.id === items[index].productId);
-      const effectivePrice = getEffectivePrice(p, f.platform, saleType);
-      const qty = Number(items[index].qty) || 1;
-      items[index] = { ...items[index], saleType, amount: effectivePrice > 0 ? String(effectivePrice * qty) : items[index].amount };
       return { ...f, items };
     });
   }
@@ -495,8 +481,6 @@ export default function OnlineSales() {
         const payload = {
           productId: item.productId,
           qty: item.qty,
-          saleQty: item.qty,
-          saleType: item.saleType || 'Piece',
           amount: item.amount,
           platform: form.platform,
           orderId: form.orderId,
@@ -1566,7 +1550,7 @@ export default function OnlineSales() {
                       </td>
                       <td className="px-4 py-3 text-slate-500 dark:text-[#94A3B8] font-mono">{s.orderId || '—'}</td>
                       <td className="px-4 py-3 text-slate-707 dark:text-[#CBD5E1] font-bold">
-                        {s.saleType === 'Box' ? `${s.saleQty} Box${s.saleQty > 1 ? 'es' : ''} (${s.qty} pcs)` : `${s.qty} Piece${s.qty > 1 ? 's' : ''}`}
+                        {`${s.qty} Piece${s.qty > 1 ? 's' : ''}`}
                       </td>
                       <td className="px-4 py-3 font-black text-slate-800 dark:text-[#F8FAFC]">₹{s.amount}</td>
                       <td className="px-4 py-3 text-right flex items-center justify-end gap-1.5">
@@ -1635,9 +1619,8 @@ export default function OnlineSales() {
 
               {/* Desktop Headers */}
               {form.items.length > 0 && (
-                <div className="hidden md:grid md:grid-cols-[45%_20%_15%_20%] gap-4 pr-12 pl-4 text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider">
+                <div className="hidden md:grid md:grid-cols-[55%_20%_25%] gap-4 pr-12 pl-4 text-xs font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider">
                   <div>Product *</div>
-                  <div>Sale Type *</div>
                   <div>Qty *</div>
                   <div>Amount (₹) *</div>
                 </div>
@@ -1649,7 +1632,7 @@ export default function OnlineSales() {
                   return (
                     <div key={idx} className="p-4 border border-slate-200 dark:border-[#1E293B] rounded-2xl bg-slate-50/30 dark:bg-[#0F172A]/30 space-y-3 animate-fadeIn">
                       <div className="flex items-center gap-3">
-                        <div className="grid grid-cols-1 md:grid-cols-[45%_20%_15%_20%] gap-4 flex-1 items-start">
+                        <div className="grid grid-cols-1 md:grid-cols-[55%_20%_25%] gap-4 flex-1 items-start">
                           <div>
                             <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1.5 md:hidden">Product *</label>
                             <SearchableSelect
@@ -1663,27 +1646,10 @@ export default function OnlineSales() {
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1.5 md:hidden">Sale Type *</label>
-                            <select
-                              value={item.saleType || 'Piece'}
-                              onChange={(e) => handleItemSaleTypeChange(idx, e.target.value)}
-                              className="w-full h-[42px] px-3 py-2 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500"
-                            >
-                              <option value="Piece">Piece</option>
-                              {selProd?.piecesPerBox > 0 && <option value="Box">Box</option>}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1.5 md:hidden">{item.saleType === 'Box' ? 'Boxes *' : 'Qty *'}</label>
-                            <input required type="number" min="1" max={item.saleType === 'Box' ? Math.floor(selProd?.availableQty / (selProd?.piecesPerBox || 1)) : (selProd?.availableQty || 9999)} value={item.qty}
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-[#94A3B8] uppercase tracking-wider mb-1.5 md:hidden">Qty *</label>
+                            <input required type="number" min="1" max={selProd?.availableQty || 9999} value={item.qty}
                               onChange={(e) => handleItemQtyChange(idx, e.target.value)}
                               className="w-full h-[42px] px-4 py-2.5 border border-slate-200 dark:border-[#1E293B] rounded-xl text-sm text-center bg-white dark:bg-[#0F172A] text-slate-800 dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="1" />
-                            {selProd && item.saleType === 'Box' && (
-                              <span className="block text-[10px] text-slate-400 font-medium mt-1 text-center">
-                                (= {item.qty * (selProd.piecesPerBox || 1)} pcs)
-                              </span>
-                            )}
                           </div>
 
                           <div>
@@ -1713,17 +1679,17 @@ export default function OnlineSales() {
                             </div>
                             <div className="flex items-center gap-1.5 mt-1 sm:mt-0">
                               <span className="font-medium text-slate-400">
-                                {item.saleType === 'Box' ? 'Box Price:' : (form.platform ? `${PLATFORMS.find(p => p.id === form.platform)?.label} Price:` : 'Platform Price:')}
+                                {form.platform ? `${PLATFORMS.find(p => p.id === form.platform)?.label} Price:` : 'Platform Price:'}
                               </span>
-                              <span className={`font-bold ${isPlatformPriceMissing(selProd, form.platform, item.saleType) ? 'text-amber-500 dark:text-amber-400' : 'text-red-650 dark:text-[#EF4444]'}`}>
-                                {isPlatformPriceMissing(selProd, form.platform, item.saleType)
+                              <span className={`font-bold ${isPlatformPriceMissing(selProd, form.platform) ? 'text-amber-500 dark:text-amber-400' : 'text-red-650 dark:text-[#EF4444]'}`}>
+                                {isPlatformPriceMissing(selProd, form.platform)
                                   ? 'Not set'
-                                  : `₹${getEffectivePrice(selProd, form.platform, item.saleType)}`
+                                  : `₹${getEffectivePrice(selProd, form.platform)}`
                                 }
                               </span>
                             </div>
                           </div>
-                          {isPlatformPriceMissing(selProd, form.platform, item.saleType) && (
+                          {isPlatformPriceMissing(selProd, form.platform) && (
                             <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl text-xs text-amber-700 dark:text-amber-400 font-semibold">
                               <AlertCircle size={13} className="flex-shrink-0" />
                               Platform price not configured. Please set the {PLATFORMS.find(p => p.id === form.platform)?.label} price in Products Management, or enter the amount manually.
