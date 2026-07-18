@@ -194,5 +194,10 @@ export const api = {
   getNotificationSettings: () => request('GET', '/settings/notifications'),
   updateNotificationSettings: (settings) => request('PUT', '/settings/notifications', settings),
   sendTestPushNotification: (type) => request('POST', '/notifications/test', { type }),
+
+  // Daily Business Reports
+  getDailyReports: () => request('GET', '/daily-reports'),
+  getDailyReport: (date) => request('GET', `/daily-reports/${date}`),
+  generateDailyReport: (date, sendNotification = false) => request('POST', '/daily-reports/generate', { date, sendNotification }),
 };
 

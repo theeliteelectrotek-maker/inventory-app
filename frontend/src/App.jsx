@@ -18,6 +18,7 @@ import AdminPasswordRequests from './pages/AdminPasswordRequests';
 import Settings from './pages/Settings';
 import CommunicationHub from './pages/CommunicationHub';
 import PurchasesFactories from './pages/PurchasesFactories';
+import DailyReport from './pages/DailyReport';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -116,6 +117,7 @@ export default function App() {
               <Route path="purchases-factories" element={<PurchasesRoute><PurchasesFactories /></PurchasesRoute>} />
               <Route path="purchases-factory" element={<PurchasesRoute><PurchasesFactories /></PurchasesRoute>} />
               <Route path="settings" element={<Settings />} />
+              <Route path="daily-report" element={<AdminRoute><DailyReport /></AdminRoute>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

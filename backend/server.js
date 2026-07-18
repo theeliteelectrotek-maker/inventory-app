@@ -12,6 +12,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
+const cron = require('node-cron');
 
 // ─── Firebase Admin SDK (v14 submodule imports) ───────────────────────────────
 // firebase-admin v11+ uses submodule imports:
@@ -78,7 +79,7 @@ try {
 
 
 
-const { User, Product, OnlineSale, OfflineSale, Shop, Return, Setting, AuditLog, Replacement, ChatChannel, ChatMessage, PasswordChangeRequest, Supplier, Purchase, GRN, SupplierPayment, PurchaseAuditLog, OnlineSaleCancelLog, Notification } = require('./models');
+const { User, Product, OnlineSale, OfflineSale, Shop, Return, Setting, AuditLog, Replacement, ChatChannel, ChatMessage, PasswordChangeRequest, Supplier, Purchase, GRN, SupplierPayment, PurchaseAuditLog, OnlineSaleCancelLog, Notification, DailyReport, BusinessReport } = require('./models');
 
 function isBcryptHash(str) {
   return typeof str === 'string' && /^\$2[ayb]\$[0-9]{2}\$[./A-Za-z0-9]{53}$/.test(str);
@@ -115,6 +116,7 @@ const sendPushNotification = async ({ type, title, body, data = {}, targetUserId
     if (type === 'return'      && !settings.return)      return;
     if (type === 'replacement' && !settings.replacement) return;
     if (type === 'teamMessage' && !settings.teamMessage) return;
+    // 'daily_report' type always sends — not gated by user settings
 
     // 2. Resolve target users (default: all Admins)
     let users = [];
@@ -234,6 +236,709 @@ const sendPushNotification = async ({ type, title, body, data = {}, targetUserId
     console.error('[FCM] Error in sendPushNotification:', err);
   }
 };
+
+// ─── Business Reports System ─────────────────────────────────────────────────
+
+/** Convert a Date object to YYYY-MM-DD string in local time */
+const toLocalDateStr = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * Core aggregation — same formulas as /api/stats and /api/analytics.
+ * Returns the full report data payload for [periodStart, periodEnd].
+ */
+async function computeReportData(periodStart, periodEnd) {
+  // ── Fetch data ─────────────────────────────────────────────────────────────
+  const products    = await Product.find({});
+  const onlineSalesRaw  = await OnlineSale.find({ date: { $gte: periodStart, $lte: periodEnd }, status: { $ne: 'Cancelled' } });
+  const offlineSalesRaw = await OfflineSale.find({ date: { $gte: periodStart, $lte: periodEnd } });
+  const returns       = await Return.find({ date: { $gte: periodStart, $lte: periodEnd } });
+  const replacements  = await Replacement.find({ date: { $gte: periodStart, $lte: periodEnd } });
+  const shops         = await Shop.find({});
+
+  // ── Product map (price + category) ─────────────────────────────────────────
+  const prodMap = {};
+  products.forEach(p => {
+    prodMap[p.id] = {
+      costPrice:    p.costPrice    || 0,
+      name:         p.name,
+      category:     p.category    || 'General',
+      availableQty: p.availableQty || 0,
+      amazonPrice:  p.amazonPrice  !== undefined ? p.amazonPrice  : (p.onlinePrice || p.unitPrice || 0),
+      flipkartPrice:p.flipkartPrice!== undefined ? p.flipkartPrice: (p.onlinePrice || p.unitPrice || 0),
+      meeshoPrice:  p.meeshoPrice  !== undefined ? p.meeshoPrice  : (p.onlinePrice || p.unitPrice || 0),
+      offlinePrice: p.offlinePrice || p.unitPrice || 0
+    };
+  });
+  const getCost     = (id) => prodMap[id]?.costPrice    || 0;
+  const getCategory = (id) => prodMap[id]?.category     || 'General';
+
+  // ── New customers & shops in period ────────────────────────────────────────
+  const newShops     = shops.filter(s => s.createdAt && s.createdAt.substring(0,10) >= periodStart && s.createdAt.substring(0,10) <= periodEnd && s.type === 'shop');
+  const newCustomers = shops.filter(s => s.createdAt && s.createdAt.substring(0,10) >= periodStart && s.createdAt.substring(0,10) <= periodEnd && (s.type === 'individual' || s.type === 'walk-in'));
+
+  // ── Online sales with fallback pricing ─────────────────────────────────────
+  const onlineSales = onlineSalesRaw.map(s => {
+    const sObj = s.toObject();
+    if (!sObj.amount || sObj.amount <= 0) {
+      const pm = prodMap[sObj.productId];
+      if (pm) {
+        const plat = (sObj.platform || '').toLowerCase();
+        if      (plat === 'amazon')   sObj.amount = pm.amazonPrice   * sObj.qty;
+        else if (plat === 'flipkart') sObj.amount = pm.flipkartPrice * sObj.qty;
+        else if (plat === 'meesho')   sObj.amount = pm.meeshoPrice   * sObj.qty;
+        else                          sObj.amount = pm.offlinePrice  * sObj.qty;
+      }
+    }
+    return sObj;
+  });
+
+  let onlineRevenue = 0, onlineCost = 0;
+  let amazonSales = 0, flipkartSales = 0, meeshoSales = 0;
+  // Online = always piece sales
+  let totalPiecesSold = 0, totalBoxesSold = 0;
+
+  onlineSales.forEach(s => {
+    const rev = s.amount || 0;
+    onlineRevenue += rev;
+    onlineCost    += getCost(s.productId) * s.qty;
+    totalPiecesSold += s.qty;
+    const plat = (s.platform || '').toLowerCase();
+    if      (plat === 'amazon')   amazonSales   += rev;
+    else if (plat === 'flipkart') flipkartSales += rev;
+    else if (plat === 'meesho')   meeshoSales   += rev;
+  });
+
+  // ── Offline sales ───────────────────────────────────────────────────────────
+  let offlineRevenue = 0, offlineCost = 0, pendingAmount = 0;
+
+  offlineSalesRaw.forEach(s => {
+    pendingAmount += s.amountLeft || 0;
+    const items = s.items || [];
+    if (items.length > 0) {
+      items.forEach(item => {
+        offlineRevenue += item.amount || 0;
+        offlineCost    += getCost(item.productId) * item.qty;
+        if (item.saleType === 'Box') totalBoxesSold  += item.saleQty || 0;
+        else                         totalPiecesSold += item.qty     || 0;
+      });
+    } else {
+      // Legacy single-item sale (no items array)
+      offlineRevenue += s.totalAmount || 0;
+      offlineCost    += getCost(s.productId) * s.qty;
+      if (s.saleType === 'Box') totalBoxesSold  += s.saleQty || 0;
+      else                      totalPiecesSold += s.qty     || 1;
+    }
+  });
+
+  const totalSales  = onlineRevenue + offlineRevenue;
+  const totalCOGS   = onlineCost    + offlineCost;
+  const grossProfit = totalSales    - totalCOGS;
+
+  // ── Returns value ───────────────────────────────────────────────────────────
+  const getReturnPrice = (productId, platform) => {
+    const pm = prodMap[productId];
+    if (!pm) return 0;
+    const plat = (platform || '').toLowerCase();
+    if (plat === 'amazon')   return pm.amazonPrice;
+    if (plat === 'flipkart') return pm.flipkartPrice;
+    if (plat === 'meesho')   return pm.meeshoPrice;
+    return pm.offlinePrice;
+  };
+  const returnsValue = returns.reduce((sum, r) => {
+    const items = (r.items && r.items.length > 0) ? r.items : [{ productId: r.productId, qty: r.qty || 1 }];
+    return sum + items.reduce((s, item) => s + getReturnPrice(item.productId, r.platform) * item.qty, 0);
+  }, 0);
+  const netProfit = grossProfit - returnsValue;
+
+  // ── Collections & payment methods ──────────────────────────────────────────
+  let totalCollections = onlineRevenue; // online always collected
+  const paymentMethodSummary = { Cash: 0, UPI: 0, Bank: 0, Credit: 0 };
+  offlineSalesRaw.forEach(s => {
+    (s.transactions || []).forEach(t => {
+      if (t.date >= periodStart && t.date <= periodEnd) {
+        const m   = (t.method || '').toLowerCase().trim();
+        const amt = Number(t.amount) || 0;
+        if      (m === 'cash')          { totalCollections += amt; paymentMethodSummary.Cash += amt; }
+        else if (m === 'upi')           { totalCollections += amt; paymentMethodSummary.UPI  += amt; }
+        else if (m === 'bank transfer') { totalCollections += amt; paymentMethodSummary.Bank += amt; }
+        else if (m === 'cheque')        { paymentMethodSummary.Credit += amt; }
+      }
+    });
+  });
+
+  // ── Totals ──────────────────────────────────────────────────────────────────
+  const totalOrders = onlineSales.length + offlineSalesRaw.length;
+  const totalUnitsSold =
+    onlineSales.reduce((s, x) => s + x.qty, 0) +
+    offlineSalesRaw.reduce((s, x) => s + (x.items || []).reduce((a, i) => a + i.qty, 0), 0);
+  const totalProductsSold = new Set([
+    ...onlineSales.map(s => s.productId),
+    ...offlineSalesRaw.flatMap(s => (s.items || []).map(i => i.productId))
+  ]).size;
+
+  // ── Inventory status (current snapshot) ────────────────────────────────────
+  const lowStockProducts  = products.filter(p => p.availableQty > 0  && p.availableQty <= 20).length;
+  const outOfStockProducts= products.filter(p => p.availableQty === 0).length;
+
+  // ── Returns & replacements counts ──────────────────────────────────────────
+  const returnsCount = returns.reduce((sum, r) => {
+    const items = (r.items && r.items.length > 0) ? r.items : [{ qty: r.qty || 1 }];
+    return sum + items.reduce((s, i) => s + (i.qty || 1), 0);
+  }, 0);
+  const replacementsCount = replacements.reduce((sum, r) => {
+    const prods = (r.products && r.products.length > 0) ? r.products : [{ qty: r.qty || 1 }];
+    return sum + prods.reduce((s, p) => s + (p.qty || 1), 0);
+  }, 0);
+
+  // ── Product-wise sales table ────────────────────────────────────────────────
+  const productSalesMap = {};
+  onlineSales.forEach(s => {
+    const key = s.productId;
+    if (!productSalesMap[key]) productSalesMap[key] = { productId: key, name: s.productName || prodMap[key]?.name || key, qty: 0, amount: 0, category: getCategory(key) };
+    productSalesMap[key].qty    += s.qty;
+    productSalesMap[key].amount += s.amount || 0;
+  });
+  offlineSalesRaw.forEach(s => {
+    (s.items || []).forEach(item => {
+      const key = item.productId;
+      if (!productSalesMap[key]) productSalesMap[key] = { productId: key, name: item.productName || prodMap[key]?.name || key, qty: 0, amount: 0, category: getCategory(key) };
+      productSalesMap[key].qty    += item.qty;
+      productSalesMap[key].amount += item.amount || 0;
+    });
+  });
+  const productWiseSales = Object.values(productSalesMap).sort((a, b) => b.qty - a.qty);
+
+  // ── Category-wise sales ─────────────────────────────────────────────────────
+  const categoryMap = {};
+  productWiseSales.forEach(p => {
+    const cat = p.category || 'General';
+    if (!categoryMap[cat]) categoryMap[cat] = { category: cat, qty: 0, amount: 0 };
+    categoryMap[cat].qty    += p.qty;
+    categoryMap[cat].amount += p.amount;
+  });
+  const categoryWiseSales = Object.values(categoryMap).sort((a, b) => b.amount - a.amount);
+
+  // ── Platform revenue (for donut chart) ─────────────────────────────────────
+  const platformWiseSales = { Offline: offlineRevenue, Amazon: amazonSales, Flipkart: flipkartSales, Meesho: meeshoSales };
+
+  // ── Top 10 customers (all offline buyers) ──────────────────────────────────
+  const customerMap = {};
+  offlineSalesRaw.forEach(s => {
+    const n = s.buyerName || 'Unknown';
+    if (!customerMap[n]) customerMap[n] = { name: n, amount: 0, orders: 0 };
+    customerMap[n].amount += s.totalAmount || 0;
+    customerMap[n].orders++;
+  });
+  const top10Customers = Object.values(customerMap).sort((a, b) => b.amount - a.amount).slice(0, 10);
+
+  // ── Top 10 shops (shop-type buyers only) ───────────────────────────────────
+  const shopTypeSet = new Set(shops.filter(sh => sh.type === 'shop').map(sh => sh.name));
+  const shopMap = {};
+  offlineSalesRaw.forEach(s => {
+    if (!shopTypeSet.has(s.buyerName)) return;
+    if (!shopMap[s.buyerName]) shopMap[s.buyerName] = { name: s.buyerName, amount: 0, orders: 0 };
+    shopMap[s.buyerName].amount += s.totalAmount || 0;
+    shopMap[s.buyerName].orders++;
+  });
+  const top10Shops = Object.values(shopMap).sort((a, b) => b.amount - a.amount).slice(0, 10);
+
+  // ── Sales trend (daily breakdown for chart) ─────────────────────────────────
+  const trendMap = {};
+  let cur = new Date(periodStart + 'T00:00:00');
+  const endD = new Date(periodEnd + 'T00:00:00');
+  while (cur <= endD) {
+    const d = toLocalDateStr(cur);
+    trendMap[d] = { date: d, online: 0, offline: 0, combined: 0, cost: 0 };
+    cur.setDate(cur.getDate() + 1);
+  }
+  onlineSales.forEach(s => {
+    if (trendMap[s.date]) {
+      trendMap[s.date].online   += s.amount || 0;
+      trendMap[s.date].combined += s.amount || 0;
+      trendMap[s.date].cost     += getCost(s.productId) * s.qty;
+    }
+  });
+  offlineSalesRaw.forEach(s => {
+    const items = s.items || [];
+    if (items.length > 0) {
+      items.forEach(item => {
+        const d = item.date || s.date;
+        if (trendMap[d]) {
+          trendMap[d].offline  += item.amount || 0;
+          trendMap[d].combined += item.amount || 0;
+          trendMap[d].cost     += getCost(item.productId) * item.qty;
+        }
+      });
+    } else if (trendMap[s.date]) {
+      trendMap[s.date].offline  += s.totalAmount || 0;
+      trendMap[s.date].combined += s.totalAmount || 0;
+      trendMap[s.date].cost     += getCost(s.productId) * (s.qty || 1);
+    }
+  });
+  const salesTrend = Object.values(trendMap)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(d => ({ ...d, grossProfit: d.combined - d.cost }));
+
+  return {
+    // Core KPIs
+    totalSales, totalCollections, pendingAmount,
+    offlineSales: offlineRevenue, amazonSales, flipkartSales, meeshoSales,
+    totalOrders, totalUnitsSold, totalProductsSold,
+    piecesSold: totalPiecesSold, boxesSold: totalBoxesSold,
+    returns: returnsCount, replacements: replacementsCount,
+    grossProfit, netProfit, productCost: totalCOGS,
+    newCustomers: newCustomers.length, newShops: newShops.length,
+    lowStockProducts, outOfStockProducts,
+    // Tables
+    productWiseSales, categoryWiseSales,
+    platformWiseSales, top10Customers, top10Shops, paymentMethodSummary,
+    // Chart data
+    salesTrend
+  };
+}
+
+/**
+ * Unified report generator — computes data and upserts a BusinessReport doc.
+ * type: 'daily' | 'weekly' | 'monthly'
+ * dateKey: YYYY-MM-DD for daily/weekly, YYYY-MM for monthly
+ */
+async function generateBusinessReport(type, periodStart, periodEnd, dateKey) {
+  try {
+    console.log(`[BUSINESS REPORT] Generating ${type} report: ${periodStart} → ${periodEnd} (key: ${dateKey})`);
+    const data = await computeReportData(periodStart, periodEnd);
+    const hasActivity = data.totalSales > 0 || data.totalOrders > 0;
+    const now = new Date().toISOString();
+
+    await BusinessReport.findOneAndUpdate(
+      { type, date: dateKey },
+      { $set: { id: (await BusinessReport.findOne({ type, date: dateKey }))?.id || uuidv4(), type, date: dateKey, periodStart, periodEnd, generatedAt: now, hasActivity, data } },
+      { upsert: true, new: true }
+    );
+
+    console.log(`[BUSINESS REPORT] ✅ ${type} report saved for ${dateKey}.`);
+    return { type, date: dateKey, periodStart, periodEnd, hasActivity, data };
+  } catch (err) {
+    console.error(`[BUSINESS REPORT] ❌ Error generating ${type} report for ${dateKey}:`, err);
+    throw err;
+  }
+}
+
+/**
+ * Backward-compatible wrapper — also writes to the legacy DailyReport collection
+ * so existing DailyReport-based endpoints still work during migration.
+ */
+async function generateDailyReport(dateStr) {
+  const result = await generateBusinessReport('daily', dateStr, dateStr, dateStr);
+
+  // Also keep legacy DailyReport collection in sync
+  try {
+    const existing = await DailyReport.findOne({ date: dateStr });
+    if (existing) {
+      existing.data = result.data;
+      existing.hasActivity = result.hasActivity;
+      existing.generatedAt = new Date().toISOString();
+      existing.markModified('data');
+      await existing.save();
+    } else {
+      await new DailyReport({ id: uuidv4(), date: dateStr, generatedAt: new Date().toISOString(), hasActivity: result.hasActivity, data: result.data }).save();
+    }
+  } catch (e) {
+    console.warn('[DAILY REPORT] Legacy DailyReport sync failed (non-fatal):', e.message);
+  }
+
+  return result;
+}
+
+/**
+ * Single 8 PM cron that generates Daily (always), Weekly (Sundays),
+ * and Monthly (last day of month) reports with individual push notifications.
+ */
+function scheduleAllReports() {
+  cron.schedule('0 20 * * *', async () => {
+    const now = new Date();
+    const todayStr = getSystemLocalDate();
+    console.log(`[REPORT SCHEDULER] 🕗 8:00 PM trigger. Date: ${todayStr}, Day: ${now.getDay()}`);
+
+    // 1. Always generate daily report
+    try {
+      await generateDailyReport(todayStr);
+      await sendPushNotification({
+        type: 'daily_report',
+        title: '📊 Daily Business Report Ready',
+        body: "Tap to view today's complete business summary.",
+        data: { clickAction: '/reports', reportType: 'daily', reportDate: todayStr }
+      });
+      console.log(`[REPORT SCHEDULER] ✅ Daily report dispatched for ${todayStr}.`);
+    } catch (err) { console.error('[REPORT SCHEDULER] ❌ Daily report error:', err); }
+
+    // 2. Weekly: Sundays (getDay() === 0), period Mon → Sun
+    if (now.getDay() === 0) {
+      try {
+        const mon = new Date(now);
+        mon.setDate(now.getDate() - 6);
+        const weekStart = toLocalDateStr(mon);   // Monday
+        const weekKey   = weekStart;              // keyed by Monday date
+        await generateBusinessReport('weekly', weekStart, todayStr, weekKey);
+        await sendPushNotification({
+          type: 'daily_report',
+          title: '📊 Weekly Business Report Ready',
+          body: "Tap to view this week's complete business summary.",
+          data: { clickAction: '/reports', reportType: 'weekly', reportDate: weekKey }
+        });
+        console.log(`[REPORT SCHEDULER] ✅ Weekly report dispatched (${weekStart} → ${todayStr}).`);
+      } catch (err) { console.error('[REPORT SCHEDULER] ❌ Weekly report error:', err); }
+    }
+
+    // 3. Monthly: last day of month (tomorrow is the 1st)
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (tomorrow.getDate() === 1) {
+      try {
+        const y  = now.getFullYear();
+        const m  = String(now.getMonth() + 1).padStart(2, '0');
+        const monthStart = `${y}-${m}-01`;
+        const monthKey   = `${y}-${m}`;
+        await generateBusinessReport('monthly', monthStart, todayStr, monthKey);
+        await sendPushNotification({
+          type: 'daily_report',
+          title: '📈 Monthly Business Report Ready',
+          body: "Tap to view this month's complete business summary.",
+          data: { clickAction: '/reports', reportType: 'monthly', reportDate: monthKey }
+        });
+        console.log(`[REPORT SCHEDULER] ✅ Monthly report dispatched (${monthStart} → ${todayStr}).`);
+      } catch (err) { console.error('[REPORT SCHEDULER] ❌ Monthly report error:', err); }
+    }
+  });
+  console.log('[REPORT SCHEDULER] ⏰ Scheduled: Daily every day, Weekly on Sunday, Monthly on last day — all at 8:00 PM server local time.');
+}
+
+/**
+ * One-time startup migration: copies existing DailyReport docs into BusinessReport.
+ */
+async function runDailyReportMigration() {
+  try {
+    const legacy = await DailyReport.find({});
+    if (legacy.length === 0) return;
+    console.log(`[MIGRATION] Migrating ${legacy.length} DailyReport doc(s) → BusinessReport...`);
+    let migrated = 0;
+    for (const dr of legacy) {
+      const exists = await BusinessReport.findOne({ type: 'daily', date: dr.date });
+      if (!exists) {
+        await new BusinessReport({
+          id: uuidv4(), type: 'daily',
+          date: dr.date, periodStart: dr.date, periodEnd: dr.date,
+          generatedAt: dr.generatedAt || new Date().toISOString(),
+          hasActivity: dr.hasActivity || false,
+          data: dr.data || {}
+        }).save();
+        migrated++;
+      }
+    }
+    console.log(`[MIGRATION] ✅ Migrated ${migrated} DailyReport(s) into BusinessReport collection.`);
+  } catch (err) {
+    console.error('[MIGRATION] ❌ DailyReport migration error (non-fatal):', err.message);
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+  try {
+    console.log(`[DAILY REPORT] Generating report for date: ${dateStr}`);
+
+    // ── Fetch all required data for the day ───────────────────────────────────
+    const products = await Product.find({});
+    const onlineSalesRaw = await OnlineSale.find({ date: dateStr, status: { $ne: 'Cancelled' } });
+    const offlineSalesRaw = await OfflineSale.find({ date: dateStr });
+    const returns = await Return.find({ date: dateStr });
+    const replacements = await Replacement.find({ date: dateStr });
+    const shops = await Shop.find({});
+
+    // New customers and shops created on this day
+    const newShops = shops.filter(s => s.createdAt && s.createdAt.substring(0, 10) === dateStr && s.type === 'shop');
+    const newCustomers = shops.filter(s => s.createdAt && s.createdAt.substring(0, 10) === dateStr && (s.type === 'individual' || s.type === 'walk-in'));
+
+    // Product price map
+    const prodMap = {};
+    products.forEach(p => {
+      prodMap[p.id] = {
+        costPrice: p.costPrice || 0,
+        name: p.name,
+        availableQty: p.availableQty || 0,
+        amazonPrice: p.amazonPrice || p.onlinePrice || 0,
+        flipkartPrice: p.flipkartPrice || p.onlinePrice || 0,
+        meeshoPrice: p.meeshoPrice || p.onlinePrice || 0,
+        offlinePrice: p.offlinePrice || p.unitPrice || 0
+      };
+    });
+
+    const getCost = (productId) => prodMap[productId]?.costPrice || 0;
+
+    // ── Online sales ──────────────────────────────────────────────────────────
+    const onlineSales = onlineSalesRaw.map(s => {
+      const sObj = s.toObject();
+      if (!sObj.amount || sObj.amount <= 0) {
+        const pm = prodMap[sObj.productId];
+        if (pm) {
+          const plat = (sObj.platform || '').toLowerCase();
+          if (plat === 'amazon') sObj.amount = pm.amazonPrice * sObj.qty;
+          else if (plat === 'flipkart') sObj.amount = pm.flipkartPrice * sObj.qty;
+          else if (plat === 'meesho') sObj.amount = pm.meeshoPrice * sObj.qty;
+          else sObj.amount = pm.offlinePrice * sObj.qty;
+        }
+      }
+      return sObj;
+    });
+
+    let onlineRevenue = 0;
+    let onlineCost = 0;
+    let amazonSales = 0;
+    let flipkartSales = 0;
+    let meeshoSales = 0;
+
+    onlineSales.forEach(s => {
+      onlineRevenue += s.amount || 0;
+      onlineCost += getCost(s.productId) * s.qty;
+      const plat = (s.platform || '').toLowerCase();
+      if (plat === 'amazon') amazonSales += s.amount || 0;
+      else if (plat === 'flipkart') flipkartSales += s.amount || 0;
+      else if (plat === 'meesho') meeshoSales += s.amount || 0;
+    });
+
+    // ── Offline + Online piece/box accounting ────────────────────────────────
+    // Online sales are ALWAYS piece sales (Amazon / Flipkart / Meesho have no Box type)
+    let totalPiecesSold = 0;
+    let totalBoxesSold = 0;
+
+    onlineSales.forEach(s => {
+      totalPiecesSold += s.qty;   // every online qty is a piece
+    });
+
+    // ── Offline sales ─────────────────────────────────────────────────────────
+    let offlineRevenue = 0;
+    let offlineCost = 0;
+    let pendingAmount = 0;
+
+    offlineSalesRaw.forEach(s => {
+      pendingAmount += s.amountLeft || 0;
+      const items = s.items || [];
+      if (items.length > 0) {
+        items.forEach(item => {
+          offlineRevenue += item.amount || 0;
+          offlineCost += getCost(item.productId) * item.qty;
+          if (item.saleType === 'Box') {
+            totalBoxesSold += item.saleQty || 0;
+          } else {
+            totalPiecesSold += item.qty || 0;
+          }
+        });
+      } else {
+        // Legacy single-item offline sale (no items array)
+        offlineRevenue += s.totalAmount || 0;
+        offlineCost += getCost(s.productId) * s.qty;
+        if (s.saleType === 'Box') {
+          totalBoxesSold += s.saleQty || 0;
+        } else {
+          totalPiecesSold += s.qty || 1;
+        }
+      }
+    });
+
+    const totalSales = onlineRevenue + offlineRevenue;
+    const totalCOGS = onlineCost + offlineCost;
+    const grossProfit = totalSales - totalCOGS;
+
+    // ── Returns value ─────────────────────────────────────────────────────────
+    const getReturnPrice = (productId, platform) => {
+      const pm = prodMap[productId];
+      if (!pm) return 0;
+      const plat = (platform || '').toLowerCase();
+      if (plat === 'amazon') return pm.amazonPrice;
+      if (plat === 'flipkart') return pm.flipkartPrice;
+      if (plat === 'meesho') return pm.meeshoPrice;
+      return pm.offlinePrice;
+    };
+    const returnsValue = returns.reduce((sum, r) => {
+      const items = (r.items && r.items.length > 0) ? r.items : [{ productId: r.productId, qty: r.qty || 1 }];
+      return sum + items.reduce((s, item) => s + (getReturnPrice(item.productId, r.platform) * item.qty), 0);
+    }, 0);
+    const netProfit = grossProfit - returnsValue;
+
+    // ── Collections (cash received today) ─────────────────────────────────────
+    let totalCollections = onlineRevenue; // Online = always collected
+    const paymentMethodSummary = { Cash: 0, UPI: 0, Bank: 0, Credit: 0 };
+
+    offlineSalesRaw.forEach(s => {
+      (s.transactions || []).forEach(t => {
+        if (t.date === dateStr) {
+          const m = (t.method || '').toLowerCase().trim();
+          const amt = Number(t.amount) || 0;
+          if (m === 'cash') {
+            totalCollections += amt;
+            paymentMethodSummary.Cash += amt;
+          } else if (m === 'upi') {
+            totalCollections += amt;
+            paymentMethodSummary.UPI += amt;
+          } else if (m === 'bank transfer') {
+            totalCollections += amt;
+            paymentMethodSummary.Bank += amt;
+          } else if (m === 'cheque') {
+            // Credit — include regardless of status for daily report
+            paymentMethodSummary.Credit += amt;
+          }
+        }
+      });
+    });
+
+    // ── Order & quantity counts ───────────────────────────────────────────────
+    const totalOrders = onlineSales.length + offlineSalesRaw.length;
+    const totalProductsSold = new Set([
+      ...onlineSales.map(s => s.productId),
+      ...offlineSalesRaw.flatMap(s => (s.items || []).map(i => i.productId))
+    ]).size;
+
+    // ── Inventory status ──────────────────────────────────────────────────────
+    const lowStockProducts = products.filter(p => p.availableQty > 0 && p.availableQty <= 20).length;
+    const outOfStockProducts = products.filter(p => p.availableQty === 0).length;
+
+    // ── Product-wise sales table (sorted by qty sold, desc) ───────────────────
+    const productSalesMap = {};
+    onlineSales.forEach(s => {
+      const key = s.productId;
+      if (!productSalesMap[key]) productSalesMap[key] = { productId: key, name: s.productName, qty: 0, amount: 0, platform: 'Online' };
+      productSalesMap[key].qty += s.qty;
+      productSalesMap[key].amount += s.amount || 0;
+    });
+    offlineSalesRaw.forEach(s => {
+      const items = s.items || [];
+      if (items.length > 0) {
+        items.forEach(item => {
+          const key = item.productId;
+          if (!productSalesMap[key]) productSalesMap[key] = { productId: key, name: item.productName, qty: 0, amount: 0, platform: 'Offline' };
+          productSalesMap[key].qty += item.qty;
+          productSalesMap[key].amount += item.amount || 0;
+        });
+      }
+    });
+    const productWiseSales = Object.values(productSalesMap).sort((a, b) => b.qty - a.qty);
+
+    // ── Platform-wise sales ───────────────────────────────────────────────────
+    const platformWiseSales = {
+      Offline: offlineRevenue,
+      Amazon: amazonSales,
+      Flipkart: flipkartSales,
+      Meesho: meeshoSales
+    };
+
+    // ── Top 10 customers by today's billing ───────────────────────────────────
+    const customerMap = {};
+    offlineSalesRaw.forEach(s => {
+      if (!customerMap[s.buyerName]) customerMap[s.buyerName] = 0;
+      customerMap[s.buyerName] += s.totalAmount || 0;
+    });
+    const top10Customers = Object.entries(customerMap)
+      .map(([name, amount]) => ({ name, amount }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 10);
+
+    // ── Returns and replacements counts ──────────────────────────────────────
+    const returnsCount = returns.reduce((sum, r) => {
+      const items = (r.items && r.items.length > 0) ? r.items : [{ qty: r.qty || 1 }];
+      return sum + items.reduce((s, i) => s + (i.qty || 1), 0);
+    }, 0);
+    const replacementsCount = replacements.reduce((sum, r) => {
+      const products = (r.products && r.products.length > 0) ? r.products : [{ qty: r.qty || 1 }];
+      return sum + products.reduce((s, p) => s + (p.qty || 1), 0);
+    }, 0);
+
+    const hasActivity = totalSales > 0 || totalOrders > 0;
+
+    const reportData = {
+      // Core KPIs
+      totalSales,
+      totalCollections,
+      pendingAmount,
+      offlineSales: offlineRevenue,
+      amazonSales,
+      flipkartSales,
+      meeshoSales,
+      totalOrders,
+      totalProductsSold,
+      piecesSold: totalPiecesSold,
+      boxesSold: totalBoxesSold,
+      returns: returnsCount,
+      replacements: replacementsCount,
+      grossProfit,
+      netProfit,
+      productCost: totalCOGS,
+      newCustomers: newCustomers.length,
+      newShops: newShops.length,
+      lowStockProducts,
+      outOfStockProducts,
+      // Tables
+      productWiseSales,
+      platformWiseSales,
+      top10Customers,
+      paymentMethodSummary
+    };
+
+    // ── Upsert DailyReport document ───────────────────────────────────────────
+    const existing = await DailyReport.findOne({ date: dateStr });
+    if (existing) {
+      existing.data = reportData;
+      existing.hasActivity = hasActivity;
+      existing.generatedAt = new Date().toISOString();
+      existing.markModified('data');
+      await existing.save();
+      console.log(`[DAILY REPORT] ✅ Report for ${dateStr} updated (upsert).`);
+    } else {
+      const report = new DailyReport({
+        id: uuidv4(),
+        date: dateStr,
+        generatedAt: new Date().toISOString(),
+        hasActivity,
+        data: reportData
+      });
+      await report.save();
+      console.log(`[DAILY REPORT] ✅ Report for ${dateStr} created.`);
+    }
+
+    return { date: dateStr, hasActivity, data: reportData };
+  } catch (err) {
+    console.error(`[DAILY REPORT] ❌ Error generating report for ${dateStr}:`, err);
+    throw err;
+  }
+}
+
+/**
+ * Schedules a daily report generation + push notification at 20:00 server local time.
+ * Called once after MongoDB connection is established.
+ */
+function scheduleDailyReport() {
+  // Cron: '0 20 * * *' = At 20:00 (8 PM) every day, using server local time
+  cron.schedule('0 20 * * *', async () => {
+    const todayStr = getSystemLocalDate();
+    console.log(`[DAILY REPORT SCHEDULER] 🕗 8:00 PM trigger fired. Generating report for ${todayStr}...`);
+    try {
+      await generateDailyReport(todayStr);
+
+      // Send push notification to admin users only
+      await sendPushNotification({
+        type: 'daily_report',
+        title: '📊 Daily Business Report Ready',
+        body: 'Tap to view today\'s complete business summary.',
+        data: {
+          clickAction: '/daily-report',
+          reportDate: todayStr
+        }
+      });
+
+      console.log(`[DAILY REPORT SCHEDULER] ✅ Report and notification dispatched for ${todayStr}.`);
+    } catch (err) {
+      console.error(`[DAILY REPORT SCHEDULER] ❌ Error:`, err);
+    }
+  });
+  console.log('[DAILY REPORT SCHEDULER] ⏰ Scheduled: Daily business report at 8:00 PM server local time.');
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 function hashPassword(password) {
   if (!password) return '';
@@ -879,6 +1584,8 @@ if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('<db_password>')) {
       await runUserMigration();
       await runSupplierMigration();
       await runOfflineIntegrityCheck();
+      // Start daily report cron scheduler (8 PM server local time)
+      scheduleDailyReport();
     })
     .catch((err) => {
       console.error('❌ MongoDB Connection Error:', err.stack || err);
@@ -2620,31 +3327,61 @@ app.get('/api/analytics', catchAsync(async (req, res) => {
   // 5. Process Offline Sales
   offlineSales.forEach(s => {
     const items = s.items || [];
-    items.forEach(item => {
-      const cost = getProductCost(item.productId) * item.qty;
-      const rev = item.amount || 0;
+    if (items.length > 0) {
+      items.forEach(item => {
+        const cost = getProductCost(item.productId) * item.qty;
+        const rev = item.amount || 0;
+
+        totalRevenue += rev;
+        totalProductCost += cost;
+        totalUnitsSold += item.qty;
+
+        // Offline: Piece unless explicitly Box
+        if (item.saleType === 'Box') {
+          totalBoxesSold += (item.saleQty || 0);
+          revenueFromBoxSales += rev;
+        } else {
+          totalPiecesSold += item.qty;
+          revenueFromPieceSales += rev;
+        }
+
+        platformStats.offline.revenue += rev;
+        platformStats.offline.productCost += cost;
+        platformStats.offline.unitsSold += item.qty;
+
+        const pStat = getProductAccumulator(item.productId, item.productName);
+        pStat.soldQty += item.qty;
+        pStat.revenue += rev;
+        pStat.productCost += cost;
+      });
+    } else {
+      // Legacy single-item offline sale (no items array)
+      const cost = getProductCost(s.productId) * (s.qty || 1);
+      const rev = s.totalAmount || 0;
 
       totalRevenue += rev;
       totalProductCost += cost;
-      totalUnitsSold += item.qty;
+      totalUnitsSold += s.qty || 1;
 
-      if (item.saleType === 'Box') {
-        totalBoxesSold += (item.saleQty || 0);
+      if (s.saleType === 'Box') {
+        totalBoxesSold += (s.saleQty || 0);
         revenueFromBoxSales += rev;
       } else {
-        totalPiecesSold += item.qty;
+        totalPiecesSold += s.qty || 1;
         revenueFromPieceSales += rev;
       }
 
       platformStats.offline.revenue += rev;
       platformStats.offline.productCost += cost;
-      platformStats.offline.unitsSold += item.qty;
+      platformStats.offline.unitsSold += s.qty || 1;
 
-      const pStat = getProductAccumulator(item.productId, item.productName);
-      pStat.soldQty += item.qty;
-      pStat.revenue += rev;
-      pStat.productCost += cost;
-    });
+      if (s.productId) {
+        const pStat = getProductAccumulator(s.productId, s.productName);
+        pStat.soldQty += s.qty || 1;
+        pStat.revenue += rev;
+        pStat.productCost += cost;
+      }
+    }
   });
 
   // 6. Process Returns
@@ -3511,7 +4248,49 @@ app.get('/api/stats', catchAsync(async (req, res) => {
   res.json(statsResult);
 }));
 
+// ================= DAILY BUSINESS REPORTS =================
+
+// GET /api/daily-reports — list all available report dates (most recent first)
+app.get('/api/daily-reports', requireAuth, requireAdmin, catchAsync(async (req, res) => {
+  const reports = await DailyReport.find({}, { id: 1, date: 1, generatedAt: 1, hasActivity: 1, _id: 0 })
+    .sort({ date: -1 });
+  res.json(reports);
+}));
+
+// GET /api/daily-reports/:date — fetch a specific day's stored report
+app.get('/api/daily-reports/:date', requireAuth, requireAdmin, catchAsync(async (req, res) => {
+  const { date } = req.params;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD.' });
+  }
+  const report = await DailyReport.findOne({ date }, { _id: 0, __v: 0 });
+  if (!report) {
+    return res.status(404).json({ message: 'Report not found for this date. It may not have been generated yet.' });
+  }
+  res.json(report);
+}));
+
+// POST /api/daily-reports/generate — manually trigger report generation (and optionally send notification)
+app.post('/api/daily-reports/generate', requireAuth, requireAdmin, catchAsync(async (req, res) => {
+  const { date, sendNotification = false } = req.body;
+  const dateStr = date || getSystemLocalDate();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD.' });
+  }
+  const result = await generateDailyReport(dateStr);
+  if (sendNotification) {
+    await sendPushNotification({
+      type: 'daily_report',
+      title: '📊 Daily Business Report Ready',
+      body: "Tap to view today's complete business summary.",
+      data: { clickAction: '/daily-report', reportDate: dateStr }
+    });
+  }
+  res.json({ success: true, date: dateStr, hasActivity: result.hasActivity });
+}));
+
 // ================= DATA IMPORT & EXPORT, BACKUP & RESTORE SYSTEM =================
+
 
 // Helper synonyms matcher
 function getImportRowValue(row, synonyms) {

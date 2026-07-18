@@ -8,7 +8,7 @@ import { io } from 'socket.io-client';
 import {
   LayoutDashboard, Package, ShoppingCart, Store,
   LogOut, Menu, Building2, Undo2, BarChart3, Database, Settings, ArrowLeftRight, MessageSquare, KeyRound,
-  Factory, X, Box, Bell, AlertTriangle
+  Factory, X, Box, Bell, AlertTriangle, BarChart2
 } from 'lucide-react';
 import logo from '../logo.png';
 import { api } from '../api';
@@ -572,6 +572,7 @@ export default function Layout() {
   if (isAdmin) {
     allowedNav.push({ to: '/admin', label: 'Admin Panel', icon: Database });
     allowedNav.push({ to: '/admin/password-requests', label: 'Password Change Requests', icon: KeyRound, isSubItem: true });
+    allowedNav.push({ to: '/daily-report', label: 'Daily Business Report', icon: BarChart2 });
   }
 
   const isCompactSidebar = user?.appearance?.sidebar === 'compact';

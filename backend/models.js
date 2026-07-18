@@ -517,6 +517,30 @@ const purchaseAuditLogSchema = new mongoose.Schema({
 });
 const PurchaseAuditLog = mongoose.model('PurchaseAuditLog', purchaseAuditLogSchema);
 
+// DailyReport Model — one document per calendar day, stores fully computed report
+const dailyReportSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  date: { type: String, required: true, unique: true }, // YYYY-MM-DD
+  generatedAt: { type: String, default: () => new Date().toISOString() },
+  hasActivity: { type: Boolean, default: false },
+  data: { type: mongoose.Schema.Types.Mixed, default: {} } // full report payload
+});
+const DailyReport = mongoose.model('DailyReport', dailyReportSchema);
+
+// BusinessReport Model — unified daily/weekly/monthly report store
+const businessReportSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  type: { type: String, enum: ['daily', 'weekly', 'monthly'], required: true },
+  date: { type: String, required: true },        // YYYY-MM-DD (daily/weekly), YYYY-MM (monthly)
+  periodStart: { type: String, required: true }, // YYYY-MM-DD
+  periodEnd: { type: String, required: true },   // YYYY-MM-DD
+  generatedAt: { type: String, default: () => new Date().toISOString() },
+  hasActivity: { type: Boolean, default: false },
+  data: { type: mongoose.Schema.Types.Mixed, default: {} }
+});
+businessReportSchema.index({ type: 1, date: 1 }, { unique: true });
+const BusinessReport = mongoose.model('BusinessReport', businessReportSchema);
+
 // Notification Model
 const notificationSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
@@ -549,7 +573,9 @@ module.exports = {
   SupplierPayment,
   PurchaseAuditLog,
   OnlineSaleCancelLog,
-  Notification
+  Notification,
+  DailyReport,
+  BusinessReport
 };
 
 
