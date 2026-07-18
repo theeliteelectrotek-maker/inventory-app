@@ -1562,7 +1562,9 @@ export default function OfflineSales() {
     const validNewTxns = editNewTxns.filter((t) => t.amount);
     try {
       const updated = await api.updateOfflineSale(editModal.id, {
-        items: editModal.items,
+        // NOTE: Do NOT send `items` here. invoice.items are permanent accounting
+        // records and must never be replaced by a payment or product-line-add
+        // operation. The backend guards against this but we also prevent it here.
         totalAmount: editModal.totalAmount,
         gst: editGst,
         isGSTInvoice: editGst,

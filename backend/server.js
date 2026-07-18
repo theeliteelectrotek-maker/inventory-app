@@ -600,6 +600,82 @@ async function runOfflineSaleMigration() {
   }
 }
 
+// ─── Offline Invoice Integrity Check ─────────────────────────────────────────
+// Runs on every server startup. Scans all OfflineSale documents and logs every
+// invoice that has a financial inconsistency. It does NOT reset or delete data.
+// Conservative auto-heal: corrects only amountReceived and amountLeft when they
+// deviate from the transaction log. totalAmount is left untouched (it is set
+// authoritatively at invoice creation time).
+async function runOfflineIntegrityCheck() {
+  try {
+    console.log('[INTEGRITY] Starting Offline Sales integrity check...');
+    const allSales = await OfflineSale.find({});
+    let corruptedCount = 0;
+    let healedCount = 0;
+
+    for (const sale of allSales) {
+      const inv = sale.invoiceNumber || sale.id;
+      let dirty = false;
+      const issues = [];
+
+      // 1. Verify totalAmount vs sum(items.amount)
+      if (sale.items && sale.items.length > 0) {
+        const itemsSum = sale.items.reduce((s, item) => s + (Number(item.amount) || 0), 0);
+        if (Math.abs(itemsSum - sale.totalAmount) > 0.01) {
+          issues.push(`totalAmount stored=${sale.totalAmount} but sum(items.amount)=${itemsSum.toFixed(2)}`);
+          corruptedCount++;
+        }
+      }
+
+      // 2. Recompute amountReceived from transaction log
+      const expectedReceived = calculateReceivedAmount(sale.transactions || []);
+      if (Math.abs(expectedReceived - sale.amountReceived) > 0.01) {
+        issues.push(`amountReceived stored=${sale.amountReceived} computed=${expectedReceived.toFixed(2)}`);
+        sale.amountReceived = expectedReceived;
+        dirty = true;
+      }
+
+      // 3. Clamp: received cannot exceed total
+      if (sale.amountReceived > sale.totalAmount) {
+        issues.push(`amountReceived (${sale.amountReceived}) > totalAmount (${sale.totalAmount}) — clamping`);
+        sale.amountReceived = sale.totalAmount;
+        dirty = true;
+      }
+
+      // 4. Recompute amountLeft
+      const expectedLeft = sale.totalAmount - sale.amountReceived;
+      if (Math.abs(expectedLeft - sale.amountLeft) > 0.01) {
+        issues.push(`amountLeft stored=${sale.amountLeft} computed=${expectedLeft.toFixed(2)}`);
+        sale.amountLeft = expectedLeft;
+        dirty = true;
+      }
+
+      // Log all mismatches
+      if (issues.length > 0) {
+        console.warn(`[INTEGRITY] ⚠️  Invoice ${inv} (Customer: ${sale.buyerName}):`);
+        issues.forEach(msg => console.warn(`[INTEGRITY]   • ${msg}`));
+      }
+
+      // Auto-heal only amountReceived/amountLeft (safe — derived from stored transactions)
+      if (dirty) {
+        sale.markModified('amountReceived');
+        sale.markModified('amountLeft');
+        await sale.save();
+        healedCount++;
+        console.log(`[INTEGRITY] ✅ Auto-healed amountReceived/amountLeft on invoice ${inv}`);
+      }
+    }
+
+    if (corruptedCount === 0 && healedCount === 0) {
+      console.log(`[INTEGRITY] ✅ All ${allSales.length} offline invoices are financially consistent. No issues found.`);
+    } else {
+      console.warn(`[INTEGRITY] Scan complete: ${allSales.length} invoices checked, ${corruptedCount} total-amount mismatch(es) logged, ${healedCount} payment field(s) auto-healed.`);
+    }
+  } catch (err) {
+    console.error('[INTEGRITY] ❌ Error during offline integrity check:', err);
+  }
+}
+
 async function runUserMigration() {
   try {
     const fs = require('fs');
@@ -802,6 +878,7 @@ if (process.env.MONGO_URI && !process.env.MONGO_URI.includes('<db_password>')) {
       await runOfflineSaleMigration();
       await runUserMigration();
       await runSupplierMigration();
+      await runOfflineIntegrityCheck();
     })
     .catch((err) => {
       console.error('❌ MongoDB Connection Error:', err.stack || err);
@@ -1580,13 +1657,21 @@ const putOfflineSalesHandler = catchAsync(async (req, res) => {
   const sale = await OfflineSale.findOne({ id: req.params.id });
   if (!sale) return res.status(404).json({ message: 'Sale not found' });
 
-  // Update existing items/total if passed (e.g. when toggling GST on/off)
-  if (items) {
+  // ─── GUARD: invoice.items are permanent accounting records ─────────────────
+  // items replacement is ONLY allowed when the caller explicitly sets
+  // replaceItems: true in the payload.  Payment updates, cheque-status changes,
+  // and "add new product line" operations must NEVER send items, and even if
+  // they accidentally do, this guard prevents silent data corruption.
+  if (req.body.replaceItems === true && items) {
     sale.items = items.map(item => ({
       ...item,
       date: normalizeToLocalYYYYMMDD(item.date || sale.date || new Date())
     }));
     sale.markModified('items');
+    console.log(`[INVOICE ITEMS] Explicit replaceItems=true: replaced ${sale.items.length} item(s) on invoice ${sale.invoiceNumber || sale.id}`);
+  } else if (items && req.body.replaceItems !== true) {
+    // Safety: log and ignore any accidental items payload
+    console.warn(`[INVOICE GUARD] Ignored accidental 'items' payload on invoice ${sale.invoiceNumber || sale.id}. Use replaceItems:true to intentionally replace items.`);
   }
   if (totalAmount !== undefined) {
     sale.totalAmount = totalAmount;
@@ -1710,7 +1795,29 @@ const putOfflineSalesHandler = catchAsync(async (req, res) => {
     sale.markModified('corrections');
   }
 
+  // ─── Always recompute financial totals from source of truth ────────────────
+  // This is the single canonical calculation point. It runs regardless of
+  // which fields were updated so that amountReceived / amountLeft can never
+  // drift from the transaction log.
+  sale.amountReceived = calculateReceivedAmount(sale.transactions);
+
+  // Clamp: received can never exceed total (core accounting invariant).
+  if (sale.amountReceived > sale.totalAmount) {
+    console.warn(`[INTEGRITY WARN] Invoice ${sale.invoiceNumber || sale.id}: amountReceived (${sale.amountReceived}) exceeds totalAmount (${sale.totalAmount}). Clamping to totalAmount.`);
+    sale.amountReceived = sale.totalAmount;
+  }
+
   sale.amountLeft = sale.totalAmount - sale.amountReceived;
+
+  // Diagnostic: warn if stored totalAmount diverges from sum of item amounts.
+  // Items are the permanent record; this mismatch indicates prior corruption.
+  if (sale.items && sale.items.length > 0) {
+    const itemsSum = sale.items.reduce((s, item) => s + (Number(item.amount) || 0), 0);
+    if (Math.abs(itemsSum - sale.totalAmount) > 0.01) {
+      console.warn(`[INTEGRITY WARN] Invoice ${sale.invoiceNumber || sale.id}: totalAmount stored=${sale.totalAmount} but sum(items.amount)=${itemsSum.toFixed(2)}. Items are the permanent record.`);
+    }
+  }
+
   sale.updatedAt = new Date().toISOString();
   await sale.save();
 

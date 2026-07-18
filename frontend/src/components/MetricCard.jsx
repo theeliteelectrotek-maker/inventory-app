@@ -84,18 +84,17 @@ export default function MetricCard({
         <p
           className={[
             'font-extrabold leading-none tracking-tight',
-            'break-words max-w-full min-w-0 w-full',
-            'overflow-wrap-anywhere',
+            'max-w-full min-w-0 w-full',
+            'whitespace-nowrap',
             valueClassName,
           ]
             .filter(Boolean)
             .join(' ')}
           style={{
-            fontSize: 'clamp(1.25rem, 2vw, 2.5rem)',
+            fontSize: 'clamp(1.025rem, 1.64vw, 2.05rem)',
             lineHeight: 1.05,
             letterSpacing: '-0.03em',
-            overflowWrap: 'break-word',
-            wordBreak: 'break-word',
+            whiteSpace: 'nowrap',
           }}
           title={displayValue}
         >
